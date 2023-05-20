@@ -25,7 +25,7 @@ void search(Position& p){
 	}
 }
 */
-int perftTest(board::board &currentBoard, int depth, int maxDepth){ //maxDepth for debug/move breakdown only
+int perftTest(chess::board &currentBoard, int depth, int maxDepth){ //maxDepth for debug/move breakdown only
     int nodes = 0;
     if(depth==maxDepth){
         currentBoard.outputMoves = true;
@@ -33,7 +33,7 @@ int perftTest(board::board &currentBoard, int depth, int maxDepth){ //maxDepth f
     else{
         currentBoard.outputMoves = false;
     }
-    std::vector<board::board> legalMoves = currentBoard.generateMoves();
+    std::vector<chess::board> legalMoves = chess::generateMoves(currentBoard);
     if(depth==1){return legalMoves.size();}
     for(int i=0; i<legalMoves.size(); i++){
         int result = perftTest(legalMoves[i], depth-1, maxDepth);
@@ -48,24 +48,28 @@ int perftTest(board::board &currentBoard, int depth, int maxDepth){ //maxDepth f
 
 int main() {
     int n = 0;
-    board::board test;
+    chess::board test;
     std::string h = "8/3N4/5P2/6k1/2p5/2nB1Kr1/8/3nb3 w - -";
     test.boardFromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    //std::cout << test.isInCheck();
+    std::cout << test.isInCheck() << "\n";
     test.outputMoves=false;
     auto start = std::chrono::system_clock::now();
-    std::pair<int, int> x = std::make_pair(0, 0);
+    chess::board test2;
+    test2.boardFromFen("5rk1/r1p3pp/P7/2p5/1b2p3/4B2P/5P2/R1R3K1 w - - 2 24");
+    chess::board test3;
     //n = perftTest(test, 4, 4);
-    for(int i=0; i<100000; i++){
-        test.makeMove(0, 0, x, false);
+    for(int i=0; i<99999; i++){
+        test3 = test;
+        test = test2;
+        test2 = test3;
     }
     auto end = std::chrono::system_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     std::cout << std::endl << "-----------------" << std::endl;
-    std::cout << elapsed.count() << std::endl;
+    std::cout << elapsed.count()/33333.0 << std::endl;
     std::cout << n << "\n";
-    std::cout << isInCheckCalls << "\n";
-    std::cout << times[432];
+    //std::cout << isInCheckCalls << "\n";
+    //std::cout << times[0];
     /*initialise_all_databases();
     zobrist::initialise_zobrist_keys();
 	
