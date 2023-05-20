@@ -33,7 +33,7 @@ int perftTest(chess::board &currentBoard, int depth, int maxDepth){ //maxDepth f
     else{
         currentBoard.outputMoves = false;
     }
-    std::vector<chess::board> legalMoves = chess::generateMoves(currentBoard);
+    std::vector<chess::board> legalMoves = currentBoard.generateMoves();
     if(depth==1){return legalMoves.size();}
     for(int i=0; i<legalMoves.size(); i++){
         int result = perftTest(legalMoves[i], depth-1, maxDepth);
@@ -54,20 +54,13 @@ int main() {
     std::cout << test.isInCheck() << "\n";
     test.outputMoves=false;
     auto start = std::chrono::system_clock::now();
-    chess::board test2;
-    test2.boardFromFen("5rk1/r1p3pp/P7/2p5/1b2p3/4B2P/5P2/R1R3K1 w - - 2 24");
-    chess::board test3;
-    //n = perftTest(test, 4, 4);
-    for(int i=0; i<99999; i++){
-        test3 = test;
-        test = test2;
-        test2 = test3;
-    }
+    n = perftTest(test, 3, 3);
     auto end = std::chrono::system_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     std::cout << std::endl << "-----------------" << std::endl;
-    std::cout << elapsed.count()/33333.0 << std::endl;
-    std::cout << n << "\n";
+    std::cout << "Time in Microseconds:" << elapsed.count() << "\n";
+    std::cout << "Nodes:" << n << "\n";
+    std::cout << "Nodes per Second:" << n/(elapsed.count()/1000000) << "\n";
     //std::cout << isInCheckCalls << "\n";
     //std::cout << times[0];
     /*initialise_all_databases();
