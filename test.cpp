@@ -50,11 +50,11 @@ int main() {
     int n = 0;
     chess::board test;
     std::string h = "8/3N4/5P2/6k1/2p5/2nB1Kr1/8/3nb3 w - -";
-    test.boardFromFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    std::cout << test.isInCheck() << "\n";
+    test.initialize();
     test.outputMoves=false;
+    std::vector<chess::board> testList;
     auto start = std::chrono::system_clock::now();
-    n = perftTest(test, 3, 3);
+    n = perftTest(test, 4, 4);
     auto end = std::chrono::system_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     std::cout << std::endl << "-----------------" << std::endl;

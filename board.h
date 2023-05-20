@@ -10,6 +10,13 @@ std::vector<int> times;
 namespace chess{
 //all piece related lists/ints use 0 as pawns, 1 as knights, 2 as bishops, 3 as rooks, 4 as queens, and 5 as kings
 //all board related lists/ints/pairs come in the form (y, x) where (0, 0) is a8, (1, 0) is a a7, (0, 1) is b8, etc.
+std::vector<std::vector<std::vector<std::vector<int>>>> pawnMoves;
+std::vector<std::vector<std::vector<int>>> knightMoves;
+std::vector<std::vector<std::vector<int>>> bishopMoves;
+std::vector<std::vector<std::vector<int>>> rookMoves;
+std::vector<std::vector<std::vector<int>>> queenMoves;
+std::vector<std::vector<std::vector<int>>> kingMoves;
+
 
 class move{
     std::pair<int, int> startCoords;
@@ -28,14 +35,8 @@ class board{
     // fullBoard[0][0] is a8, fullboard[1][0] is a7, fullboard[0][1] is b8
     std::vector<std::vector<std::vector<int>>> fullBoard; 
     //each vector contains pairs of 0-indexed coordinates of all the pieces of the specified type
-    std::vector<std::vector<std::vector<std::vector<int>>>> pawnMoves;
-    std::vector<std::vector<std::vector<int>>> knightMoves;
-    std::vector<std::vector<std::vector<int>>> bishopMoves;
-    std::vector<std::vector<std::vector<int>>> rookMoves;
-    std::vector<std::vector<std::vector<int>>> queenMoves;
-    std::vector<std::vector<std::vector<int>>> kingMoves;
     std::vector<std::vector<std::vector<std::pair<int, int>>>> allPieces;
-    std::vector<board> history;
+    //std::vector<board> history;
 
     bool canEnPassant;
     std::pair<int, int> enPassantSquare;
@@ -46,87 +47,14 @@ class board{
 
     int fiftyMoveRuleCounter;
 
-    void boardFromFen(std::string fen){
-        //initializes board from fen, and also does other important initializations
+    //initializes board, arguments: fen string, default is starting position
+    void initialize(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"){
         int y = 0;
         int x = 0;
         fullBoard.resize(8, std::vector<std::vector<int>>(8, std::vector<int>(2, -1)));
         //std::cout << fullBoard.size();
         allPieces.resize(6, std::vector<std::vector<std::pair<int, int>>>(2));
         castling.resize(2, std::make_pair(false, false));
-        kingMoves.resize(8, std::vector<std::vector<int>>(1, std::vector<int>(2)));
-        int it=0; //iterates through types of moves
-        for(int i=-1; i<2; i++){
-            for(int j=-1; j<2; j++){
-                if(i!=0 || j!=0){
-                    kingMoves[it][0][0] = i;
-                    kingMoves[it][0][1] = j;
-                    it++;
-                }
-            }
-        }
-        queenMoves.resize(8, std::vector<std::vector<int>>(7, std::vector<int>(2)));
-        it=0; //iterates through types of moves
-        for(int i=-1; i<2; i++){
-            for(int j=-1; j<2; j++){
-                if(i!=0 || j!=0){
-                    for(int k=1; k<8; k++){
-                        queenMoves[it][k-1][0] = i*k;
-                        queenMoves[it][k-1][1] = j*k;
-                    }
-                    it++;
-                }
-            }
-        }
-        rookMoves.resize(4, std::vector<std::vector<int>>(7, std::vector<int>(2)));
-        it=0; //iterates through types of moves
-        for(int i=-1; i<2; i++){
-            for(int j=-1; j<2; j++){
-                if((i==0 || j==0)&&(i!=0 || j!=0)){
-                    for(int k=1; k<8; k++){
-                        rookMoves[it][k-1][0] = i*k;
-                        rookMoves[it][k-1][1] = j*k;
-                    }
-                    it++;
-                }
-            }
-        }
-        bishopMoves.resize(4, std::vector<std::vector<int>>(7, std::vector<int>(2)));
-        it=0; //iterates through types of moves
-        for(int i=-1; i<2; i++){
-            for(int j=-1; j<2; j++){
-                if(i!=0 && j!=0){
-                    for(int k=1; k<8; k++){
-                        bishopMoves[it][k-1][0] = i*k;
-                        bishopMoves[it][k-1][1] = j*k;
-                    }
-                    it++;
-                }
-            }
-        }
-        knightMoves.resize(8, std::vector<std::vector<int>>(1, std::vector<int>(2)));
-        it=0; //iterates through types of moves
-        for(int i=-1; i<2; i++){
-            for(int j=-1; j<2; j++){
-                if(i!=0 && j!=0){
-                    for(int k=1; k<3; k++){
-                        knightMoves[it][0][0] = i*k;
-                        knightMoves[it][0][1] = j*(3-k);
-                        it++;
-                    }
-                }
-            }
-        }
-        pawnMoves.resize(2, std::vector<std::vector<std::vector<int>>>(3, std::vector<std::vector<int>>(2, std::vector<int>(2)))); //3 "types of moves", push, capture left, capture right. since possible pawn moves differ for each side, we have a dfferent vector of moves for each side
-        for(int s=0; s<2; s++){
-            it=0; //iterates through types of moves
-            pawnMoves[s][it][0][0] = 1*(s*2-1); pawnMoves[s][it][0][1] = 0;
-            pawnMoves[s][it][1][0] = 2*(s*2-1); pawnMoves[s][it][1][1] = 0;
-            it++;
-            pawnMoves[s][it][0][0] = 1*(s*2-1); pawnMoves[s][it][0][1] = -1;
-            it++;
-            pawnMoves[s][it][0][0] = 1*(s*2-1); pawnMoves[s][it][0][1] = 1;
-        }
         for(int i=0; i<fen.size(); i++){
             //std::cout << " " <<"|x:" << x << "|y:" << y << "|";
             if(!(x==8 && y==7)){
