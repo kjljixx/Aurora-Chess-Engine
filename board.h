@@ -19,13 +19,16 @@ std::vector<std::vector<std::vector<int>>> kingMoves;
 
 
 class move{
+    public:
     std::pair<int, int> startCoords;
     int movedPieceType;
-    bool usePieceIndex; //true if using piece index to find piece, otherwise uses endCoords
     int movedPieceIndex;
     std::pair<int, int> endCoords;
-    int specialMove; //-1 if not special, 0 if en passant, 1 if castle, 2 if promotion
+    bool isEnPassant;
     int capturedPiece; //-1 if no capture
+    int originalFiftyMoveCount;
+    bool originalCanEnPassant;
+    std::vector<std::pair<bool, bool>> originalCastling;
 };
 
 class board{
@@ -49,6 +52,79 @@ class board{
 
     //initializes board, arguments: fen string, default is starting position
     void initialize(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"){
+        kingMoves.resize(10, std::vector<std::vector<int>>(1, std::vector<int>(2)));
+        int it=0; //iterates through types of moves
+        for(int i=-1; i<2; i++){
+            for(int j=-1; j<2; j++){
+                if(i!=0 || j!=0){
+                    kingMoves[it][0][0] = i;
+                    kingMoves[it][0][1] = j;
+                    it++;
+                }
+            }
+        }
+        queenMoves.resize(8, std::vector<std::vector<int>>(7, std::vector<int>(2)));
+        it=0; //iterates through types of moves
+        for(int i=-1; i<2; i++){
+            for(int j=-1; j<2; j++){
+                if(i!=0 || j!=0){
+                    for(int k=1; k<8; k++){
+                        queenMoves[it][k-1][0] = i*k;
+                        queenMoves[it][k-1][1] = j*k;
+                    }
+                    it++;
+                }
+            }
+        }
+        rookMoves.resize(4, std::vector<std::vector<int>>(7, std::vector<int>(2)));
+        it=0; //iterates through types of moves
+        for(int i=-1; i<2; i++){
+            for(int j=-1; j<2; j++){
+                if((i==0 || j==0)&&(i!=0 || j!=0)){
+                    for(int k=1; k<8; k++){
+                        rookMoves[it][k-1][0] = i*k;
+                        rookMoves[it][k-1][1] = j*k;
+                    }
+                    it++;
+                }
+            }
+        }
+        bishopMoves.resize(4, std::vector<std::vector<int>>(7, std::vector<int>(2)));
+        it=0; //iterates through types of moves
+        for(int i=-1; i<2; i++){
+            for(int j=-1; j<2; j++){
+                if(i!=0 && j!=0){
+                    for(int k=1; k<8; k++){
+                        bishopMoves[it][k-1][0] = i*k;
+                        bishopMoves[it][k-1][1] = j*k;
+                    }
+                    it++;
+                }
+            }
+        }
+        knightMoves.resize(8, std::vector<std::vector<int>>(1, std::vector<int>(2)));
+        it=0; //iterates through types of moves
+        for(int i=-1; i<2; i++){
+            for(int j=-1; j<2; j++){
+                if(i!=0 && j!=0){
+                    for(int k=1; k<3; k++){
+                        knightMoves[it][0][0] = i*k;
+                        knightMoves[it][0][1] = j*(3-k);
+                        it++;
+                    }
+                }
+            }
+        }
+        pawnMoves.resize(2, std::vector<std::vector<std::vector<int>>>(3, std::vector<std::vector<int>>(2, std::vector<int>(2)))); //3 "types of moves", push, capture left, capture right. since possible pawn moves differ for each side, we have a dfferent vector of moves for each side
+        for(int s=0; s<2; s++){
+            it=0; //iterates through types of moves
+            pawnMoves[s][it][0][0] = 1*(s*2-1); pawnMoves[s][it][0][1] = 0;
+            pawnMoves[s][it][1][0] = 2*(s*2-1); pawnMoves[s][it][1][1] = 0;
+            it++;
+            pawnMoves[s][it][0][0] = 1*(s*2-1); pawnMoves[s][it][0][1] = -1;
+            it++;
+            pawnMoves[s][it][0][0] = 1*(s*2-1); pawnMoves[s][it][0][1] = 1;
+        }
         int y = 0;
         int x = 0;
         fullBoard.resize(8, std::vector<std::vector<int>>(8, std::vector<int>(2, -1)));
@@ -280,9 +356,8 @@ class board{
         return false;
     }
 
-    int makeMove(int piece, int index, std::pair<int, int> endCoords, bool isEnPassant){
+    int makeMove(int piece, int index, std::pair<int, int> endCoords, bool isEnPassant){ //internal makeMove which doesnt update side to move, fifty move rule, castling, etc.
         int capturedPiece = -1;
-        auto start = std::chrono::system_clock::now();
         if(fullBoard[endCoords.first][endCoords.second][0]!=-1){
             capturedPiece = fullBoard[endCoords.first][endCoords.second][1];
             //std::cout << "[" << fullBoard[endCoords.first][endCoords.second][0] << "]";
@@ -294,7 +369,7 @@ class board{
                 }
             }
         }
-        if(endCoords.first==1 || endCoords.first==6){
+        if(endCoords.first==2 || endCoords.first==5){
             if(fullBoard[endCoords.first+sideToMove*-2+1][endCoords.second][0]!=-1 && isEnPassant){
                 for(int i=0; i<allPieces[fullBoard[endCoords.first+sideToMove*-2+1][endCoords.second][1]][fullBoard[endCoords.first+sideToMove*-2+1][endCoords.second][0]].size(); i++){
                     if(allPieces[fullBoard[endCoords.first+(sideToMove*-2+1)][endCoords.second][1]][fullBoard[endCoords.first+sideToMove*-2+1][endCoords.second][0]][i]==endCoords){
@@ -311,9 +386,49 @@ class board{
         fullBoard[endCoords.first][endCoords.second][1] = piece;
         allPieces[piece][sideToMove][index].first = endCoords.first;
         allPieces[piece][sideToMove][index].second = endCoords.second;
-        auto end = std::chrono::system_clock::now();
-        times.push_back(std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
         return capturedPiece;
+    }
+    void makeMove(move moveToMake){
+        for(int i=0; i<allPieces[moveToMake.movedPieceType][sideToMove].size(); i++){
+            if(allPieces[moveToMake.movedPieceType][sideToMove][i].first==moveToMake.startCoords.first &&
+            allPieces[moveToMake.movedPieceType][sideToMove][i].second==moveToMake.startCoords.second){
+                moveToMake.movedPieceIndex = i;
+            }
+        }
+        fiftyMoveRuleCounter++;
+        canEnPassant = false;
+        if(moveToMake.movedPieceType == 5){
+            castling[sideToMove] = std::make_pair(false, false);
+        }
+        if(fullBoard[moveToMake.endCoords.first][moveToMake.endCoords.second][0]!=-1){
+            moveToMake.capturedPiece = fullBoard[moveToMake.endCoords.first][moveToMake.endCoords.second][1];
+            //std::cout << "[" << fullBoard[endCoords.first][endCoords.second][0] << "]";
+            for(int i=0; i<allPieces[fullBoard[moveToMake.endCoords.first][moveToMake.endCoords.second][1]][fullBoard[moveToMake.endCoords.first][moveToMake.endCoords.second][0]].size(); i++){
+                if(allPieces[fullBoard[moveToMake.endCoords.first][moveToMake.endCoords.second][1]][fullBoard[moveToMake.endCoords.first][moveToMake.endCoords.second][0]][i]==moveToMake.endCoords){
+                    auto it = allPieces[fullBoard[moveToMake.endCoords.first][moveToMake.endCoords.second][1]][fullBoard[moveToMake.endCoords.first][moveToMake.endCoords.second][0]].begin()+i;
+                    allPieces[fullBoard[moveToMake.endCoords.first][moveToMake.endCoords.second][1]][fullBoard[moveToMake.endCoords.first][moveToMake.endCoords.second][0]].erase(it);
+                    break;
+                }
+            }
+        }
+        if(moveToMake.endCoords.first==2 || moveToMake.endCoords.first==5){
+            if(fullBoard[moveToMake.endCoords.first+sideToMove*-2+1][moveToMake.endCoords.second][0]!=-1 && moveToMake.isEnPassant){
+                for(int i=0; i<allPieces[fullBoard[moveToMake.endCoords.first+sideToMove*-2+1][moveToMake.endCoords.second][1]][fullBoard[moveToMake.endCoords.first+sideToMove*-2+1][moveToMake.endCoords.second][0]].size(); i++){
+                    if(allPieces[fullBoard[moveToMake.endCoords.first+(sideToMove*-2+1)][moveToMake.endCoords.second][1]][fullBoard[moveToMake.endCoords.first+sideToMove*-2+1][moveToMake.endCoords.second][0]][i]==moveToMake.endCoords){
+                        auto it = allPieces[fullBoard[moveToMake.endCoords.first+sideToMove*-2+1][moveToMake.endCoords.second][1]][fullBoard[moveToMake.endCoords.first+sideToMove*-2+1][moveToMake.endCoords.second][0]].begin()+i;
+                        allPieces[fullBoard[moveToMake.endCoords.first+(sideToMove*-2+1)][moveToMake.endCoords.second][1]][fullBoard[moveToMake.endCoords.first+sideToMove*-2+1][moveToMake.endCoords.second][0]].erase(it);
+                        break;
+                    }
+                }
+            }
+        }
+        fullBoard[moveToMake.startCoords.first][moveToMake.startCoords.second][0] = -1;
+        fullBoard[moveToMake.startCoords.first][moveToMake.startCoords.second][1] = -1;
+        fullBoard[moveToMake.endCoords.first][moveToMake.endCoords.second][0] = sideToMove;
+        fullBoard[moveToMake.endCoords.first][moveToMake.endCoords.second][1] = moveToMake.movedPieceType;
+        allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].first = moveToMake.endCoords.first;
+        allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].second = moveToMake.endCoords.second;
+        sideToMove = !sideToMove;
     }
 
     void unMakeLastMove(int movingPiece, int index, std::pair<int, int> originalCoords, bool isEnPassant, int capturedPiece){
@@ -340,13 +455,53 @@ class board{
         allPieces[movingPiece][sideToMove][index].first = originalCoords.first;
         allPieces[movingPiece][sideToMove][index].second = originalCoords.second;
     }
-    std::vector<board> generateMoves(){
+
+    void unMakeLastMove(move moveToMake){
+        fiftyMoveRuleCounter = moveToMake.originalFiftyMoveCount;
+        canEnPassant = moveToMake.originalCanEnPassant;
+        castling = moveToMake.originalCastling;
+        sideToMove = !sideToMove;
+        for(int i=0; i<allPieces[moveToMake.movedPieceType][sideToMove].size(); i++){
+            if(allPieces[moveToMake.movedPieceType][sideToMove][i].first==moveToMake.endCoords.first &&
+            allPieces[moveToMake.movedPieceType][sideToMove][i].second==moveToMake.endCoords.second){
+                moveToMake.movedPieceIndex = i;
+            }
+        }
+        if(moveToMake.capturedPiece!=-1){
+            if(moveToMake.isEnPassant){
+                fullBoard[allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].first+(sideToMove*-2+1)][allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].second][0] = !sideToMove;
+                fullBoard[allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].first+(sideToMove*-2+1)][allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].second][1] = moveToMake.capturedPiece;
+                fullBoard[allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].first][allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].second][0] = -1;
+                fullBoard[allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].first][allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].second][1] = -1;
+                allPieces[moveToMake.capturedPiece][!sideToMove].push_back(std::make_pair(allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].first+(sideToMove*-2+1), allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].second));
+            }
+            else{
+                fullBoard[allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].first][allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].second][0] = !sideToMove;
+                fullBoard[allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].first][allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].second][1] = moveToMake.capturedPiece;
+                allPieces[moveToMake.capturedPiece][!sideToMove].push_back(std::make_pair(allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].first, allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].second));
+            }
+        }
+        else{
+            fullBoard[allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].first][allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].second][0] = -1;
+            fullBoard[allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].first][allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].second][1] = -1;
+        }
+        fullBoard[moveToMake.startCoords.first][moveToMake.startCoords.second][0] = sideToMove;
+        fullBoard[moveToMake.startCoords.first][moveToMake.startCoords.second][1] = moveToMake.movedPieceType;
+        allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].first = moveToMake.startCoords.first;
+        allPieces[moveToMake.movedPieceType][sideToMove][moveToMake.movedPieceIndex].second = moveToMake.startCoords.second;
+    }
+
+    std::vector<move> generateMoves(){
         char x; //for move output
-        std::vector<board> legalMoves;
+        std::vector<move> legalMoves;
         std::pair<int, int> currentPiece;
         int yChange;
         int xChange;
         int capturedPiece;
+        move currentMove;
+        currentMove.originalFiftyMoveCount = fiftyMoveRuleCounter;
+        currentMove.originalCanEnPassant = canEnPassant;
+        currentMove.originalCastling = castling;
         //std::cout << "hi";
         //king moves, no castling yet
         for(int i=0; i<allPieces[5][sideToMove].size(); i++){
@@ -370,13 +525,8 @@ class board{
                             std::cout << x << 8-(currentPiece.first+yChange) << "\n";
                         }
                         //std::cout << "(" << currentPiece.second+xChange << ", " << currentPiece.first+yChange << ")";
-                        legalMoves.push_back(*this);
-                        legalMoves[legalMoves.size()-1].canEnPassant = false;
-                        legalMoves[legalMoves.size()-1].fiftyMoveRuleCounter++;
-                        legalMoves[legalMoves.size()-1].sideToMove = !sideToMove;
-                        if(capturedPiece!=-1){
-                            legalMoves[legalMoves.size()-1].fiftyMoveRuleCounter = 0;
-                        }
+                        currentMove.movedPieceType = 5; currentMove.movedPieceIndex = i; currentMove.endCoords = std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange); currentMove.isEnPassant = false; currentMove.capturedPiece = capturedPiece; currentMove.startCoords = std::make_pair(currentPiece.first, currentPiece.second);
+                        legalMoves.push_back(currentMove);
                     }
                     unMakeLastMove(5, i, std::make_pair(currentPiece.first, currentPiece.second), false, capturedPiece);
                     if(fullBoard[currentPiece.first+yChange][currentPiece.second+xChange][0]==!sideToMove){
@@ -408,13 +558,8 @@ class board{
                             std::cout << x << 8-(currentPiece.first+yChange) << "\n";
                         }
                         //std::cout << "(" << currentPiece.second+xChange << ", " << currentPiece.first+yChange << ")";
-                        legalMoves.push_back(*this);
-                        legalMoves[legalMoves.size()-1].canEnPassant = false;
-                        legalMoves[legalMoves.size()-1].fiftyMoveRuleCounter++;
-                        legalMoves[legalMoves.size()-1].sideToMove = !sideToMove;
-                        if(capturedPiece!=-1){
-                            legalMoves[legalMoves.size()-1].fiftyMoveRuleCounter = 0;
-                        }
+                        currentMove.movedPieceType = 4; currentMove.movedPieceIndex = i; currentMove.endCoords = std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange); currentMove.isEnPassant = false; currentMove.capturedPiece = capturedPiece; currentMove.startCoords = std::make_pair(currentPiece.first, currentPiece.second);
+                        legalMoves.push_back(currentMove);
                     }
                     unMakeLastMove(4, i, std::make_pair(currentPiece.first, currentPiece.second), false, capturedPiece);
                     if(fullBoard[currentPiece.first+yChange][currentPiece.second+xChange][0]==!sideToMove){
@@ -446,13 +591,8 @@ class board{
                             std::cout << x << 8-(currentPiece.first+yChange) << "\n";
                         }
                         //std::cout << "(" << currentPiece.second+xChange << ", " << currentPiece.first+yChange << ")";
-                        legalMoves.push_back(*this);
-                        legalMoves[legalMoves.size()-1].canEnPassant = false;
-                        legalMoves[legalMoves.size()-1].fiftyMoveRuleCounter++;
-                        legalMoves[legalMoves.size()-1].sideToMove = !sideToMove;
-                        if(capturedPiece!=-1){
-                            legalMoves[legalMoves.size()-1].fiftyMoveRuleCounter = 0;
-                        }
+                        currentMove.movedPieceType = 3; currentMove.movedPieceIndex = i; currentMove.endCoords = std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange); currentMove.isEnPassant = false; currentMove.capturedPiece = capturedPiece; currentMove.startCoords = std::make_pair(currentPiece.first, currentPiece.second);
+                        legalMoves.push_back(currentMove);
                     }
                     unMakeLastMove(3, i, std::make_pair(currentPiece.first, currentPiece.second), false, capturedPiece);
                     if(fullBoard[currentPiece.first+yChange][currentPiece.second+xChange][0]==!sideToMove){
@@ -484,13 +624,8 @@ class board{
                             std::cout << x << 8-(currentPiece.first+yChange) << "\n";
                         }
                         //std::cout << "(" << currentPiece.second+xChange << ", " << currentPiece.first+yChange << ")";
-                        legalMoves.push_back(*this);
-                        legalMoves[legalMoves.size()-1].canEnPassant = false;
-                        legalMoves[legalMoves.size()-1].fiftyMoveRuleCounter++;
-                        legalMoves[legalMoves.size()-1].sideToMove = !sideToMove;
-                        if(capturedPiece!=-1){
-                            legalMoves[legalMoves.size()-1].fiftyMoveRuleCounter = 0;
-                        }
+                        currentMove.movedPieceType = 2; currentMove.movedPieceIndex = i; currentMove.endCoords = std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange); currentMove.isEnPassant = false; currentMove.capturedPiece = capturedPiece; currentMove.startCoords = std::make_pair(currentPiece.first, currentPiece.second);
+                        legalMoves.push_back(currentMove);
                     }
                     unMakeLastMove(2, i, std::make_pair(currentPiece.first, currentPiece.second), false, capturedPiece);
                     if(fullBoard[currentPiece.first+yChange][currentPiece.second+xChange][0]==!sideToMove){
@@ -524,13 +659,8 @@ class board{
                             std::cout << x << 8-(currentPiece.first+yChange) << "\n";
                         }
                         //std::cout << "(" << currentPiece.second+xChange << ", " << currentPiece.first+yChange << ")";
-                        legalMoves.push_back(*this);
-                        legalMoves[legalMoves.size()-1].canEnPassant = false;
-                        legalMoves[legalMoves.size()-1].fiftyMoveRuleCounter++;
-                        legalMoves[legalMoves.size()-1].sideToMove = !sideToMove;
-                        if(capturedPiece!=-1){
-                            legalMoves[legalMoves.size()-1].fiftyMoveRuleCounter = 0;
-                        }
+                        currentMove.movedPieceType = 1; currentMove.movedPieceIndex = i; currentMove.endCoords = std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange); currentMove.isEnPassant = false; currentMove.capturedPiece = capturedPiece; currentMove.startCoords = std::make_pair(currentPiece.first, currentPiece.second);
+                        legalMoves.push_back(currentMove);
                     }
                     unMakeLastMove(1, i, std::make_pair(currentPiece.first, currentPiece.second), false, capturedPiece);
                     //std::cout << "\nDEBUG VALUES3:" << fullBoard[currentPiece.first+yChange][currentPiece.second+xChange][0] << " " << !sideToMove;
@@ -580,13 +710,8 @@ class board{
                         }
                         //std::cout << 
                         //std::cout << "(" << currentPiece.second+xChange << ", " << currentPiece.first+yChange << ")";
-                        legalMoves.push_back(*this);
-                        legalMoves[legalMoves.size()-1].canEnPassant = false;
-                        if(k==2){
-                            legalMoves[legalMoves.size()-1].canEnPassant = true; legalMoves[legalMoves.size()-1].enPassantSquare = std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange);
-                        }
-                        legalMoves[legalMoves.size()-1].sideToMove = !sideToMove;
-                        legalMoves[legalMoves.size()-1].fiftyMoveRuleCounter = 0;
+                        currentMove.movedPieceType = 0; currentMove.movedPieceIndex = i; currentMove.endCoords = std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange); currentMove.isEnPassant = isEnPassant; currentMove.capturedPiece = capturedPiece; currentMove.startCoords = std::make_pair(currentPiece.first, currentPiece.second);
+                        legalMoves.push_back(currentMove);
                     }
                     unMakeLastMove(0, i, std::make_pair(currentPiece.first, currentPiece.second), isEnPassant, capturedPiece);
                     if(currentPiece.first!=3.5+2.5*(sideToMove*-2+1)){

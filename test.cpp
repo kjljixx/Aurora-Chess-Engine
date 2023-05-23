@@ -26,6 +26,7 @@ void search(Position& p){
 }
 */
 int perftTest(chess::board &currentBoard, int depth, int maxDepth){ //maxDepth for debug/move breakdown only
+    chess::board test;
     int nodes = 0;
     if(depth==maxDepth){
         currentBoard.outputMoves = true;
@@ -33,13 +34,19 @@ int perftTest(chess::board &currentBoard, int depth, int maxDepth){ //maxDepth f
     else{
         currentBoard.outputMoves = false;
     }
-    std::vector<chess::board> legalMoves = currentBoard.generateMoves();
+    std::vector<chess::move> legalMoves = currentBoard.generateMoves();
     if(depth==1){return legalMoves.size();}
     for(int i=0; i<legalMoves.size(); i++){
-        int result = perftTest(legalMoves[i], depth-1, maxDepth);
-        if(depth==maxDepth){
+        test = currentBoard;
+        currentBoard.makeMove(legalMoves[i]);
+        //std::cout << "{";
+        int result = perftTest(currentBoard, depth-1, maxDepth);
+        //std::cout << "}";
+        currentBoard.unMakeLastMove(legalMoves[i]);
+        /*if(depth==maxDepth){
             std::cout << result << "\n";
-        }
+        }*/
+        //std::cout << (currentBoard.fullBoard == test.fullBoard);
         nodes += result;
     }
     return nodes;
@@ -49,7 +56,9 @@ int perftTest(chess::board &currentBoard, int depth, int maxDepth){ //maxDepth f
 int main() {
     int n = 0;
     chess::board test;
-    std::string h = "8/3N4/5P2/6k1/2p5/2nB1Kr1/8/3nb3 w - -";
+    std::string fen = "rnbqkbnr/pppppppp/8/8/7P/8/PPPPPPP1/RNBQKBNR b KQkq - 0 1";
+    chess::board debug;
+    debug.initialize("rnbqkbnr/pp1ppppp/2p5/8/P7/8/1PPPPPPP/RNBQKBNR w KQkq - 0 2");
     test.initialize();
     test.outputMoves=false;
     std::vector<chess::board> testList;
@@ -60,7 +69,7 @@ int main() {
     std::cout << std::endl << "-----------------" << std::endl;
     std::cout << "Time in Microseconds:" << elapsed.count() << "\n";
     std::cout << "Nodes:" << n << "\n";
-    std::cout << "Nodes per Second:" << n/(elapsed.count()/1000000) << "\n";
+    std::cout << "Nodes per Second:" << n/(elapsed.count()/1000000.0) << "\n";
     //std::cout << isInCheckCalls << "\n";
     //std::cout << times[0];
     /*initialise_all_databases();
