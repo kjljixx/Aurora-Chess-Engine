@@ -43,9 +43,9 @@ int perftTest(chess::board &currentBoard, int depth, int maxDepth){ //maxDepth f
         int result = perftTest(currentBoard, depth-1, maxDepth);
         //std::cout << "}";
         currentBoard.unMakeLastMove(legalMoves[i]);
-        /*if(depth==maxDepth){
+        if(depth==maxDepth){
             std::cout << result << "\n";
-        }*/
+        }
         //std::cout << (currentBoard.fullBoard == test.fullBoard);
         nodes += result;
     }
@@ -56,14 +56,12 @@ int perftTest(chess::board &currentBoard, int depth, int maxDepth){ //maxDepth f
 int main() {
     int n = 0;
     chess::board test;
-    std::string fen = "rnbqkbnr/pppppppp/8/8/7P/8/PPPPPPP1/RNBQKBNR b KQkq - 0 1";
-    chess::board debug;
-    debug.initialize("rnbqkbnr/pp1ppppp/2p5/8/P7/8/1PPPPPPP/RNBQKBNR w KQkq - 0 2");
+    std::string fen = "rnbqkb1r/pppppppp/8/8/6n1/3P4/PPPKPPPP/RNBQ1BNR w kq - 3 3";
     test.initialize();
     test.outputMoves=false;
     std::vector<chess::board> testList;
     auto start = std::chrono::system_clock::now();
-    n = perftTest(test, 4, 4);
+    n = perftTest(test, 5, 5);
     auto end = std::chrono::system_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     std::cout << std::endl << "-----------------" << std::endl;

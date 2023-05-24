@@ -27,7 +27,7 @@ class move{
     bool isEnPassant;
     int capturedPiece; //-1 if no capture
     int originalFiftyMoveCount;
-    bool originalCanEnPassant;
+    std::pair<int, int> originalEnPassantSquare;
     std::vector<std::pair<bool, bool>> originalCastling;
 };
 
@@ -52,13 +52,19 @@ class board{
 
     //initializes board, arguments: fen string, default is starting position
     void initialize(std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"){
-        kingMoves.resize(10, std::vector<std::vector<int>>(1, std::vector<int>(2)));
+        kingMoves.resize(10, std::vector<std::vector<int>>(2, std::vector<int>(2, 8))); //8 is a filler for extra moves
         int it=0; //iterates through types of moves
         for(int i=-1; i<2; i++){
             for(int j=-1; j<2; j++){
                 if(i!=0 || j!=0){
                     kingMoves[it][0][0] = i;
                     kingMoves[it][0][1] = j;
+                    it++;
+                }
+                if(i==0 && j!=0){
+                    it--;
+                    kingMoves[it][1][0] = 0;
+                    kingMoves[it][1][1] = j*2;
                     it++;
                 }
             }
@@ -115,7 +121,7 @@ class board{
                 }
             }
         }
-        pawnMoves.resize(2, std::vector<std::vector<std::vector<int>>>(3, std::vector<std::vector<int>>(2, std::vector<int>(2)))); //3 "types of moves", push, capture left, capture right. since possible pawn moves differ for each side, we have a dfferent vector of moves for each side
+        pawnMoves.resize(2, std::vector<std::vector<std::vector<int>>>(3, std::vector<std::vector<int>>(2, std::vector<int>(2, 8)))); //3 "types of moves", push, capture left, capture right. since possible pawn moves differ for each side, we have a dfferent vector of moves for each side
         for(int s=0; s<2; s++){
             it=0; //iterates through types of moves
             pawnMoves[s][it][0][0] = 1*(s*2-1); pawnMoves[s][it][0][1] = 0;
@@ -185,7 +191,8 @@ class board{
                 }
                 else{
                     canEnPassant = true;
-                    enPassantSquare = std::make_pair(fen[i+1], fen[i]-97);
+                    enPassantSquare = std::make_pair(8-(fen[i+1]-48), fen[i]-97);
+                    std::cout << enPassantSquare.second;
                     i++;
                 }
                 //std::cout << "[" << fen[i] << "]";
@@ -353,6 +360,36 @@ class board{
                 return true;
             }
         }
+        x = allPieces[5][sideToMove][0].second-2;
+        y = allPieces[5][sideToMove][0].first-1;
+        //std::cout << allPieces[5][sideToMove][0].first;
+        if(x>=0 && y>=0){
+            if(fullBoard[y][x][0]==!sideToMove && fullBoard[y][x][1]==1){
+                //std::cout << "KNIGHT0CHECK";
+                return true;
+            }
+        }
+        x+=4;
+        if(x<8 && y>=0){
+            if(fullBoard[y][x][0]==!sideToMove && fullBoard[y][x][1]==1){
+                //std::cout << "KNIGHT1CHECK";
+                return true;
+            }
+        }
+        y+=2;
+        if(x<8 && y<8){
+            if(fullBoard[y][x][0]==!sideToMove && fullBoard[y][x][1]==1){
+                //std::cout << "KNIGHT2CHECK";
+                return true;
+            }
+        }
+        x-=4;
+        if(x>=0 && y<8){
+            if(fullBoard[y][x][0]==!sideToMove && fullBoard[y][x][1]==1){
+                //std::cout << "KNIGHT"<< y<< "CHECK";
+                return true;
+            }
+        }
         return false;
     }
 
@@ -397,8 +434,27 @@ class board{
         }
         fiftyMoveRuleCounter++;
         canEnPassant = false;
+        if(moveToMake.movedPieceType==0 && moveToMake.endCoords.first-moveToMake.startCoords.first==sideToMove*4-2){
+            canEnPassant = true;
+            enPassantSquare = moveToMake.endCoords;
+            enPassantSquare.first+=sideToMove*-2+1;
+        }
         if(moveToMake.movedPieceType == 5){
             castling[sideToMove] = std::make_pair(false, false);
+        }
+        if(moveToMake.movedPieceType == 3){
+            if(moveToMake.startCoords == std::make_pair(sideToMove*-7+7, 0)){
+                castling[sideToMove].first = false;
+            }
+            if(moveToMake.startCoords == std::make_pair(sideToMove*-7+7, 7)){
+                castling[sideToMove].second = false;
+            }
+        }
+        if(moveToMake.endCoords == std::make_pair(sideToMove*7, 0)){
+            castling[!sideToMove].first = false;
+        }
+        if(moveToMake.endCoords == std::make_pair(sideToMove*7, 7)){
+            castling[!sideToMove].second = false;
         }
         if(fullBoard[moveToMake.endCoords.first][moveToMake.endCoords.second][0]!=-1){
             moveToMake.capturedPiece = fullBoard[moveToMake.endCoords.first][moveToMake.endCoords.second][1];
@@ -458,7 +514,7 @@ class board{
 
     void unMakeLastMove(move moveToMake){
         fiftyMoveRuleCounter = moveToMake.originalFiftyMoveCount;
-        canEnPassant = moveToMake.originalCanEnPassant;
+        canEnPassant = moveToMake.originalEnPassantSquare.first!=-1;
         castling = moveToMake.originalCastling;
         sideToMove = !sideToMove;
         for(int i=0; i<allPieces[moveToMake.movedPieceType][sideToMove].size(); i++){
@@ -500,8 +556,10 @@ class board{
         int capturedPiece;
         move currentMove;
         currentMove.originalFiftyMoveCount = fiftyMoveRuleCounter;
-        currentMove.originalCanEnPassant = canEnPassant;
+        currentMove.originalEnPassantSquare = enPassantSquare;
+        if(!canEnPassant){currentMove.originalEnPassantSquare = std::make_pair(-1, -1);}
         currentMove.originalCastling = castling;
+        bool inCheck = isInCheck();
         //std::cout << "hi";
         //king moves, no castling yet
         for(int i=0; i<allPieces[5][sideToMove].size(); i++){
@@ -516,7 +574,17 @@ class board{
                     if(fullBoard[currentPiece.first+yChange][currentPiece.second+xChange][0]==sideToMove){
                         break;
                     }
-                    capturedPiece = makeMove(5, i, std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange), false);
+                    if(xChange==2 || xChange==-2){
+                        if(((xChange==2 && castling[sideToMove].second) || (xChange==-2 && castling[sideToMove].first && fullBoard[currentPiece.first+yChange][currentPiece.second+xChange-1][0]==-1)) && (fullBoard[currentPiece.first+yChange][currentPiece.second+xChange][0]==-1) && !inCheck){
+                            capturedPiece = makeMove(5, i, std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange), false);
+                        }
+                        else{
+                            break;
+                        }
+                    }
+                    else{
+                        capturedPiece = makeMove(5, i, std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange), false);
+                    }
                     if(!isInCheck()){
                         if(outputMoves){
                             x = currentPiece.second+97;
@@ -527,8 +595,9 @@ class board{
                         //std::cout << "(" << currentPiece.second+xChange << ", " << currentPiece.first+yChange << ")";
                         currentMove.movedPieceType = 5; currentMove.movedPieceIndex = i; currentMove.endCoords = std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange); currentMove.isEnPassant = false; currentMove.capturedPiece = capturedPiece; currentMove.startCoords = std::make_pair(currentPiece.first, currentPiece.second);
                         legalMoves.push_back(currentMove);
+                        unMakeLastMove(5, i, std::make_pair(currentPiece.first, currentPiece.second), false, capturedPiece);
                     }
-                    unMakeLastMove(5, i, std::make_pair(currentPiece.first, currentPiece.second), false, capturedPiece);
+                    else{unMakeLastMove(5, i, std::make_pair(currentPiece.first, currentPiece.second), false, capturedPiece); break;} //dont castle if there is check on the way
                     if(fullBoard[currentPiece.first+yChange][currentPiece.second+xChange][0]==!sideToMove){
                         break;
                     }
@@ -689,10 +758,10 @@ class board{
                     if(fullBoard[currentPiece.first+yChange][currentPiece.second+xChange][0]!=-1 && xChange==0){
                         break;
                     }
-                    if(fullBoard[currentPiece.first+yChange][currentPiece.second+xChange][0]!=!sideToMove && xChange!=0 && (!canEnPassant || !(canEnPassant && std::make_pair(currentPiece.first, currentPiece.second+xChange)==enPassantSquare))){
+                    if(fullBoard[currentPiece.first+yChange][currentPiece.second+xChange][0]!=!sideToMove && xChange!=0 && (!canEnPassant || !(canEnPassant && std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange)==enPassantSquare))){
                         break;
                     }
-                    if(canEnPassant && std::make_pair(currentPiece.first, currentPiece.second+xChange)==enPassantSquare && xChange!=0){
+                    if(canEnPassant && std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange)==enPassantSquare && xChange!=0){
                         isEnPassant = true;
                         capturedPiece = makeMove(0, i, std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange), true);
                     }
