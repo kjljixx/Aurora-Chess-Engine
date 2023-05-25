@@ -25,6 +25,7 @@ class move{
     int movedPieceIndex;
     std::pair<int, int> endCoords;
     bool isEnPassant;
+    bool isCastle;
     int capturedPiece; //-1 if no capture
     int originalFiftyMoveCount;
     std::pair<int, int> originalEnPassantSquare;
@@ -318,13 +319,14 @@ class board{
         }
         //pawn checks
         x = allPieces[5][sideToMove][0].second-1;
-        if(x>=0 && allPieces[5][sideToMove][0].first!=7 && allPieces[5][sideToMove][0].first!=0){
+        if(x>=0 && ((allPieces[5][sideToMove][0].first!=7 && sideToMove==1) || (allPieces[5][sideToMove][0].first!=0 && sideToMove==0))){
             if(fullBoard[allPieces[5][sideToMove][0].first+(sideToMove*2-1)][x][0]==!sideToMove && fullBoard[allPieces[5][sideToMove][0].first+(sideToMove*2-1)][x][1]==0){
                 return true;
             }
         }
         x+=2;
-        if(x<8 && allPieces[5][sideToMove][0].first!=7 && allPieces[5][sideToMove][0].first!=0){
+        if(x<8 && ((allPieces[5][sideToMove][0].first!=7 && sideToMove==1) || (allPieces[5][sideToMove][0].first!=0 && sideToMove==0))){
+
             if(fullBoard[allPieces[5][sideToMove][0].first+(sideToMove*2-1)][x][0]==!sideToMove && fullBoard[allPieces[5][sideToMove][0].first+(sideToMove*2-1)][x][1]==0){
                 return true;
             }
@@ -393,8 +395,28 @@ class board{
         return false;
     }
 
-    int makeMove(int piece, int index, std::pair<int, int> endCoords, bool isEnPassant){ //internal makeMove which doesnt update side to move, fifty move rule, castling, etc.
+    int makeMove(int piece, int index, std::pair<int, int> endCoords, bool isEnPassant=false, bool isCastle=false){ //internal makeMove which doesnt update side to move, fifty move rule, castling, etc.
         int capturedPiece = -1;
+        if(isCastle){
+            if(endCoords.second==6){
+                for(int i=0; i<allPieces[3][sideToMove].size(); i++){
+                    if(allPieces[3][sideToMove][i].first==sideToMove*-7+7 && allPieces[3][sideToMove][i].second==7){
+                        fullBoard[sideToMove*-7+7][7][0] = -1; fullBoard[sideToMove*-7+7][7][1] = -1;
+                        fullBoard[sideToMove*-7+7][5][0] = sideToMove; fullBoard[sideToMove*-7+7][5][1] = 3;
+                        allPieces[3][sideToMove][i].second = 5;
+                    }
+                }
+            }
+            if(endCoords.second==2){
+                for(int i=0; i<allPieces[3][sideToMove].size(); i++){
+                    if(allPieces[3][sideToMove][i].first==sideToMove*-7+7 && allPieces[3][sideToMove][i].second==0){
+                        fullBoard[sideToMove*-7+7][0][0] = -1; fullBoard[sideToMove*-7+7][0][1] = -1;
+                        fullBoard[sideToMove*-7+7][3][0] = sideToMove; fullBoard[sideToMove*-7+7][3][1] = 3;
+                        allPieces[3][sideToMove][i].second = 3;
+                    }
+                }
+            }
+        }
         if(fullBoard[endCoords.first][endCoords.second][0]!=-1){
             capturedPiece = fullBoard[endCoords.first][endCoords.second][1];
             //std::cout << "[" << fullBoard[endCoords.first][endCoords.second][0] << "]";
@@ -426,6 +448,26 @@ class board{
         return capturedPiece;
     }
     void makeMove(move moveToMake){
+        if(moveToMake.isCastle){
+            if(moveToMake.endCoords.second==6){
+                for(int i=0; i<allPieces[3][sideToMove].size(); i++){
+                    if(allPieces[3][sideToMove][i].first==sideToMove*-7+7 && allPieces[3][sideToMove][i].second==7){
+                        fullBoard[sideToMove*-7+7][7][0] = -1; fullBoard[sideToMove*-7+7][7][1] = -1;
+                        fullBoard[sideToMove*-7+7][5][0] = sideToMove; fullBoard[sideToMove*-7+7][5][1] = 3;
+                        allPieces[3][sideToMove][i].second = 5;
+                    }
+                }
+            }
+            if(moveToMake.endCoords.second==2){
+                for(int i=0; i<allPieces[3][sideToMove].size(); i++){
+                    if(allPieces[3][sideToMove][i].first==sideToMove*-7+7 && allPieces[3][sideToMove][i].second==0){
+                        fullBoard[sideToMove*-7+7][0][0] = -1; fullBoard[sideToMove*-7+7][0][1] = -1;
+                        fullBoard[sideToMove*-7+7][3][0] = sideToMove; fullBoard[sideToMove*-7+7][3][1] = 3;
+                        allPieces[3][sideToMove][i].second = 3;
+                    }
+                }
+            }
+        }
         for(int i=0; i<allPieces[moveToMake.movedPieceType][sideToMove].size(); i++){
             if(allPieces[moveToMake.movedPieceType][sideToMove][i].first==moveToMake.startCoords.first &&
             allPieces[moveToMake.movedPieceType][sideToMove][i].second==moveToMake.startCoords.second){
@@ -487,7 +529,27 @@ class board{
         sideToMove = !sideToMove;
     }
 
-    void unMakeLastMove(int movingPiece, int index, std::pair<int, int> originalCoords, bool isEnPassant, int capturedPiece){
+    void unMakeLastMove(int movingPiece, int index, std::pair<int, int> originalCoords, bool isEnPassant = false, int capturedPiece = -1, bool isCastle = false){
+        if(isCastle){
+            if(allPieces[movingPiece][sideToMove][index].second==6){
+                for(int i=0; i<allPieces[3][sideToMove].size(); i++){
+                    if(allPieces[3][sideToMove][i].first==sideToMove*-7+7 && allPieces[3][sideToMove][i].second==5){
+                        fullBoard[sideToMove*-7+7][7][0] = sideToMove; fullBoard[sideToMove*-7+7][7][1] = 3;
+                        fullBoard[sideToMove*-7+7][5][0] = -1; fullBoard[sideToMove*-7+7][5][1] = -1;
+                        allPieces[3][sideToMove][i].second = 7;
+                    }
+                }
+            }
+            if(allPieces[movingPiece][sideToMove][index].second==2){
+                for(int i=0; i<allPieces[3][sideToMove].size(); i++){
+                    if(allPieces[3][sideToMove][i].first==sideToMove*-7+7 && allPieces[3][sideToMove][i].second==3){
+                        fullBoard[sideToMove*-7+7][0][0] = sideToMove; fullBoard[sideToMove*-7+7][0][1] = 3;
+                        fullBoard[sideToMove*-7+7][3][0] = -1; fullBoard[sideToMove*-7+7][3][1] = -1;
+                        allPieces[3][sideToMove][i].second = 0;
+                    }
+                }
+            }
+        }
         if(capturedPiece!=-1){
             if(isEnPassant){
                 fullBoard[allPieces[movingPiece][sideToMove][index].first+(sideToMove*-2+1)][allPieces[movingPiece][sideToMove][index].second][0] = !sideToMove;
@@ -521,6 +583,26 @@ class board{
             if(allPieces[moveToMake.movedPieceType][sideToMove][i].first==moveToMake.endCoords.first &&
             allPieces[moveToMake.movedPieceType][sideToMove][i].second==moveToMake.endCoords.second){
                 moveToMake.movedPieceIndex = i;
+            }
+        }
+        if(moveToMake.isCastle){
+            if(moveToMake.endCoords.second==6){
+                for(int i=0; i<allPieces[3][sideToMove].size(); i++){
+                    if(allPieces[3][sideToMove][i].first==sideToMove*-7+7 && allPieces[3][sideToMove][i].second==5){
+                        fullBoard[sideToMove*-7+7][7][0] = sideToMove; fullBoard[sideToMove*-7+7][7][1] = 3;
+                        fullBoard[sideToMove*-7+7][5][0] = -1; fullBoard[sideToMove*-7+7][5][1] = -1;
+                        allPieces[3][sideToMove][i].second = 7;
+                    }
+                }
+            }
+            if(moveToMake.endCoords.second==2){
+                for(int i=0; i<allPieces[3][sideToMove].size(); i++){
+                    if(allPieces[3][sideToMove][i].first==sideToMove*-7+7 && allPieces[3][sideToMove][i].second==3){
+                        fullBoard[sideToMove*-7+7][0][0] = sideToMove; fullBoard[sideToMove*-7+7][0][1] = 3;
+                        fullBoard[sideToMove*-7+7][3][0] = -1; fullBoard[sideToMove*-7+7][3][1] = -1;
+                        allPieces[3][sideToMove][i].second = 0;
+                    }
+                }
             }
         }
         if(moveToMake.capturedPiece!=-1){
@@ -561,7 +643,8 @@ class board{
         currentMove.originalCastling = castling;
         bool inCheck = isInCheck();
         //std::cout << "hi";
-        //king moves, no castling yet
+        //king moves
+        bool moveIsCastle = false;
         for(int i=0; i<allPieces[5][sideToMove].size(); i++){
             currentPiece = allPieces[5][sideToMove][i];
             for(int j=0; j<kingMoves.size(); j++){
@@ -576,7 +659,8 @@ class board{
                     }
                     if(xChange==2 || xChange==-2){
                         if(((xChange==2 && castling[sideToMove].second) || (xChange==-2 && castling[sideToMove].first && fullBoard[currentPiece.first+yChange][currentPiece.second+xChange-1][0]==-1)) && (fullBoard[currentPiece.first+yChange][currentPiece.second+xChange][0]==-1) && !inCheck){
-                            capturedPiece = makeMove(5, i, std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange), false);
+                            capturedPiece = makeMove(5, i, std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange), false, true);
+                            moveIsCastle = true;
                         }
                         else{
                             break;
@@ -584,6 +668,7 @@ class board{
                     }
                     else{
                         capturedPiece = makeMove(5, i, std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange), false);
+                        moveIsCastle = false;
                     }
                     if(!isInCheck()){
                         if(outputMoves){
@@ -593,17 +678,18 @@ class board{
                             std::cout << x << 8-(currentPiece.first+yChange) << "\n";
                         }
                         //std::cout << "(" << currentPiece.second+xChange << ", " << currentPiece.first+yChange << ")";
-                        currentMove.movedPieceType = 5; currentMove.movedPieceIndex = i; currentMove.endCoords = std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange); currentMove.isEnPassant = false; currentMove.capturedPiece = capturedPiece; currentMove.startCoords = std::make_pair(currentPiece.first, currentPiece.second);
+                        currentMove.movedPieceType = 5; currentMove.movedPieceIndex = i; currentMove.endCoords = std::make_pair(currentPiece.first+yChange, currentPiece.second+xChange); currentMove.isEnPassant = false; currentMove.capturedPiece = capturedPiece; currentMove.startCoords = std::make_pair(currentPiece.first, currentPiece.second); currentMove.isCastle = moveIsCastle;
                         legalMoves.push_back(currentMove);
-                        unMakeLastMove(5, i, std::make_pair(currentPiece.first, currentPiece.second), false, capturedPiece);
+                        unMakeLastMove(5, i, std::make_pair(currentPiece.first, currentPiece.second), false, capturedPiece, moveIsCastle);
                     }
-                    else{unMakeLastMove(5, i, std::make_pair(currentPiece.first, currentPiece.second), false, capturedPiece); break;} //dont castle if there is check on the way
+                    else{unMakeLastMove(5, i, std::make_pair(currentPiece.first, currentPiece.second), false, capturedPiece, moveIsCastle); break;} //dont castle if there is check on the way
                     if(fullBoard[currentPiece.first+yChange][currentPiece.second+xChange][0]==!sideToMove){
                         break;
                     }
                 }
             }
         }
+        currentMove.isCastle = false;
         //queen moves
         //std::cout << "|";
         for(int i=0; i<allPieces[4][sideToMove].size(); i++){
