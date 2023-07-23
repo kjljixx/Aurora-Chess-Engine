@@ -6,8 +6,7 @@
 #include "src\types.cpp"*/
 #include <vector>
 #include <iostream>
-#include "lookup.h"
-#include "bitboards.h"
+#include "chess.h"
 
 /*template<Color Us>
 void search(Position& p){
@@ -51,6 +50,7 @@ void search(Position& p){
 
 int main() {
     lookupTables::init();
-    bitboards::printBoard(lookupTables::kingTable[36]);
+    chess::board chessboard;
+    bitboards::printBoard(chess::generateKingMoves(chessboard));
     return 0;
 }
