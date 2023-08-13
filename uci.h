@@ -15,6 +15,10 @@ chess::Board position(std::istringstream input){
       fen += " " + token;
     }
   }
+  else{
+    //input the moves token, if there is one
+    input >> token;
+  }
 
   chess::Board board(fen);
 
@@ -31,16 +35,17 @@ int perft(chess::Board &board, int depth, bool printResults){
   int nodes = 0;
 
   if(depth == 1 && !printResults){
-    return chess::generateLegalMoves(board).size();
+    return chess::MoveList(board).size();
   }
 
   if(depth == 0){
     return 1;
   }
 
-  for(chess::Move move : chess::generateLegalMoves(board)){
+  for(chess::Move move : chess::MoveList(board)){
     movedBoard = board;
     movedBoard.makeMove(move);
+
     int result = perft(movedBoard, depth-1, false);
     if(printResults){std::cout << move.toStringRep() << ": " << result << "\n";}
     nodes+=result;
@@ -67,9 +72,9 @@ int perftDiv(chess::Board &board, int depth){
   return nodes;
 }
 //The main UCI loop which detects input and runs other functions based on it
-void loop(){
+void loop(chess::Board board){
   std::string token;
-  chess::Board board;
+
   while(true){
     std::cin >> token;
     if(token == "uci"){std::cout << "uciok\n";} //TODO: add engine options before printing uciok

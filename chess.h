@@ -7,99 +7,6 @@
 #include <algorithm>
 
 namespace chess{
-
-enum Colors{WHITE, BLACK};
-enum Pieces{null, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, UNKNOWN};
-
-Pieces letterToPiece(char letter){
-  switch (letter){
-    case 'p': return PAWN;
-    case 'n': return KNIGHT;
-    case 'b': return BISHOP;
-    case 'r': return ROOK;
-    case 'q': return QUEEN;
-    case 'k': return KING;
-  }
-  return null;
-}
-
-struct Move{
-  U64 startSquare;
-  U64 endSquare;
-  uint8_t startSquareIndex;
-  uint8_t endSquareIndex;
-  Pieces movedPiece;
-  
-  //If no capture or promotion, they are set to null
-  Pieces capturedPiece;
-  Pieces promotionPiece;
-
-  bool isCastle;
-  bool isEnPassant;
-
-  Move(uint8_t startSquare, uint8_t endSquare, Pieces movedPiece, Pieces capturedPiece=UNKNOWN, Pieces promotionPiece=null, bool isCastle=false, bool isEnPassant=false):
-    startSquare(1ULL << startSquare), startSquareIndex(startSquare),
-    endSquare(1ULL << endSquare), endSquareIndex(endSquare),
-    movedPiece(movedPiece),
-    capturedPiece(capturedPiece), promotionPiece(promotionPiece), isCastle(isCastle), isEnPassant(isEnPassant) {}
-  Move(U64 startSquare, U64 endSquare, Pieces movedPiece, Pieces capturedPiece=UNKNOWN, Pieces promotionPiece=null, bool isCastle=false, bool isEnPassant=false):
-    startSquare(startSquare), startSquareIndex(_bitscanForward(startSquare)),
-    endSquare(endSquare), endSquareIndex(_bitscanForward(endSquare)),
-    movedPiece(movedPiece),
-    capturedPiece(capturedPiece), promotionPiece(promotionPiece), isCastle(isCastle), isEnPassant(isEnPassant) {}
-  //default constructor creates a null move (a1-a1)
-  Move():
-    startSquare(1ULL), startSquareIndex(0),
-    endSquare(1ULL), endSquareIndex(0),
-    capturedPiece(null), promotionPiece(null), isCastle(false), isEnPassant(false) {}
-  
-  //returns a string representation of the move (Pure Algebraic Coordinate Notation)
-  std::string toStringRep(){
-    std::string stringRep = squareIndexToNotation(startSquareIndex)+squareIndexToNotation(endSquareIndex);
-    if(promotionPiece==KNIGHT){
-      return stringRep+"n";
-    }
-    if(promotionPiece==QUEEN){
-      return stringRep+"q";
-    }
-    if(promotionPiece==ROOK){
-      return stringRep+"r";
-    }
-    if(promotionPiece==BISHOP){
-      return stringRep+"b";
-    }
-    return stringRep;
-  }
-};
-
-using MoveList = std::vector<Move>;
-
-//Move flags like captured piece, castle, etc. need to be added separately.
-MoveList MoveListFromBitboard(U64 moves, uint8_t startSquare, Pieces movedPiece, bool enPassant=false){
-  MoveList movesList = {};
-  while(moves){
-    uint8_t endSquare = _popLsb(moves);
-    if(movedPiece == PAWN && ((1ULL << endSquare) & 0xFF000000000000FFULL))//checks if move is pawn promotion. FF000000000000FF is the first and eight ranks
-    {movesList.push_back(Move(startSquare, endSquare, movedPiece, UNKNOWN, KNIGHT, false, false));
-    movesList.push_back(Move(startSquare, endSquare, movedPiece, UNKNOWN, BISHOP, false, false));
-    movesList.push_back(Move(startSquare, endSquare, movedPiece, UNKNOWN, ROOK, false, false));
-    movesList.push_back(Move(startSquare, endSquare, movedPiece, UNKNOWN, QUEEN, false, false));
-    }
-    else{
-    movesList.push_back(Move(startSquare, endSquare, movedPiece, UNKNOWN, null, false, enPassant));
-    }
-  }
-  return movesList;
-}
-MoveList MoveListFromBitboard(U64 moves, U64 startSquareBitboard, Pieces movedPiece, bool enPassant=false){
-  uint8_t startSquare = _bitscanForward(startSquareBitboard);
-  MoveList movesList = {};
-  while(moves){
-    movesList.push_back(Move(startSquare, _popLsb(moves), movedPiece, UNKNOWN, null, false, enPassant));
-  }
-  return movesList;
-}
-
 struct KingMasks{
   U64 checkmask;
   U64 rookPinmask;
@@ -410,7 +317,7 @@ struct Board{
     return false;
   }
   
-  //square under attack except we update canCurrentlyCastle
+  //squareUnderAttack() except we update canCurrentlyCastle
   bool kingUnderAttack(uint8_t square){
     bool result = squareUnderAttack(square);
 
@@ -503,9 +410,9 @@ U64 opponentOrEmpty(Board &board){
   return ~board.black;
 }
 
-MoveList generateLegalMoves(Board &board){
-  MoveList legalMoves;
-  MoveList moves;
+Move* generateLegalMoves(Board &board, Move* legalMoves){
+  //Extremely useful source on how pointers/arrays work: https://cplusplus.com/doc/tutorial/pointers/
+  Move* legalMovesPtr = legalMoves; //A pointer to the spot in memory where the next move will go
   uint8_t piecePos;
 
   KingMasks _kingMasks = board.generateKingMasks();
@@ -516,28 +423,33 @@ MoveList generateLegalMoves(Board &board){
 
     //Knight cannot move if it is pinned
     if(!(1ULL << piecePos & (_kingMasks.bishopPinnedPieces | _kingMasks.rookPinnedPieces))){
-      moves = MoveListFromBitboard(lookupTables::knightTable[piecePos] & opponentOrEmpty(board) & _kingMasks.checkmask, piecePos, KNIGHT);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+      legalMovesPtr = MoveListFromBitboard(lookupTables::knightTable[piecePos] & opponentOrEmpty(board) & _kingMasks.checkmask, piecePos, KNIGHT, legalMovesPtr);
     }
   }
 
   pieceBitboard = board.getOurPieces(KING);
   piecePos = _bitscanForward(pieceBitboard);
-  moves = MoveListFromBitboard(lookupTables::kingTable[piecePos] & opponentOrEmpty(board), piecePos, KING);
-  //check if new position of king is under attack
-  board.unsetColors(pieceBitboard, board.sideToMove);
-  moves.erase(std::remove_if(moves.begin(), moves.end(), [&](Move m){return board.kingUnderAttack(m.endSquareIndex);}), moves.end());
-  board.setColors(pieceBitboard, board.sideToMove);
-  legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+  board.canCurrentlyCastle = 0;
 
+  U64 kingMovesBitboard = lookupTables::kingTable[piecePos] & opponentOrEmpty(board);
+  uint8_t endSquare;
+  board.unsetColors(pieceBitboard, board.sideToMove); //when we check if the new position of king is under attack, we don't want the current king position to block the check
+  while (kingMovesBitboard){
+    endSquare = _popLsb(kingMovesBitboard);
+  
+    //check if new position of king is under attack
+    if(!board.kingUnderAttack(endSquare)){*(legalMovesPtr++) = Move(piecePos, endSquare, KING);}
+  }
+  board.setColors(pieceBitboard, board.sideToMove); //revert the unsetColors call earlier
+  //castling
   if(_kingMasks.checkmask == 0xFFFFFFFFFFFFFFFFULL){ //make sure king is not in check
     //Queenside castling
     if((board.canCurrentlyCastle & 0x2) && (1ULL << board.sideToMove*56+2 & ~board.occupied) && (1ULL << board.sideToMove*56+1 & ~board.occupied) && !board.squareUnderAttack(board.sideToMove*56+2)){
-      legalMoves.push_back(Move(piecePos, board.sideToMove*56+2, KING, null, null, true, false));
+      *(legalMovesPtr++) = Move(piecePos, board.sideToMove*56+2, KING, null, null, true, false);
     }
     //Kingside castling
     if((board.canCurrentlyCastle & 0x1) && (1ULL << board.sideToMove*56+6 & ~board.occupied) && !board.squareUnderAttack(board.sideToMove*56+6)){
-      legalMoves.push_back(Move(piecePos, board.sideToMove*56+6, KING, null, null, true, false));
+      *(legalMovesPtr++) = Move(piecePos, board.sideToMove*56+6, KING, null, null, true, false);
     }
   }
 
@@ -551,39 +463,37 @@ MoveList generateLegalMoves(Board &board){
       //So just using the rook mask suffices
       if(!(1ULL << piecePos & _kingMasks.bishopPinnedPieces)){
         U64 singlePushBb = lookupTables::pawnPushTable[board.sideToMove][piecePos] & ~board.occupied;
-        if(board.sideToMove == WHITE){moves = MoveListFromBitboard((singlePushBb | (singlePushBb << 8 & bitboards::rank4 & ~board.occupied)) & _kingMasks.checkmask & _kingMasks.rookPinmask, piecePos, PAWN);}
-        else{moves = MoveListFromBitboard((singlePushBb | (singlePushBb >> 8 & bitboards::rank5 & ~board.occupied)) & _kingMasks.checkmask & _kingMasks.rookPinmask, piecePos, PAWN);}
-        legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+        if(board.sideToMove == WHITE){legalMovesPtr = MoveListFromBitboard((singlePushBb | (singlePushBb << 8 & bitboards::rank4 & ~board.occupied)) & _kingMasks.checkmask & _kingMasks.rookPinmask, piecePos, PAWN, legalMovesPtr);}
+        else{legalMovesPtr = MoveListFromBitboard((singlePushBb | (singlePushBb >> 8 & bitboards::rank5 & ~board.occupied)) & _kingMasks.checkmask & _kingMasks.rookPinmask, piecePos, PAWN, legalMovesPtr);}
       }
 
       //Using similar logic, using just the bishop mask suffices
       if(!(1ULL << piecePos & _kingMasks.rookPinnedPieces)){
-        moves = MoveListFromBitboard(lookupTables::pawnAttackTable[board.sideToMove][piecePos] & board.getTheirPieces() & _kingMasks.checkmask & _kingMasks.bishopPinmask, piecePos, PAWN);
-        legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+        legalMovesPtr = MoveListFromBitboard(lookupTables::pawnAttackTable[board.sideToMove][piecePos] & board.getTheirPieces() & _kingMasks.checkmask & _kingMasks.bishopPinmask, piecePos, PAWN, legalMovesPtr);
       }
     }
     else{
       U64 singlePushBb = lookupTables::pawnPushTable[board.sideToMove][piecePos] & ~board.occupied;
-      if(board.sideToMove == WHITE){moves = MoveListFromBitboard((singlePushBb | (singlePushBb << 8 & bitboards::rank4 & ~board.occupied)) & _kingMasks.checkmask, piecePos, PAWN);}
-      else{moves = MoveListFromBitboard((singlePushBb | (singlePushBb >> 8 & bitboards::rank5 & ~board.occupied)) & _kingMasks.checkmask, piecePos, PAWN);}
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+      if(board.sideToMove == WHITE){legalMovesPtr = MoveListFromBitboard((singlePushBb | (singlePushBb << 8 & bitboards::rank4 & ~board.occupied)) & _kingMasks.checkmask, piecePos, PAWN, legalMovesPtr);}
+      else{legalMovesPtr = MoveListFromBitboard((singlePushBb | (singlePushBb >> 8 & bitboards::rank5 & ~board.occupied)) & _kingMasks.checkmask, piecePos, PAWN, legalMovesPtr);}
 
-      moves = MoveListFromBitboard(lookupTables::pawnAttackTable[board.sideToMove][piecePos] & board.getTheirPieces() & _kingMasks.checkmask, piecePos, PAWN);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
+      legalMovesPtr = MoveListFromBitboard(lookupTables::pawnAttackTable[board.sideToMove][piecePos] & board.getTheirPieces() & _kingMasks.checkmask, piecePos, PAWN, legalMovesPtr);
     }
 
     //With en passant, we can just test the move
     if(board.enPassant){
-      moves = MoveListFromBitboard(lookupTables::pawnAttackTable[board.sideToMove][piecePos] & board.enPassant, piecePos, PAWN, true);
-      if(moves.size()>0){
-        board.unsetColors(1ULL << piecePos, board.sideToMove); 
-        if(board.sideToMove == WHITE){board.unsetColors(board.enPassant >> 8, Colors(!board.sideToMove));} else{board.unsetColors(board.enPassant << 8, Colors(!board.sideToMove));}
-        if(!board.squareUnderAttack(_bitscanForward(board.getOurPieces(KING)))){
-          legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());
-        }
-        board.setColors(1ULL << piecePos, board.sideToMove);
-        if(board.sideToMove == WHITE){board.setColors(board.enPassant >> 8, Colors(!board.sideToMove));} else{board.setColors(board.enPassant << 8, Colors(!board.sideToMove));}
+      U64 enPassantMovesBitboard = lookupTables::pawnAttackTable[board.sideToMove][piecePos] & board.enPassant;
+
+      board.unsetColors(1ULL << piecePos, board.sideToMove); 
+      if(board.sideToMove == WHITE){board.unsetColors(board.enPassant >> 8, Colors(!board.sideToMove));} else{board.unsetColors(board.enPassant << 8, Colors(!board.sideToMove));}
+      while (enPassantMovesBitboard){
+        endSquare = _popLsb(enPassantMovesBitboard);
+
+        //check if new position of king is under attack
+        if(!board.squareUnderAttack(endSquare)){*(legalMovesPtr++) = Move(piecePos, endSquare, PAWN, PAWN, null, false, true);}
       }
+      board.setColors(1ULL << piecePos, board.sideToMove);
+      if(board.sideToMove == WHITE){board.setColors(board.enPassant >> 8, Colors(!board.sideToMove));} else{board.setColors(board.enPassant << 8, Colors(!board.sideToMove));}
     }
   }
 
@@ -593,12 +503,10 @@ MoveList generateLegalMoves(Board &board){
     //if rook is pinned by a bishop it cannot move, so we only check for if it is pinned by a rook
     if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){continue;}
     if(1ULL << piecePos & _kingMasks.rookPinnedPieces){
-      moves = MoveListFromBitboard(lookupTables::getRookAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask & _kingMasks.rookPinmask, piecePos, ROOK);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());      
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getRookAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask & _kingMasks.rookPinmask, piecePos, ROOK, legalMovesPtr);  
     }
     else{
-      moves = MoveListFromBitboard(lookupTables::getRookAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask, piecePos, ROOK);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());      
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getRookAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask, piecePos, ROOK, legalMovesPtr);     
     }
   }
 
@@ -609,12 +517,10 @@ MoveList generateLegalMoves(Board &board){
     //if bishop is pinned by a rook it cannot move, so we only check for if it is pinned by a bishop
     if(1ULL << piecePos & _kingMasks.rookPinnedPieces){continue;}
     if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){
-      moves = MoveListFromBitboard(lookupTables::getBishopAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask & _kingMasks.bishopPinmask, piecePos, BISHOP);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());      
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getBishopAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask & _kingMasks.bishopPinmask, piecePos, BISHOP, legalMovesPtr);    
     }
     else{
-      moves = MoveListFromBitboard(lookupTables::getBishopAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask, piecePos, BISHOP);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());      
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getBishopAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask, piecePos, BISHOP, legalMovesPtr);   
     }
   }
 
@@ -627,29 +533,38 @@ MoveList generateLegalMoves(Board &board){
     //if rook is pinned by a bishop it cannot move, so we only check for if it is pinned by a rook
     if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){}
     else if(1ULL << piecePos & _kingMasks.rookPinnedPieces){
-      moves = MoveListFromBitboard(lookupTables::getRookAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask & _kingMasks.rookPinmask, piecePos, QUEEN);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());      
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getRookAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask & _kingMasks.rookPinmask, piecePos, QUEEN, legalMovesPtr); 
     }
     else{
-      moves = MoveListFromBitboard(lookupTables::getRookAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask, piecePos, QUEEN);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());      
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getRookAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask, piecePos, QUEEN, legalMovesPtr);   
     }
 
     //as a bishop:
     //if bishop is pinned by a rook it cannot move, so we only check for if it is pinned by a bishop
     if(1ULL << piecePos & _kingMasks.rookPinnedPieces){}
     else if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){
-      moves = MoveListFromBitboard(lookupTables::getBishopAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask & _kingMasks.bishopPinmask, piecePos, QUEEN);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());      
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getBishopAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask & _kingMasks.bishopPinmask, piecePos, QUEEN, legalMovesPtr);   
     }
     else{
-      moves = MoveListFromBitboard(lookupTables::getBishopAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask, piecePos, QUEEN);
-      legalMoves.insert(legalMoves.end(), moves.begin(), moves.end());      
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getBishopAttacks(piecePos, board.occupied) & opponentOrEmpty(board) & _kingMasks.checkmask, piecePos, QUEEN, legalMovesPtr); 
     }
   }
 
-  return legalMoves;
+  return legalMovesPtr;
 }
+
+struct MoveList{
+  Move moveList[256]; //We assume that 256 is the maximum amount of moves in a position (it is what stockfish uses)
+  Move* lastMove;
+
+  MoveList(Board board): lastMove(generateLegalMoves(board, moveList)){}
+
+  Move* begin(){return moveList;}
+  Move* end(){return lastMove;}
+
+  int size(){return lastMove-moveList;}
+};
+
 }//namespace chess
 //cutechess-cli -engine cmd=stockfish16 name=sf-tc20+0.2 tc=0/20+0.2 -engine cmd=stockfish16 name=sf-tc10+-.1 tc=0/10+0.1 -each proto=uci option.Threads=16 timemargin=1000 -rounds 100 -openings file=C:\Users\kjlji\Downloads\uho_2022\UHO_2022\UHO_2022_+150_+159\UHO_2022_8mvs_big_+140_+169.pgn plies=8 -draw movenumber=20 movecount=10 score=10 -resign movecount=10 score=1000 twosided=true -concurrency 2
 //cutechess-cli -engine cmd=lc0 tc=0/60+6 option.WeightsFile=C:\Users\kjlji\Downloads\LeelaChessZeroDAG\lc0\t1-512x15x8h-distilled-swa-3395000.pb.gz -engine cmd=stockfish16 tc=0/10+1 -each proto=uci -rounds 10 -openings file=C:\Users\kjlji\Downloads\uho_2022\UHO_2022\UHO_2022_+150_+159\UHO_2022_8mvs_big_+140_+169.pgn plies=8 -debug

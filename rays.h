@@ -1,6 +1,9 @@
+//Start reading code relating to move generation/chess rules in "bitboards.h"
+//Then go to "lookup.h"
 #include <cstdint>
 #include "bitboards.h"
 
+enum Direction{NORTH, SOUTH, EAST, WEST, NORTHWEST, NORTHEAST, SOUTHWEST, SOUTHEAST};
 
 //this file is basically completely copied from https://github.com/GunshipPenguin/shallow-blue/blob/master/src/rays.cc
 namespace rays{

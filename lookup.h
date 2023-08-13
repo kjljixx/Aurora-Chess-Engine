@@ -1,8 +1,96 @@
+//Start reading code relating to move generation/chess rules in "bitboards.h"
+//After reading this file, go to "chess.h"
 #include <cstdint>
+#include <vector>
 #include "rays.h"
+
 
 //Everything here is heavily inspired by (and a lot of the time uses code from) https://github.com/GunshipPenguin/shallow-blue
 //generate lookup tables so we can find all the moves of a given pieces without having to calculate it
+namespace chess{
+enum Colors{WHITE, BLACK};
+enum Pieces{null, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, UNKNOWN};
+
+Pieces letterToPiece(char letter){
+  switch (letter){
+    case 'p': return PAWN;
+    case 'n': return KNIGHT;
+    case 'b': return BISHOP;
+    case 'r': return ROOK;
+    case 'q': return QUEEN;
+    case 'k': return KING;
+  }
+  return null;
+}
+
+struct Move{
+  U64 startSquare;
+  U64 endSquare;
+  uint8_t startSquareIndex;
+  uint8_t endSquareIndex;
+  Pieces movedPiece;
+  
+  //If no capture or promotion, they are set to null
+  Pieces capturedPiece;
+  Pieces promotionPiece;
+
+  bool isCastle;
+  bool isEnPassant;
+
+  Move(uint8_t startSquare, uint8_t endSquare, Pieces movedPiece, Pieces capturedPiece=UNKNOWN, Pieces promotionPiece=null, bool isCastle=false, bool isEnPassant=false):
+    startSquare(1ULL << startSquare), startSquareIndex(startSquare),
+    endSquare(1ULL << endSquare), endSquareIndex(endSquare),
+    movedPiece(movedPiece),
+    capturedPiece(capturedPiece), promotionPiece(promotionPiece), isCastle(isCastle), isEnPassant(isEnPassant) {}
+  Move(U64 startSquare, U64 endSquare, Pieces movedPiece, Pieces capturedPiece=UNKNOWN, Pieces promotionPiece=null, bool isCastle=false, bool isEnPassant=false):
+    startSquare(startSquare), startSquareIndex(_bitscanForward(startSquare)),
+    endSquare(endSquare), endSquareIndex(_bitscanForward(endSquare)),
+    movedPiece(movedPiece),
+    capturedPiece(capturedPiece), promotionPiece(promotionPiece), isCastle(isCastle), isEnPassant(isEnPassant) {}
+  //default constructor creates a null move (a1-a1)
+  Move():
+    startSquare(1ULL), startSquareIndex(0),
+    endSquare(1ULL), endSquareIndex(0),
+    capturedPiece(null), promotionPiece(null), isCastle(false), isEnPassant(false) {}
+  
+  //returns a string representation of the move (Pure Algebraic Coordinate Notation)
+  std::string toStringRep(){
+    std::string stringRep = squareIndexToNotation(startSquareIndex)+squareIndexToNotation(endSquareIndex);
+    if(promotionPiece==KNIGHT){
+      return stringRep+"n";
+    }
+    if(promotionPiece==QUEEN){
+      return stringRep+"q";
+    }
+    if(promotionPiece==ROOK){
+      return stringRep+"r";
+    }
+    if(promotionPiece==BISHOP){
+      return stringRep+"b";
+    }
+    return stringRep;
+  }
+};
+
+int mlfbcalls = 0;
+//Move flags like captured piece, castle, etc. need to be added separately.
+chess::Move* MoveListFromBitboard(U64 moves, uint8_t startSquare, chess::Pieces movedPiece, chess::Move* movesList, bool enPassant=false){
+  while(moves){
+    uint8_t endSquare = _popLsb(moves);
+    if(movedPiece == chess::PAWN && ((1ULL << endSquare) & 0xFF000000000000FFULL))//checks if move is pawn promotion. FF000000000000FF is the first and eight ranks
+    {*(movesList++) = chess::Move(startSquare, endSquare, movedPiece, chess::UNKNOWN, chess::KNIGHT, false, false);
+    *(movesList++) = chess::Move(startSquare, endSquare, movedPiece, chess::UNKNOWN, chess::BISHOP, false, false);
+    *(movesList++) = chess::Move(startSquare, endSquare, movedPiece, chess::UNKNOWN, chess::ROOK, false, false);
+    *(movesList++) = chess::Move(startSquare, endSquare, movedPiece, chess::UNKNOWN, chess::QUEEN, false, false);
+    }
+    else{
+    *(movesList++) = chess::Move(startSquare, endSquare, movedPiece, chess::UNKNOWN, chess::null, false, enPassant);
+    }
+  }
+  return movesList;
+}
+}//namespace chess
+
 namespace lookupTables{
 
 //Magic numbers for magic bitboards. Explained really well here: https://rhysre.net/fast-chess-move-generation-with-magic-bitboards.html
@@ -59,14 +147,14 @@ const int bishopIndexBits[64] = {
   6, 5, 5, 5, 5, 5, 5, 6
 };
 
-//the lookup tables
-U64 pawnAttackTable[2][64] = {{0}}; //need a table for white and black
-U64 pawnPushTable[2][64] = {{0}};
-U64 knightTable[64] = {0};
-U64 kingTable[64] = {0};
+//the bitboard lookup tables
+U64 pawnAttackTable[2][64] = {{}}; //need a table for white and black
+U64 pawnPushTable[2][64] = {{}};
+U64 knightTable[64] = {};
+U64 kingTable[64] = {};
 //rook & bishop need to take other pieces("blockers") into account
-U64 rookTable[64][4096] = {0}; 
-U64 bishopTable[64][1024] = {0};
+U64 rookTable[64][4096] = {}; 
+U64 bishopTable[64][1024] = {};
 
 //rook & bishop need a preliminary mask array which doesn't take blockers into account
 U64 rookMasks[64] = {0};
@@ -98,13 +186,13 @@ void initPawnTable(){
   for (int i = 0; i < 64; i++) {
   U64 pawnSquare = 1ULL << i;
 
-  U64 whitePawnPushBb = (pawnSquare >> 8) | ((pawnSquare >> 16) & bitboards::rank4);
-  U64 blackPawnPushBb = (pawnSquare << 8) | ((pawnSquare << 16) & bitboards::rank5);
+  U64 whitePawnPushBb = (pawnSquare << 8);
+  U64 blackPawnPushBb = (pawnSquare >> 8);
   pawnPushTable[0][i] = whitePawnPushBb;
   pawnPushTable[1][i] = blackPawnPushBb;
 
-  U64 whitePawnAttackBb = ((pawnSquare >> 9) & ~bitboards::fileA) | ((pawnSquare >> 7) & ~bitboards::fileH);
-  U64 blackPawnAttackBb = ((pawnSquare << 9) & ~bitboards::fileH) | ((pawnSquare << 7) & ~bitboards::fileA);
+  U64 whitePawnAttackBb = ((pawnSquare << 9) & ~bitboards::fileA) | ((pawnSquare << 7) & ~bitboards::fileH);
+  U64 blackPawnAttackBb = ((pawnSquare >> 9) & ~bitboards::fileH) | ((pawnSquare >> 7) & ~bitboards::fileA);
   pawnAttackTable[0][i] = whitePawnAttackBb;
   pawnAttackTable[1][i] = blackPawnAttackBb;
   }
@@ -112,10 +200,10 @@ void initPawnTable(){
 void initKnightTable(){
   for (int i = 0; i < 64; i++) {
   U64 knightSquare = 1ULL << i;
-  U64 knightBb = (((knightSquare << 15) | (knightSquare >> 17)) & ~bitboards::fileA) | 
-    (((knightSquare >> 15) | (knightSquare << 17)) & ~bitboards::fileH) | 
-    (((knightSquare << 6) | (knightSquare >> 10)) & ~(bitboards::fileA | bitboards::fileB)) | 
-    (((knightSquare >> 6) | (knightSquare << 10)) & ~(bitboards::fileG | bitboards::fileH)); 
+  U64 knightBb = (((knightSquare << 15) | (knightSquare >> 17)) & ~bitboards::fileH) | 
+    (((knightSquare >> 15) | (knightSquare << 17)) & ~bitboards::fileA) | 
+    (((knightSquare << 6) | (knightSquare >> 10)) & ~(bitboards::fileG | bitboards::fileH)) | 
+    (((knightSquare >> 6) | (knightSquare << 10)) & ~(bitboards::fileA | bitboards::fileB)); 
   knightTable[i] = knightBb;
   }
 }
@@ -123,8 +211,8 @@ void initKingTable(){
   for (int i = 0; i < 64; i++) {
   U64 kingSquare = 1ULL << i;
 
-  U64 kingBb = (((kingSquare << 7) | (kingSquare >> 9) | (kingSquare >> 1)) & (~bitboards::fileA)) |
-    (((kingSquare << 9) | (kingSquare >> 7) | (kingSquare << 1)) & (~bitboards::fileH)) |
+  U64 kingBb = (((kingSquare >> 7) | (kingSquare << 9) | (kingSquare << 1)) & (~bitboards::fileA)) |
+    (((kingSquare >> 9) | (kingSquare << 7) | (kingSquare >> 1)) & (~bitboards::fileH)) |
     ((kingSquare >> 8) | (kingSquare << 8));
   kingTable[i] = kingBb;
   }
@@ -145,10 +233,10 @@ U64 getBlockersFromIndex(int index, U64 mask) {
 
 void initRookTable() {
   for (int square = 0; square < 64; square++) {
-    rookMasks[square] = (rays::rays[0][square] & ~bitboards::rank1) |
-    (rays::rays[1][square] & ~bitboards::rank8) |
-    (rays::rays[2][square] & ~bitboards::fileA) |
-    (rays::rays[3][square] & ~bitboards::fileH);
+    rookMasks[square] = (rays::rays[0][square] & ~bitboards::rank8) |
+    (rays::rays[1][square] & ~bitboards::rank1) |
+    (rays::rays[2][square] & ~bitboards::fileH) |
+    (rays::rays[3][square] & ~bitboards::fileA);
   }
   // For all squares
   for (int square = 0; square < 64; square++) {
@@ -239,12 +327,12 @@ U64 pregenerateRookMoves(int square, U64 blockers) {
   return attacks;
 }
 
-U64 getBishopAttacks(int square, U64 blockers) {
+U64 getBishopAttacks(uint8_t square, U64 blockers) {
   blockers &= bishopMasks[square];
   return bishopTable[square][(blockers * bishopMagics[square]) >> (64 - bishopIndexBits[square])];
 }
 
-U64 getRookAttacks(int square, U64 blockers) {
+U64 getRookAttacks(uint8_t square, U64 blockers) {
   blockers &= rookMasks[square];
   return rookTable[square][(blockers * rookMagics[square]) >> (64 - rookIndexBits[square])];
 }
