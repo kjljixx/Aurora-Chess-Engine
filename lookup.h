@@ -72,8 +72,7 @@ struct Move{
   }
 };
 
-int mlfbcalls = 0;
-//Move flags like captured piece, castle, etc. need to be added separately.
+//Move flags like castle, need to be added separately.
 chess::Move* MoveListFromBitboard(U64 moves, uint8_t startSquare, chess::Pieces movedPiece, chess::Move* movesList, bool enPassant=false){
   while(moves){
     uint8_t endSquare = _popLsb(moves);

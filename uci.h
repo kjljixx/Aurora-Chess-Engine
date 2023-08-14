@@ -24,7 +24,14 @@ chess::Board position(std::istringstream input){
 
   while(input >> token){
     //TODO: castling & en passant flags should be implemented
-    board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::UNKNOWN, chess::letterToPiece(token[4])));
+    chess::Pieces movedPiece;
+    if(board.getOurPieces(chess::PAWN) & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::PAWN;}
+    if(board.getOurPieces(chess::KNIGHT) & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::KNIGHT;}
+    if(board.getOurPieces(chess::BISHOP) & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::BISHOP;}
+    if(board.getOurPieces(chess::ROOK) & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::ROOK;}
+    if(board.getOurPieces(chess::QUEEN) & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::QUEEN;}
+    if(board.getOurPieces(chess::KING) & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::KING;}
+    board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), movedPiece, chess::letterToPiece(token[4])));
   }
 
   return board;
