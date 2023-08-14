@@ -25,21 +25,21 @@ chess::Board position(std::istringstream input){
   while(input >> token){
     //TODO: castling & en passant flags should be implemented
     chess::Pieces movedPiece;
-    if(board.getOurPieces(chess::PAWN) & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::PAWN;}
-    if(board.getOurPieces(chess::KNIGHT) & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::KNIGHT;}
-    if(board.getOurPieces(chess::BISHOP) & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::BISHOP;}
-    if(board.getOurPieces(chess::ROOK) & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::ROOK;}
-    if(board.getOurPieces(chess::QUEEN) & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::QUEEN;}
-    if(board.getOurPieces(chess::KING) & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::KING;}
-    board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), movedPiece, chess::letterToPiece(token[4])));
+    if(board.pawns & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::PAWN;}
+    if(board.knights & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::KNIGHT;}
+    if(board.bishops & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::BISHOP;}
+    if(board.rooks & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::ROOK;}
+    if(board.queens & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::QUEEN;}
+    if(board.kings & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::KING;}
+    board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))));
   }
 
   return board;
 }
 //The "perft" command
-int perft(chess::Board &board, int depth, bool printResults){
+uint64_t perft(chess::Board &board, int depth, bool printResults){
   chess::Board movedBoard;
-  int nodes = 0;
+  uint64_t nodes = 0;
 
   if(depth == 1 && !printResults){
     return chess::MoveList(board).size();
@@ -53,16 +53,16 @@ int perft(chess::Board &board, int depth, bool printResults){
     movedBoard = board;
     movedBoard.makeMove(move);
 
-    int result = perft(movedBoard, depth-1, false);
+    uint64_t result = perft(movedBoard, depth-1, false);
     if(printResults){std::cout << move.toStringRep() << ": " << result << "\n";}
     nodes+=result;
   }
 
   return nodes;
 }
-int perftDiv(chess::Board &board, int depth){
+uint64_t perftDiv(chess::Board &board, int depth){
   chess::Board movedBoard;
-  int nodes = 0;
+  uint64_t nodes = 0;
 
   auto start = std::chrono::steady_clock::now();
 
@@ -78,6 +78,23 @@ int perftDiv(chess::Board &board, int depth){
 
   return nodes;
 }
+//Custom commands
+chess::Board makeMoves(chess::Board &board, std::istringstream input){
+  std::string token;
+  while(input >> token){
+    //TODO: castling & en passant flags should be implemented
+    chess::Pieces movedPiece;
+    if(board.pawns & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::PAWN;}
+    if(board.knights & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::KNIGHT;}
+    if(board.bishops & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::BISHOP;}
+    if(board.rooks & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::ROOK;}
+    if(board.queens & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::QUEEN;}
+    if(board.kings & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::KING;}
+    board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))));
+  }
+  return board;
+}
+
 //The main UCI loop which detects input and runs other functions based on it
 void loop(chess::Board board){
   std::string token;
@@ -89,6 +106,9 @@ void loop(chess::Board board){
     if(token == "perft"){int depth; std::cin >> depth; perftDiv(board, depth);}
     if(token == "position"){std::getline(std::cin, token); board = position(std::istringstream(token));}
     if(token == "quit"){break;}
+    //non-uci, custom commands
+    if(token == "moves"){std::getline(std::cin, token); board = makeMoves(board, std::istringstream(token));}
+    if(token == "board"){board.printBoard(); std::cout << "\n";} //mostly for debugging purposes
   }
 }
 }

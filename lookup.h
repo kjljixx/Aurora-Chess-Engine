@@ -23,67 +23,57 @@ Pieces letterToPiece(char letter){
   return null;
 }
 
+enum MoveFlags{
+  NONE, CASTLE, ENPASSANT, PROMOTION
+};
+
 struct Move{
-  U64 startSquare;
-  U64 endSquare;
-  uint8_t startSquareIndex;
-  uint8_t endSquareIndex;
-  Pieces movedPiece;
-  
-  //If no capture or promotion, they are set to null
-  Pieces capturedPiece;
-  Pieces promotionPiece;
+  //the internal value of the move (bits 0-5 end square, bits 6-11 start square, bits 12-13 move flags, bits 14-15 promotion piece type)
+  uint16_t value;
 
-  bool isCastle;
-  bool isEnPassant;
-
-  Move(uint8_t startSquare, uint8_t endSquare, Pieces movedPiece, Pieces capturedPiece=UNKNOWN, Pieces promotionPiece=null, bool isCastle=false, bool isEnPassant=false):
-    startSquare(1ULL << startSquare), startSquareIndex(startSquare),
-    endSquare(1ULL << endSquare), endSquareIndex(endSquare),
-    movedPiece(movedPiece),
-    capturedPiece(capturedPiece), promotionPiece(promotionPiece), isCastle(isCastle), isEnPassant(isEnPassant) {}
-  Move(U64 startSquare, U64 endSquare, Pieces movedPiece, Pieces capturedPiece=UNKNOWN, Pieces promotionPiece=null, bool isCastle=false, bool isEnPassant=false):
-    startSquare(startSquare), startSquareIndex(_bitscanForward(startSquare)),
-    endSquare(endSquare), endSquareIndex(_bitscanForward(endSquare)),
-    movedPiece(movedPiece),
-    capturedPiece(capturedPiece), promotionPiece(promotionPiece), isCastle(isCastle), isEnPassant(isEnPassant) {}
-  //default constructor creates a null move (a1-a1)
-  Move():
-    startSquare(1ULL), startSquareIndex(0),
-    endSquare(1ULL), endSquareIndex(0),
-    capturedPiece(null), promotionPiece(null), isCastle(false), isEnPassant(false) {}
+  constexpr Move(uint8_t startSquare, uint8_t endSquare, MoveFlags moveFlags = NONE, Pieces promotionPiece = KNIGHT): 
+    value((moveFlags << 14) + ((promotionPiece-KNIGHT) << 12) + (startSquare << 6) + (endSquare)){}
+  //default constructor is a null move
+  constexpr Move(): value(0){}
+  constexpr uint8_t getStartSquare(){
+    return (value & 0b0000111111000000) >> 6;
+  }
+  constexpr uint8_t getEndSquare(){
+    return (value & 0b0000000000111111);
+  }
+  constexpr Pieces getPromotionPiece(){
+    return Pieces((value & 0b0011000000000000) >> 12);
+  }
+  constexpr MoveFlags getMoveFlags(){
+    return MoveFlags(value >> 14);
+  }
   
   //returns a string representation of the move (Pure Algebraic Coordinate Notation)
   std::string toStringRep(){
-    std::string stringRep = squareIndexToNotation(startSquareIndex)+squareIndexToNotation(endSquareIndex);
-    if(promotionPiece==KNIGHT){
-      return stringRep+"n";
-    }
-    if(promotionPiece==QUEEN){
-      return stringRep+"q";
-    }
-    if(promotionPiece==ROOK){
-      return stringRep+"r";
-    }
-    if(promotionPiece==BISHOP){
-      return stringRep+"b";
+    std::string stringRep = squareIndexToNotation(getStartSquare())+squareIndexToNotation(getEndSquare());
+    if(getMoveFlags() == PROMOTION){
+      switch (getPromotionPiece()){
+        case KNIGHT: return stringRep+"n"; break;
+        case BISHOP: return stringRep+"b"; break;
+        case ROOK: return stringRep+"r"; break;
+        case QUEEN: return stringRep+"q"; break;
+      }
     }
     return stringRep;
   }
 };
 
-//Move flags like castle, need to be added separately.
-chess::Move* MoveListFromBitboard(U64 moves, uint8_t startSquare, chess::Pieces movedPiece, chess::Move* movesList, bool enPassant=false){
+constexpr Move* MoveListFromBitboard(U64 moves, uint8_t startSquare, Pieces movedPiece, Move* movesList, MoveFlags moveFlags = NONE){
   while(moves){
     uint8_t endSquare = _popLsb(moves);
-    if(movedPiece == chess::PAWN && ((1ULL << endSquare) & 0xFF000000000000FFULL))//checks if move is pawn promotion. FF000000000000FF is the first and eight ranks
-    {*(movesList++) = chess::Move(startSquare, endSquare, movedPiece, chess::UNKNOWN, chess::KNIGHT, false, false);
-    *(movesList++) = chess::Move(startSquare, endSquare, movedPiece, chess::UNKNOWN, chess::BISHOP, false, false);
-    *(movesList++) = chess::Move(startSquare, endSquare, movedPiece, chess::UNKNOWN, chess::ROOK, false, false);
-    *(movesList++) = chess::Move(startSquare, endSquare, movedPiece, chess::UNKNOWN, chess::QUEEN, false, false);
+    if(movedPiece == PAWN && ((1ULL << endSquare) & 0xFF000000000000FFULL))//checks if move is pawn promotion. FF000000000000FF is the first and eight ranks
+    {*(movesList++) = Move(startSquare, endSquare, PROMOTION, KNIGHT);
+    *(movesList++) = Move(startSquare, endSquare, PROMOTION, BISHOP);
+    *(movesList++) = Move(startSquare, endSquare, PROMOTION, ROOK);
+    *(movesList++) = Move(startSquare, endSquare, PROMOTION, QUEEN);
     }
     else{
-    *(movesList++) = chess::Move(startSquare, endSquare, movedPiece, chess::UNKNOWN, chess::null, false, enPassant);
+    *(movesList++) = Move(startSquare, endSquare, moveFlags);
     }
   }
   return movesList;
@@ -326,12 +316,12 @@ U64 pregenerateRookMoves(int square, U64 blockers) {
   return attacks;
 }
 
-U64 getBishopAttacks(uint8_t square, U64 blockers) {
+inline U64 getBishopAttacks(uint8_t square, U64 blockers) {
   blockers &= bishopMasks[square];
   return bishopTable[square][(blockers * bishopMagics[square]) >> (64 - bishopIndexBits[square])];
 }
 
-U64 getRookAttacks(uint8_t square, U64 blockers) {
+inline U64 getRookAttacks(uint8_t square, U64 blockers) {
   blockers &= rookMasks[square];
   return rookTable[square][(blockers * rookMagics[square]) >> (64 - rookIndexBits[square])];
 }

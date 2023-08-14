@@ -5,25 +5,25 @@
 
 using U64 = unsigned long long;
 
-inline int _bitscanForward(U64 board) {
+constexpr inline int _bitscanForward(U64 board) {
   if (board == 0) {
     return -1;
   }
   return __builtin_ffsll(board) - 1;
 }
 
-inline int _bitscanReverse(U64 board) {
+constexpr inline int _bitscanReverse(U64 board) {
   if (board == 0) {
     return -1;
   }
   return 63 - __builtin_clzll(board);
 }
 
-inline int _popCount(U64 board) {
+constexpr inline int _popCount(U64 board) {
   return __builtin_popcountll(board);
 }
 
-inline int _popLsb(U64 &board) {
+constexpr inline int _popLsb(U64 &board) {
   int lsbIndex = __builtin_ffsll(board) - 1;
   board &= board - 1;
   return lsbIndex;
