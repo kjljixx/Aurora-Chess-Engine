@@ -63,10 +63,10 @@ struct Move{
   }
 };
 
-constexpr Move* MoveListFromBitboard(U64 moves, uint8_t startSquare, Pieces movedPiece, Move* movesList, MoveFlags moveFlags = NONE){
+constexpr Move* MoveListFromBitboard(U64 moves, uint8_t startSquare, bool isPawn, Move* movesList, MoveFlags moveFlags = NONE){
   while(moves){
     uint8_t endSquare = _popLsb(moves);
-    if(movedPiece == PAWN && ((1ULL << endSquare) & 0xFF000000000000FFULL))//checks if move is pawn promotion. FF000000000000FF is the first and eight ranks
+    if(isPawn && ((1ULL << endSquare) & 0xFF000000000000FFULL))//checks if move is pawn promotion. FF000000000000FF is the first and eight ranks
     {*(movesList++) = Move(startSquare, endSquare, PROMOTION, KNIGHT);
     *(movesList++) = Move(startSquare, endSquare, PROMOTION, BISHOP);
     *(movesList++) = Move(startSquare, endSquare, PROMOTION, ROOK);
@@ -318,12 +318,12 @@ U64 pregenerateRookMoves(int square, U64 blockers) {
 
 inline U64 getBishopAttacks(uint8_t square, U64 blockers) {
   blockers &= bishopMasks[square];
-  return bishopTable[square][(blockers * bishopMagics[square]) >> (64 - bishopIndexBits[square])];
+  return bishopTable[square][((blockers & bishopMasks[square]) * bishopMagics[square]) >> (64 - bishopIndexBits[square])];
 }
 
 inline U64 getRookAttacks(uint8_t square, U64 blockers) {
   blockers &= rookMasks[square];
-  return rookTable[square][(blockers * rookMagics[square]) >> (64 - rookIndexBits[square])];
+  return rookTable[square][((blockers & rookMasks[square]) * rookMagics[square]) >> (64 - rookIndexBits[square])];
 }
 
 }

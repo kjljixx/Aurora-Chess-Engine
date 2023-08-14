@@ -24,7 +24,7 @@ constexpr inline int _popCount(U64 board) {
 }
 
 constexpr inline int _popLsb(U64 &board) {
-  int lsbIndex = __builtin_ffsll(board) - 1;
+  const int lsbIndex = __builtin_ffsll(board) - 1;
   board &= board - 1;
   return lsbIndex;
 }
@@ -38,7 +38,7 @@ std::string squareIndexToNotation(int index){
   return std::string(1, ('a' + index % 8))+std::string(1, ('1' + index / 8));
 }
 
-std::pair<int, int> squareIndexToRankFile(int index){
+constexpr std::pair<int, int> squareIndexToRankFile(int index){
   return std::make_pair(index / 8, index % 8);
 }
 
