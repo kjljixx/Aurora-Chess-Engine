@@ -2,35 +2,36 @@
 //After reading this file, go to "rays.h"
 #include <cstdint>
 #include <iostream>
+#include <cassert>
 
 using U64 = unsigned long long;
 
-constexpr inline int _bitscanForward(U64 board) {
-  if (board == 0) {
-    return -1;
-  }
-  return __builtin_ffsll(board) - 1;
+//Does NOT check for if board is 0. This must be done separately
+constexpr inline uint8_t _bitscanForward(U64 board) {
+  assert(board);
+  return __builtin_ctzll(board);
 }
 
-constexpr inline int _bitscanReverse(U64 board) {
-  if (board == 0) {
-    return -1;
-  }
+//Does NOT check for if board is 0. This must be done separately
+constexpr inline uint8_t _bitscanReverse(U64 board) {
+  assert(board);
   return 63 - __builtin_clzll(board);
 }
 
-constexpr inline int _popCount(U64 board) {
+constexpr inline uint8_t _popCount(U64 board) {
   return __builtin_popcountll(board);
 }
 
-constexpr inline int _popLsb(U64 &board) {
-  const int lsbIndex = __builtin_ffsll(board) - 1;
+//Does NOT check for if board is 0. This must be done separately
+constexpr inline uint8_t _popLsb(U64 &board) {
+  assert(board);
+  const int lsbIndex = _bitscanForward(board);
   board &= board - 1;
   return lsbIndex;
 }
 
 //functions for transferring back and forth between notation(ex. a8) and index(ex. 56)
-int squareNotationToIndex(std::string notation){
+uint8_t squareNotationToIndex(std::string notation){
   return (notation[1] - '1')*8+(notation[0] - 'a');
 }
 
@@ -38,9 +39,8 @@ std::string squareIndexToNotation(int index){
   return std::string(1, ('a' + index % 8))+std::string(1, ('1' + index / 8));
 }
 
-constexpr std::pair<int, int> squareIndexToRankFile(int index){
-  return std::make_pair(index / 8, index % 8);
-}
+constexpr uint8_t squareIndexToRank(uint8_t index){return index / 8;}
+constexpr uint8_t squareIndexToFile(uint8_t index){return index % 8;}
 
 
 

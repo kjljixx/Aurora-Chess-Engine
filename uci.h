@@ -38,7 +38,6 @@ chess::Board position(std::istringstream input){
 }
 //The "perft" command
 uint64_t perft(chess::Board &board, int depth, bool printResults){
-  chess::Board movedBoard;
   uint64_t nodes = 0;
 
   if(depth == 1 && !printResults){
@@ -50,7 +49,7 @@ uint64_t perft(chess::Board &board, int depth, bool printResults){
   }
 
   for(chess::Move move : chess::MoveList(board)){
-    movedBoard = board;
+    chess::Board movedBoard = board;
     movedBoard.makeMove(move);
 
     uint64_t result = perft(movedBoard, depth-1, false);
@@ -90,7 +89,13 @@ chess::Board makeMoves(chess::Board &board, std::istringstream input){
     if(board.rooks & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::ROOK;}
     if(board.queens & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::QUEEN;}
     if(board.kings & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::KING;}
-    board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))));
+
+    chess::MoveFlags moveFlags = chess::NONE;
+    if(squareIndexToFile(squareNotationToIndex(token.substr(0, 2))) == 4 &&
+    (squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 2 ||
+    squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 6) &&
+    movedPiece == chess::KING){moveFlags = chess::CASTLE;}
+    board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), moveFlags));
   }
   return board;
 }
@@ -108,7 +113,13 @@ void loop(chess::Board board){
     if(token == "quit"){break;}
     //non-uci, custom commands
     if(token == "moves"){std::getline(std::cin, token); board = makeMoves(board, std::istringstream(token));}
-    if(token == "board"){board.printBoard(); std::cout << "\n";} //mostly for debugging purposes
+    //bwlow are mostly for debugging purposes
+    if(token == "board"){board.printBoard(); std::cout << "\n";} 
+    if(token == "checkmask"){bitboards::printBoard(board.generateKingMasks().checkmask); std::cout << "\n";}
+    if(token == "rpinmask"){bitboards::printBoard(board.generateKingMasks().rookPinmask); std::cout << "\n";}
+    if(token == "rpinned"){bitboards::printBoard(board.generateKingMasks().rookPinnedPieces); std::cout << "\n";}
+    if(token == "bpinmask"){bitboards::printBoard(board.generateKingMasks().bishopPinmask); std::cout << "\n";}
+    if(token == "bpinned"){bitboards::printBoard(board.generateKingMasks().bishopPinnedPieces); std::cout << "\n";}
   }
 }
 }
