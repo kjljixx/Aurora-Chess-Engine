@@ -438,6 +438,7 @@ struct Board{
   }
 };
 
+
 Move* generateLegalMoves(Board &board, Move* legalMoves){
   //Extremely useful source on how pointers/arrays work: https://cplusplus.com/doc/tutorial/pointers/
   Move* legalMovesPtr = legalMoves; //A pointer to the spot in memory where the next move will go
@@ -589,16 +590,34 @@ Move* generateLegalMoves(Board &board, Move* legalMoves){
 
 struct MoveList{
   Move moveList[256]; //We assume that 256 is the maximum amount of moves in a position (it is what stockfish uses)
-  Move* lastMove;
+  Move* lastMove; //pointer to the last move in the moveList array
 
   MoveList(Board& board): lastMove(generateLegalMoves(board, moveList)){}
 
-  Move* begin(){return moveList;}
-  Move* end(){return lastMove;}
+  Move* begin() {return moveList;}
+  Move* end() {return lastMove;}
 
-  int size(){return lastMove-moveList;}
+  Move operator[](int index) {return moveList[index];}
+
+  size_t size() {return lastMove-moveList;}
 };
 
+enum gameStatus{WIN = 1, DRAW = 0, LOSS = -1, ONGOING = 2};
+
+gameStatus getGameStatus(Board& board, MoveList& moveList){
+  if(moveList.size() == 0){
+    //If our king is under attack, we lost from checkmate. Otherwise, it is a draw by stalemate.
+    return gameStatus(-board.squareUnderAttack(_bitscanForward(board.getOurPieces(KING))));
+  }
+  //Fifty Move Rule
+  if(board.halfmoveClock>=100){return DRAW;}
+  //Insufficient Material
+  if(!(board.pawns | board.rooks | board.queens) &&//If there are pawns, rooks, or queens on the board, it is not insufficient material
+  (_popCount(board.bishops | board.knights)<=1
+  )){return DRAW;}
+
+  return ONGOING;
+}
 }//namespace chess
 //cutechess-cli -engine cmd=stockfish16 name=sf-tc20+0.2 tc=0/20+0.2 -engine cmd=stockfish16 name=sf-tc10+-.1 tc=0/10+0.1 -each proto=uci option.Threads=16 timemargin=1000 -rounds 100 -openings file=C:\Users\kjlji\Downloads\uho_2022\UHO_2022\UHO_2022_+150_+159\UHO_2022_8mvs_big_+140_+169.pgn plies=8 -draw movenumber=20 movecount=10 score=10 -resign movecount=10 score=1000 twosided=true -concurrency 2
 //cutechess-cli -engine cmd=lc0 tc=0/60+6 option.WeightsFile=C:\Users\kjlji\Downloads\LeelaChessZeroDAG\lc0\t1-512x15x8h-distilled-swa-3395000.pb.gz -engine cmd=stockfish16 tc=0/10+1 -each proto=uci -rounds 10 -openings file=C:\Users\kjlji\Downloads\uho_2022\UHO_2022\UHO_2022_+150_+159\UHO_2022_8mvs_big_+140_+169.pgn plies=8 -debug

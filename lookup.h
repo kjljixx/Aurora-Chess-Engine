@@ -22,6 +22,17 @@ Pieces letterToPiece(char letter){
   }
   return null;
 }
+char PieceToLetter(Pieces piece){ //mainly for PGN move notation
+  switch (piece){
+    case PAWN : return 'P';
+    case KNIGHT: return 'N';
+    case BISHOP: return 'B';
+    case ROOK: return 'R';
+    case QUEEN: return 'Q';
+    case KING: return 'K';
+  }
+  return ' ';
+}
 
 enum MoveFlags{
   NONE, CASTLE = 1 << 14, ENPASSANT = 2 << 14, PROMOTION = 3 << 14

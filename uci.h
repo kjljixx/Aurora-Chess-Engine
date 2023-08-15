@@ -1,3 +1,5 @@
+//Start reading code relating to move generation/chess rules in "bitboards.h"
+//After reading this file, go to files relating to search, starting with "search.h"
 #include "chess.h"
 #include <chrono>
 //See https://backscattering.de/chess/uci/ for information on the Universal Chess Interface, which this file implements
