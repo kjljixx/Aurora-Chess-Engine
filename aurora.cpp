@@ -1,7 +1,7 @@
 #include "uci.h"
 
 int main() {
-  std::string version = "0.3-uci-hotfix1";
+  std::string version = "0.3-uci-hotfix2";
   search::init();
   tb_init("C:\\Users\\kjlji\\OneDrive\\Documents\\VSCode\\C++\\AuroraChessEngine-main\\3-4-5");
 

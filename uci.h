@@ -38,7 +38,9 @@ chess::Board position(std::istringstream input){
       board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::PROMOTION, chess::letterToPiece(token[4])));
     }
     //Normal
-    board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))));
+    else{
+      board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))));
+    }
   }
 
   return board;
