@@ -31,9 +31,9 @@ struct Node{
   Node(Node* parent, uint8_t index, chess::Move edge, uint8_t depth) :
   parent(parent), index(index),
   firstChild(nullptr), nextSibling(nullptr),
-  visits(0), value(-1), edge(edge), isTerminal(false), depth(depth) {}
+  visits(0), value(-2), edge(edge), isTerminal(false), depth(depth) {}
 
-  Node() : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(0), edge(chess::Move()), isTerminal(false), depth(0) {}
+  Node() : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(-2), edge(chess::Move()), isTerminal(false), depth(0) {}
 };
 
 Node* selectChild(Node* parent){
@@ -76,33 +76,17 @@ void expand(Node* parent, chess::MoveList& moves){
 float playout(chess::Board& board){
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   if(_gameStatus != chess::ONGOING){return _gameStatus;}
-
-  return evaluation::evaluate(board);
+  
+  return evaluation::evaluate(board) + (rand() % 2000)/2000000.0; //add a small random offset so each evaluation is slightly different
 }
 
-void backpropagate(int result, Node* currNode){
-  //Backpropogate results
-  while(currNode != nullptr){
-    if(backpropStrat == AVERAGE){
-      currNode->value = (currNode->value*currNode->visits+result)/(currNode->visits+1);
-    }
-    else if(backpropStrat == MINIMAX){
-      currNode->value = fmax(result, currNode->value);
-    }
-    currNode->visits++;
-
-    currNode = currNode->parent;
-    result = -result;
-  }
-}
-
-Node* findBestMove(Node* root){
-  float currBestValue = -1;
+Node* findBestMove(Node* parent){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
   Node* currBestMove;
 
-  Node* currNode = root->firstChild.get();
+  Node* currNode = parent->firstChild.get();
   while(currNode != nullptr){
-    if(currNode->value>currBestValue){
+    if(currNode->value < currBestValue){
       currBestValue = currNode->value;
       currBestMove = currNode;
     }
@@ -111,6 +95,27 @@ Node* findBestMove(Node* root){
   }
 
   return currBestMove;
+}
+
+void backpropagate(float result, Node* currNode){
+  //Backpropogate results
+  //result = -result; Negate the reverse since it is the evaluation for the opponent of the currnode
+
+  while(currNode != nullptr){
+    if(backpropStrat == AVERAGE){
+      currNode->value = (currNode->value*currNode->visits+result)/(currNode->visits+1);
+      result = -result;
+    }
+    else if(backpropStrat == MINIMAX){
+      if(currNode->firstChild == nullptr){currNode->value = result;}//This is for the case where currNode is a leaf node
+      else{
+        currNode->value = -findBestMove(currNode)->value;
+      }
+    }
+
+    currNode->visits++;
+    currNode = currNode->parent;
+  }
 }
 
 void search(const chess::Board& rootBoard, uint32_t maxNodes){
@@ -145,7 +150,7 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
         chess::Board movedBoard = board;
 
         movedBoard.makeMove(currNode->edge);
-        int result = playout(movedBoard);
+        float result = playout(movedBoard);
         backpropagate(result, currNode);
 
         currNode = currNode->nextSibling.get();
@@ -154,7 +159,7 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
 
     //output some information on the search occasionally
     currNode = &root;
-    if(nodes >= (lastNodeCheck+1)*400000){
+    if(nodes >= lastNodeCheck*800000){
       lastNodeCheck++;
       
        std::cout << "\nNODES: " << nodes << " SELDEPTH: " << int(seldepth) <<"\n";

@@ -137,6 +137,7 @@ void loop(chess::Board board){
     if(token == "rpinned"){bitboards::printBoard(board.generateKingMasks().rookPinnedPieces); std::cout << "\n";}
     if(token == "bpinmask"){bitboards::printBoard(board.generateKingMasks().bishopPinmask); std::cout << "\n";}
     if(token == "bpinned"){bitboards::printBoard(board.generateKingMasks().bishopPinnedPieces); std::cout << "\n";}
+    if(token == "staticeval"){std::cout << evaluation::evaluate(board) << "\n";}
   }
 }
 }
