@@ -196,7 +196,7 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
   std::cout << "\ninfo nodes " << nodes <<
     " nps " << round(nodes/elapsed.count()) <<
     " time " << round(elapsed.count()*1000) <<
-    " score cp " << round((log(2/(findBestMove(&root)->value+1)-1)/-1.946)*100) <<  " wdl " << round(((findBestMove(&root)->value+1)/2)*1000) << " 0 " << 1000-round(((findBestMove(&root)->value+1)/2)*1000) << 
+    " score cp " << -round((log(2/(fmin(fmax(findBestMove(&root)->value, 0.001), 0.999)+1)-1)/-1.946)*100) <<  " wdl " << (1000-round(((findBestMove(&root)->value+1)/2)*1000)) << " 0 " << round(((findBestMove(&root)->value+1)/2)*1000) << 
     " pv ";
   while(currNode->firstChild != nullptr){
     currNode = findBestMove(currNode);
