@@ -1,6 +1,6 @@
 //Start reading code relating to move generation/chess rules in "bitboards.h"
 //After reading this file, go to files relating to search, starting with "search.h"
-#include "chess.h"
+#include "search.h"
 #include <chrono>
 //See https://backscattering.de/chess/uci/ for information on the Universal Chess Interface, which this file implements
 namespace uci{
@@ -102,16 +102,31 @@ chess::Board makeMoves(chess::Board &board, std::istringstream input){
   return board;
 }
 
+void go(std::istringstream input, chess::Board board){
+  std::string token;
+
+  input >> token;
+  if(token == "infinite"){
+    search::search(board, uint32_t(-1));
+  }
+  if(token == "nodes"){
+    uint32_t maxNodes;
+    input >> maxNodes;
+    search::search(board, maxNodes);
+  }
+}
+
 //The main UCI loop which detects input and runs other functions based on it
 void loop(chess::Board board){
   std::string token;
 
   while(true){
     std::cin >> token;
-    if(token == "uci"){std::cout << "uciok\n";} //TODO: add engine options before printing uciok
+    if(token == "uci"){std::cout << "id name Aurora\nid author kjljixx\n\nuciok\n";} //TODO: add engine options before printing uciok
     if(token == "isready"){std::cout << "readyok\n";} //TODO: make sure we are actually ready before printing readyok
     if(token == "perft"){int depth; std::cin >> depth; perftDiv(board, depth);}
     if(token == "position"){std::getline(std::cin, token); board = position(std::istringstream(token));}
+    if(token == "go"){std::getline(std::cin, token); go(std::istringstream(token), board);}
     if(token == "quit"){break;}
     //non-uci, custom commands
     if(token == "moves"){std::getline(std::cin, token); board = makeMoves(board, std::istringstream(token));}

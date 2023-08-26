@@ -77,13 +77,14 @@ struct Move{
 constexpr Move* MoveListFromBitboard(U64 moves, uint8_t startSquare, bool isPawn, Move* movesList, MoveFlags moveFlags = NONE){
   if(moves == 0){return movesList;}
   if(isPawn && (moves & 0xFF000000000000FFULL))//checks if move is pawn promotion. FF000000000000FF is the first and eight ranks
-  {while(moves){
-    uint8_t endSquare = _popLsb(moves);
-    *movesList++ = Move(startSquare, endSquare, PROMOTION, KNIGHT);
-    *movesList++ = Move(startSquare, endSquare, PROMOTION, BISHOP);
-    *movesList++ = Move(startSquare, endSquare, PROMOTION, ROOK);
-    *movesList++ = Move(startSquare, endSquare, PROMOTION, QUEEN);
-  }
+  {
+    while(moves){
+      uint8_t endSquare = _popLsb(moves);
+      *movesList++ = Move(startSquare, endSquare, PROMOTION, KNIGHT);
+      *movesList++ = Move(startSquare, endSquare, PROMOTION, BISHOP);
+      *movesList++ = Move(startSquare, endSquare, PROMOTION, ROOK);
+      *movesList++ = Move(startSquare, endSquare, PROMOTION, QUEEN);
+    }
   }
   else{
   while(moves){

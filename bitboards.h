@@ -6,13 +6,11 @@
 
 using U64 = unsigned long long;
 
-//Does NOT check for if board is 0. This must be done separately
 constexpr inline uint8_t _bitscanForward(U64 board) {
   assert(board);
   return __builtin_ctzll(board);
 }
 
-//Does NOT check for if board is 0. This must be done separately
 constexpr inline uint8_t _bitscanReverse(U64 board) {
   assert(board);
   return 63 - __builtin_clzll(board);
@@ -22,7 +20,6 @@ constexpr inline uint8_t _popCount(U64 board) {
   return __builtin_popcountll(board);
 }
 
-//Does NOT check for if board is 0. This must be done separately
 constexpr inline uint8_t _popLsb(U64 &board) {
   assert(board);
   const int lsbIndex = _bitscanForward(board);
