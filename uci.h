@@ -25,14 +25,19 @@ chess::Board position(std::istringstream input){
   chess::Board board(fen);
 
   while(input >> token){
-    //TODO: castling & en passant flags should be implemented
-    chess::Pieces movedPiece;
-    if(board.pawns & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::PAWN;}
-    if(board.knights & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::KNIGHT;}
-    if(board.bishops & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::BISHOP;}
-    if(board.rooks & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::ROOK;}
-    if(board.queens & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::QUEEN;}
-    if(board.kings & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::KING;}
+    //En Passant
+    if((1ULL << squareNotationToIndex(token.substr(2, 2))) & board.enPassant){
+      board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::ENPASSANT));
+    }
+    //Castling
+    else if((squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 2 || squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 6) && squareIndexToFile(squareNotationToIndex(token.substr(0, 2))) == 4 && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::KING){
+      board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::CASTLE));
+    }
+    //Promotion
+    else if(token.size() == 5){
+      board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::PROMOTION, chess::letterToPiece(token[4])));
+    }
+    //Normal
     board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))));
   }
 
@@ -83,21 +88,20 @@ uint64_t perftDiv(chess::Board &board, int depth){
 chess::Board makeMoves(chess::Board &board, std::istringstream input){
   std::string token;
   while(input >> token){
-    //TODO: castling & en passant flags should be implemented
-    chess::Pieces movedPiece;
-    if(board.pawns & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::PAWN;}
-    if(board.knights & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::KNIGHT;}
-    if(board.bishops & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::BISHOP;}
-    if(board.rooks & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::ROOK;}
-    if(board.queens & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::QUEEN;}
-    if(board.kings & (1ULL << squareNotationToIndex(token.substr(0, 2)))){movedPiece = chess::KING;}
-
-    chess::MoveFlags moveFlags = chess::NONE;
-    if(squareIndexToFile(squareNotationToIndex(token.substr(0, 2))) == 4 &&
-    (squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 2 ||
-    squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 6) &&
-    movedPiece == chess::KING){moveFlags = chess::CASTLE;}
-    board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), moveFlags));
+    //En Passant
+    if((1ULL << squareNotationToIndex(token.substr(2, 2))) & board.enPassant){
+      board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::ENPASSANT));
+    }
+    //Castling
+    else if((squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 2 || squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 6) && squareIndexToFile(squareNotationToIndex(token.substr(0, 2))) == 4 && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::KING){
+      board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::CASTLE));
+    }
+    //Promotion
+    else if(token.size() == 5){
+      board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::PROMOTION, chess::letterToPiece(token[4])));
+    }
+    //Normal
+    board.makeMove(chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))));
   }
   return board;
 }
