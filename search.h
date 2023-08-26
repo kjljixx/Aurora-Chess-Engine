@@ -77,7 +77,7 @@ float playout(chess::Board& board){
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   if(_gameStatus != chess::ONGOING){return _gameStatus;}
   
-  return evaluation::evaluate(board) + (rand() % 2000)/2000000.0; //add a small random offset so each evaluation is slightly different
+  return evaluation::evaluate(board);
 }
 
 Node* findBestMove(Node* parent){
@@ -165,7 +165,7 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
        std::cout << "\nNODES: " << nodes << " SELDEPTH: " << int(seldepth) <<"\n";
        currNode = root.firstChild.get();
        while(currNode != nullptr){
-         std::cout << currNode->edge.toStringRep() << ": Q:" << currNode->value << " N:" << currNode->visits << "\n";
+         std::cout << currNode->edge.toStringRep() << ": Q:" << -currNode->value << " N:" << currNode->visits << "\n";
          currNode = currNode->nextSibling.get();
        }
 
