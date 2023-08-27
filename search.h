@@ -21,8 +21,8 @@ void init(){
 struct Node{
   Node* parent;
   uint8_t index;
-  std::unique_ptr<Node> firstChild;
-  std::unique_ptr<Node> nextSibling;
+  Node* firstChild;
+  Node* nextSibling;
   chess::Move edge;
   uint32_t visits;
   float value;
@@ -38,7 +38,7 @@ struct Node{
 };
 
 Node* selectChild(Node* parent){
-  Node* currNode = parent->firstChild.get();
+  Node* currNode = parent->firstChild;
   float maxPriority = -1;
   Node* maxPriorityNode = currNode;
 
@@ -53,7 +53,7 @@ Node* selectChild(Node* parent){
       maxPriorityNode = currNode;
     }
 
-    currNode = currNode->nextSibling.get();
+    currNode = currNode->nextSibling;
   }
 
   return maxPriorityNode;
@@ -62,13 +62,13 @@ Node* selectChild(Node* parent){
 void expand(Node* parent, chess::MoveList& moves){
   if(moves.size()==0){return;}
 
-  parent->firstChild = std::unique_ptr<Node>(new Node(parent, 0, moves[0], parent->depth+1));
-  Node* currNode = parent->firstChild.get();
+  parent->firstChild = new Node(parent, 0, moves[0], parent->depth+1);
+  Node* currNode = parent->firstChild;
   nodes++;
 
   for(int i=1; i<moves.size(); i++){
-    currNode->nextSibling = std::unique_ptr<Node>(new Node(parent, i, moves[i], parent->depth+1));
-    currNode = currNode->nextSibling.get();
+    currNode->nextSibling = new Node(parent, i, moves[i], parent->depth+1);
+    currNode = currNode->nextSibling;
     nodes++;
   }
 
@@ -86,14 +86,14 @@ Node* findBestMove(Node* parent){
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
   Node* currBestMove;
 
-  Node* currNode = parent->firstChild.get();
+  Node* currNode = parent->firstChild;
   while(currNode != nullptr){
     if(currNode->value < currBestValue){
       currBestValue = currNode->value;
       currBestMove = currNode;
     }
 
-    currNode = currNode->nextSibling.get();
+    currNode = currNode->nextSibling;
   }
 
   return currBestMove;
@@ -102,13 +102,14 @@ Node* findBestMove(Node* parent){
 float findBestValue(Node* parent){
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
 
-  Node* currNode = parent->firstChild.get();
+  Node* currNode = parent->firstChild;
   while(currNode != nullptr){
-    if(currNode->value < currBestValue){
-      currBestValue = currNode->value;
+    float currNodeValue = currNode->value;
+    if(currNodeValue < currBestValue){
+      currBestValue = currNodeValue;
     }
 
-    currNode = currNode->nextSibling.get();
+    currNode = currNode->nextSibling;
   }
 
   return currBestValue;
@@ -132,7 +133,10 @@ void backpropagate(float result, Node* currNode){
 
       if(currNode->firstChild == nullptr){currNode->value = result;}//This is for the case where currNode is a leaf node
       else{
-        currNode->value = runFindBestMove ? -findBestValue(currNode) : -fmax(-result, currNode->value);
+        //If the result is less than the current value, there is no point in continuing the backpropagation
+        if(-result >= currNode->value && !runFindBestMove){break;}
+
+        currNode->value = runFindBestMove ? -findBestValue(currNode) : fmax(-result, currNode->value);
       }
 
       runFindBestMove = currNode->value > oldCurrNodeValue;
@@ -174,7 +178,7 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
       if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){currNode->isTerminal=true; continue;}
       expand(currNode, moves);
       //Simulate for all new nodes
-      currNode = currNode->firstChild.get();
+      currNode = currNode->firstChild;
       while(currNode != nullptr){
         chess::Board movedBoard = board;
 
@@ -182,7 +186,7 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
         float result = playout(movedBoard);
         backpropagate(result, currNode);
 
-        currNode = currNode->nextSibling.get();
+        currNode = currNode->nextSibling;
       }
     }
 
@@ -192,7 +196,7 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
       lastNodeCheck++;
       
        std::cout << "\nNODES: " << nodes << " SELDEPTH: " << int(seldepth) <<"\n";
-       currNode = root.firstChild.get();
+       currNode = root.firstChild;
        while(currNode != nullptr){
         std::cout << currNode->edge.toStringRep() << ": Q:" << -currNode->value << " N:" << currNode->visits << " PV:";
         Node* pvNode = currNode;
@@ -201,7 +205,7 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
           std::cout << pvNode->edge.toStringRep() << " ";
         }
         std::cout << "\n";
-        currNode = currNode->nextSibling.get();
+        currNode = currNode->nextSibling;
        }
 
       std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
@@ -229,7 +233,7 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
   lastNodeCheck++;
   
     std::cout << "\nNODES: " << nodes << " SELDEPTH: " << int(seldepth) <<"\n";
-    currNode = root.firstChild.get();
+    currNode = root.firstChild;
     while(currNode != nullptr){
       std::cout << currNode->edge.toStringRep() << ": Q:" << -currNode->value << " N:" << currNode->visits << " PV:";
       Node* pvNode = currNode;
@@ -238,7 +242,7 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
         std::cout << pvNode->edge.toStringRep() << " ";
       }
       std::cout << "\n";
-      currNode = currNode->nextSibling.get();
+      currNode = currNode->nextSibling;
     }
 
   std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
