@@ -27,6 +27,10 @@ constexpr inline uint8_t _popLsb(U64 &board) {
   return lsbIndex;
 }
 
+inline U64 _flipBoard(U64 &board){
+  return _byteswap_uint64(board);
+}
+
 //functions for transferring back and forth between notation(ex. a8) and index(ex. 56)
 uint8_t squareNotationToIndex(std::string notation){
   return (notation[1] - '1')*8+(notation[0] - 'a');

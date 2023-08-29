@@ -11,6 +11,10 @@ namespace chess{
 enum Colors{WHITE, BLACK};
 enum Pieces{null, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, UNKNOWN};
 
+bool validSquare(uint8_t square){
+  return square <= 63;
+}
+
 Pieces letterToPiece(char letter){
   switch (letter){
     case 'p': return PAWN;

@@ -6,8 +6,11 @@
 
 namespace search{
 
+
+
 enum backpropagationStrategy{AVERAGE, MINIMAX};
 backpropagationStrategy backpropStrat = MINIMAX;
+enum selectionStrategy{UCB};
 
 uint32_t nodes = 0;
 uint8_t seldepth = 0;
@@ -15,6 +18,7 @@ chess::Colors ourSide;
 
 void init(){
   lookupTables::init();
+  zobrist::init();
   srand(time(NULL));
 }
 
@@ -35,12 +39,22 @@ struct Node{
   visits(0), value(-2), edge(edge), isTerminal(false), depth(depth) {}
 
   Node() : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(-2), edge(chess::Move()), isTerminal(false), depth(0) {}
+
+  Node* getChildByIndex(uint8_t index){
+    Node* currNode = firstChild;
+    
+    for(int i=0; i<index; i++){
+      currNode = currNode->nextSibling;
+    }
+
+    return currNode;    
+  }
 };
 
 Node* selectChild(Node* parent){
   Node* currNode = parent->firstChild;
-  float maxPriority = -1;
-  Node* maxPriorityNode = currNode;
+  float maxPriority = -2;
+  uint8_t maxPriorityNodeIndex = 0;
 
   const float parentVisitsTerm = sqrtl(logl(parent->visits));
 
@@ -50,13 +64,13 @@ Node* selectChild(Node* parent){
 
     if(currPriority>maxPriority){
       maxPriority = currPriority;
-      maxPriorityNode = currNode;
+      maxPriorityNodeIndex = currNode->index;
     }
-
+    
     currNode = currNode->nextSibling;
   }
 
-  return maxPriorityNode;
+  return parent->getChildByIndex(maxPriorityNodeIndex);
 }
 
 void expand(Node* parent, chess::MoveList& moves){
@@ -75,11 +89,11 @@ void expand(Node* parent, chess::MoveList& moves){
   if(parent->depth+1>seldepth){seldepth = parent->depth+1;}
 }
 
-float playout(chess::Board& board){
+float playout(chess::Board& board, chess::Move lastMove){
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   if(_gameStatus != chess::ONGOING){return _gameStatus;}
   
-  return fmin(fmax(evaluation::evaluate(board)+(rand() % 2048)/10000000.0, -0.999), 0.999);
+  return evaluation::evaluate(board, lastMove);
 }
 
 Node* findBestMove(Node* parent){
@@ -115,6 +129,36 @@ float findBestValue(Node* parent){
   return currBestValue;
 }
 
+void printSearchInfo(Node& root, std::chrono::_V2::steady_clock::time_point start){
+  Node* currNode = &root;
+
+  std::cout << "\nNODES: " << nodes << " SELDEPTH: " << int(seldepth) <<"\n";
+  currNode = currNode->firstChild;
+  while(currNode != nullptr){
+  std::cout << currNode->edge.toStringRep() << ": Q:" << -currNode->value << " N:" << currNode->visits << " PV:";
+  Node* pvNode = currNode;
+  while(pvNode->firstChild != nullptr){
+    pvNode = findBestMove(pvNode);
+    std::cout << pvNode->edge.toStringRep() << " ";
+  }
+  std::cout << "\n";
+  currNode = currNode->nextSibling;
+  }
+
+  std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
+
+  std::cout << "\ninfo nodes " << nodes <<
+    " nps " << round(nodes/elapsed.count()) <<
+    " time " << round(elapsed.count()*1000) <<
+    " score cp " << round((log(2/(-findBestValue(&root)+1)-1)/-1.946)*100) <<  " wdl " << round(((-findBestValue(&root)+1)/2)*1000) << " 0 " << 1000-round(((-findBestValue(&root)+1)/2)*1000) << 
+    " pv ";
+  currNode = &root;
+  while(currNode->firstChild != nullptr){
+    currNode = findBestMove(currNode);
+    std::cout << currNode->edge.toStringRep() << " ";
+  }
+}
+
 void backpropagate(float result, Node* currNode){
   //Backpropogate results
 
@@ -136,7 +180,7 @@ void backpropagate(float result, Node* currNode){
         //If the result is less than the current value, there is no point in continuing the backpropagation
         if(-result >= currNode->value && !runFindBestMove){break;}
 
-        currNode->value = runFindBestMove ? -findBestValue(currNode) : fmax(-result, currNode->value);
+        currNode->value = runFindBestMove ? -findBestValue(currNode) : -result;
       }
 
       runFindBestMove = currNode->value > oldCurrNodeValue;
@@ -166,7 +210,7 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
     chess::Board board = rootBoard;
     while(currNode->firstChild != nullptr){
       currNode = selectChild(currNode);
-      board.makeMove(currNode->edge);
+      chess::makeMove(board, currNode->edge);
     }
     if(currNode->isTerminal){
       backpropagate(currNode->value, currNode);
@@ -182,8 +226,8 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
       while(currNode != nullptr){
         chess::Board movedBoard = board;
 
-        movedBoard.makeMove(currNode->edge);
-        float result = playout(movedBoard);
+        chess::makeMove(movedBoard, currNode->edge);
+        float result = playout(movedBoard, currNode->edge);
         backpropagate(result, currNode);
 
         currNode = currNode->nextSibling;
@@ -192,43 +236,11 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
 
     //output some information on the search occasionally
     if(nodes >= lastNodeCheck*500000){
-      currNode = &root;
       lastNodeCheck++;
-      
-       std::cout << "\nNODES: " << nodes << " SELDEPTH: " << int(seldepth) <<"\n";
-       currNode = root.firstChild;
-       while(currNode != nullptr){
-        std::cout << currNode->edge.toStringRep() << ": Q:" << -currNode->value << " N:" << currNode->visits << " PV:";
-        Node* pvNode = currNode;
-        while(pvNode->firstChild != nullptr){
-          pvNode = findBestMove(pvNode);
-          std::cout << pvNode->edge.toStringRep() << " ";
-        }
-        std::cout << "\n";
-        currNode = currNode->nextSibling;
-       }
-
-      std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
-  
-      std::cout << "\ninfo nodes " << nodes <<
-        " nps " << round(nodes/elapsed.count()) <<
-        " time " << round(elapsed.count()*1000) <<
-        " score cp " << round((log(2/(-findBestValue(&root)+1)-1)/-1.946)*100) <<  " wdl " << round(((-findBestValue(&root)+1)/2)*1000) << " 0 " << 1000-round(((-findBestValue(&root)+1)/2)*1000) << 
-        " pv ";
-      currNode = &root;
-      while(currNode->firstChild != nullptr){
-        currNode = findBestMove(currNode);
-        std::cout << currNode->edge.toStringRep() << " ";
-      }
+      printSearchInfo(root, start);
     }
   }
   //Output the final result of the search
-  // std::cout << "\nNODES: " << nodes << "\n";
-  // currNode = root.firstChild.get();
-  // while(currNode != nullptr){
-  //   std::cout << currNode->edge.toStringRep() << ": Q:" << currNode->value << " N:" << currNode->visits << "\n";
-  //   currNode = currNode->nextSibling.get();
-  // }
   currNode = &root;
   lastNodeCheck++;
   

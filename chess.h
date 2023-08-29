@@ -2,7 +2,7 @@
 //After reading this file, go to "uci.h"
 #include <cstdint>
 #include "lookup.h"
-#include "Fathom-1.0/src/tbprobe.h"
+//#include "Fathom-1.0/src/tbprobe.h"
 #include <sstream>
 #include <vector>
 #include <algorithm>
@@ -41,6 +41,9 @@ struct Board{
   U64 occupied;
 
   unsigned char canCurrentlyCastle;
+
+  //use to check for repetitions
+  U64 history[128];
 
   //constructor
   Board(
@@ -344,22 +347,36 @@ struct Board{
     if(numAttackers==0){_kingMasks.checkmask = 0xFFFFFFFFFFFFFFFFULL;}
     return _kingMasks;
   }
-
-  bool squareUnderAttack(uint8_t square){
+  //Returns the square of the piece which is attacking the square, if there is one. Otherwise returns -1
+  uint8_t squareUnderAttack(uint8_t square){
     U64 theirPieces = getTheirPieces();
 
-    if(lookupTables::knightTable[square] & knights & theirPieces){return true;}
-    if(lookupTables::getRookAttacks(square, white | black) & (rooks | queens) & theirPieces){return true;}
-    if(lookupTables::getBishopAttacks(square, white | black) & (bishops | queens) & theirPieces){return true;}
-    if(lookupTables::pawnAttackTable[sideToMove][square] & pawns & theirPieces){return true;}
-    if(lookupTables::kingTable[square] & kings & theirPieces){return true;}
+    U64 attackBb = lookupTables::pawnAttackTable[sideToMove][square] & pawns & theirPieces;
+    if(attackBb){return _bitscanForward(attackBb);}
 
-    return false;
+    attackBb = lookupTables::knightTable[square] & knights & theirPieces;
+    if(attackBb){return _bitscanForward(attackBb);}
+
+    U64 bishopAttacks = lookupTables::getBishopAttacks(square, white | black) & theirPieces;
+    attackBb = bishopAttacks & bishops;
+    if(attackBb){return _bitscanForward(attackBb);}
+
+    U64 rookAttacks = lookupTables::getRookAttacks(square, white | black) & theirPieces;
+    attackBb = rookAttacks & rooks;
+    if(attackBb){return _bitscanForward(attackBb);}
+
+    attackBb = (bishopAttacks | rookAttacks) & queens;
+    if(attackBb){return _bitscanForward(attackBb);}
+
+    attackBb = lookupTables::kingTable[square] & kings & theirPieces;
+    if(attackBb){return _bitscanForward(attackBb);}
+
+    return 64;
   }
   
   //squareUnderAttack() except we update canCurrentlyCastle
   bool kingUnderAttack(uint8_t square){
-    bool result = squareUnderAttack(square);
+    bool result = validSquare(squareUnderAttack(square));
 
     if((square == sideToMove*56+3) && !result && (castlingRights & sideToMove*6+2) && (1ULL << square & ~occupied)){canCurrentlyCastle |= 2;}
     else if((square == sideToMove*56+5) && !result && (castlingRights & sideToMove*3+1) && (1ULL << square & ~occupied)){canCurrentlyCastle |= 1;}
@@ -368,6 +385,8 @@ struct Board{
   }
 
   Pieces findPiece(uint8_t square){
+    if(!validSquare(square)){return null;}
+
     U64 startSquare = 1ULL << square;
     if(queens & startSquare){return QUEEN;}
     if(rooks & startSquare){return ROOK;}
@@ -375,7 +394,8 @@ struct Board{
     if(pawns & startSquare){return PAWN;}
     if(knights & startSquare){return KNIGHT;}
     if(kings & startSquare){return KING;}
-    assert(0);
+
+    return null;
   }
 
   void makeMove(Move move){
@@ -788,13 +808,13 @@ struct MoveList{
 enum gameStatus{WIN = 1, DRAW = 0, LOSS = -1, ONGOING = 2};
 
 gameStatus getGameStatus(Board& board, bool isLegalMoves){
-  if(_popCount(board.occupied)<=5){
+  /*if(_popCount(board.occupied)<=5){
     auto tbProbeResult = tb_probe_wdl(board.white, board.black, board.kings, board.queens, board.rooks, board.bishops, board.knights, board.pawns, board.halfmoveClock, board.castlingRights, board.enPassant ? _bitscanForward(board.enPassant) : 0, board.sideToMove==WHITE);
     if(tbProbeResult==TB_RESULT_FAILED){board.printBoard(); assert(0);}
     if(tbProbeResult==TB_WIN){return WIN;}
     else if(tbProbeResult==TB_LOSS){return LOSS;}
     else{return DRAW;}
-  }
+  }*/
   if(!isLegalMoves){
     //If our king is under attack, we lost from checkmate. Otherwise, it is a draw by stalemate.
     return gameStatus(-board.squareUnderAttack(_bitscanForward(board.getOurPieces(KING))));
@@ -805,6 +825,8 @@ gameStatus getGameStatus(Board& board, bool isLegalMoves){
   if(!(board.pawns | board.rooks | board.queens) &&//If there are pawns, rooks, or queens on the board, it is not insufficient material
   (_popCount(board.bishops | board.knights)<=1))
   {return DRAW;}
+  //Threefold Repetition
+  if(std::count(std::begin(board.history), &board.history[board.halfmoveClock], board.history[board.halfmoveClock]) >= 2){return DRAW;}
 
   return ONGOING;
 }
