@@ -160,7 +160,7 @@ int* eg_table[6] =
     eg_king_table
 };
 
-int gamephaseInc[12] = {0,0,1,1,1,1,2,2,4,4,0,0};
+int gamephaseInc[7] = {0, 0, 1, 1, 2, 4, 0};
 
 int pieceSquareTable(chess::Board& board){
   int mg[2];
