@@ -1,5 +1,6 @@
 .vscode
 aurora.exe
+auroradev.exe
 test.cpp
 test.exe
-test.sh
+test.bat

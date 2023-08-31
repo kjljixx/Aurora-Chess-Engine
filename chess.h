@@ -347,7 +347,7 @@ struct Board{
     if(numAttackers==0){_kingMasks.checkmask = 0xFFFFFFFFFFFFFFFFULL;}
     return _kingMasks;
   }
-  //Returns the square of the piece which is attacking the square, if there is one. Otherwise returns -1
+  //Returns the square of the piece which is attacking the square, if there is one. Otherwise returns 64
   uint8_t squareUnderAttack(uint8_t square){
     U64 theirPieces = getTheirPieces();
 
@@ -376,7 +376,7 @@ struct Board{
   
   //squareUnderAttack() except we update canCurrentlyCastle
   bool kingUnderAttack(uint8_t square){
-    bool result = validSquare(squareUnderAttack(square));
+    bool result = squareUnderAttack(square) <= 63;
 
     if((square == sideToMove*56+3) && !result && (castlingRights & sideToMove*6+2) && (1ULL << square & ~occupied)){canCurrentlyCastle |= 2;}
     else if((square == sideToMove*56+5) && !result && (castlingRights & sideToMove*3+1) && (1ULL << square & ~occupied)){canCurrentlyCastle |= 1;}
@@ -385,7 +385,7 @@ struct Board{
   }
 
   Pieces findPiece(uint8_t square){
-    if(!validSquare(square)){return null;}
+    if(square>63){return null;}
 
     U64 startSquare = 1ULL << square;
     if(queens & startSquare){return QUEEN;}
@@ -519,11 +519,11 @@ Move* generateLegalMoves(Board &board, Move* legalMoves){
   //castling
   if(_kingMasks.checkmask == 0xFFFFFFFFFFFFFFFFULL){ //make sure king is not in check
     //Queenside castling
-    if((board.canCurrentlyCastle & 0x2) && (1ULL << board.sideToMove*56+2 & ~board.occupied) && (1ULL << board.sideToMove*56+1 & ~board.occupied) && !board.squareUnderAttack(board.sideToMove*56+2)){
+    if((board.canCurrentlyCastle & 0x2) && (1ULL << board.sideToMove*56+2 & ~board.occupied) && (1ULL << board.sideToMove*56+1 & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+2)<=63)){
       *legalMovesPtr++ = Move(piecePos, board.sideToMove*56+2, CASTLE);
     }
     //Kingside castling
-    if((board.canCurrentlyCastle & 0x1) && (1ULL << board.sideToMove*56+6 & ~board.occupied) && !board.squareUnderAttack(board.sideToMove*56+6)){
+    if((board.canCurrentlyCastle & 0x1) && (1ULL << board.sideToMove*56+6 & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+6)<=63)){
       *legalMovesPtr++ = Move(piecePos, board.sideToMove*56+6, CASTLE);
     }
   }
@@ -568,7 +568,7 @@ Move* generateLegalMoves(Board &board, Move* legalMoves){
       uint8_t startSquare = _popLsb(enPassantMovesBitboard);
       board.unsetColors(1ULL << startSquare, board.sideToMove);
       //check if king is under attack
-      if(!board.squareUnderAttack(_bitscanForward(ourPieces & board.kings))){*legalMovesPtr++ = Move(startSquare, enPassantSquare, ENPASSANT);}
+      if(!(board.squareUnderAttack(_bitscanForward(ourPieces & board.kings))<=63)){*legalMovesPtr++ = Move(startSquare, enPassantSquare, ENPASSANT);}
 
       board.setColors(1ULL << startSquare, board.sideToMove);
     }
@@ -668,11 +668,11 @@ bool isLegalMoves(Board& board){
   //castling
   if(_kingMasks.checkmask == 0xFFFFFFFFFFFFFFFFULL){ //make sure king is not in check
     //Queenside castling
-    if((board.canCurrentlyCastle & 0x2) && (1ULL << board.sideToMove*56+2 & ~board.occupied) && (1ULL << board.sideToMove*56+1 & ~board.occupied) && !board.squareUnderAttack(board.sideToMove*56+2)){
+    if((board.canCurrentlyCastle & 0x2) && (1ULL << board.sideToMove*56+2 & ~board.occupied) && (1ULL << board.sideToMove*56+1 & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+2)<=63)){
       return true;
     }
     //Kingside castling
-    if((board.canCurrentlyCastle & 0x1) && (1ULL << board.sideToMove*56+6 & ~board.occupied) && !board.squareUnderAttack(board.sideToMove*56+6)){
+    if((board.canCurrentlyCastle & 0x1) && (1ULL << board.sideToMove*56+6 & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+6)<=63)){
       return true;
     }
   }
@@ -717,7 +717,7 @@ bool isLegalMoves(Board& board){
       uint8_t startSquare = _popLsb(enPassantMovesBitboard);
       board.unsetColors(1ULL << startSquare, board.sideToMove);
       //check if king is under attack
-      if(!board.squareUnderAttack(_bitscanForward(ourPieces & board.kings))){
+      if(!(board.squareUnderAttack(_bitscanForward(ourPieces & board.kings)<=63))){
         board.setColors(board.enPassant << 8, Colors(!board.sideToMove));
         board.setColors(1ULL << startSquare, board.sideToMove);
         board.unsetColors(board.enPassant, board.sideToMove);
@@ -817,7 +817,7 @@ gameStatus getGameStatus(Board& board, bool isLegalMoves){
   }*/
   if(!isLegalMoves){
     //If our king is under attack, we lost from checkmate. Otherwise, it is a draw by stalemate.
-    return gameStatus(-board.squareUnderAttack(_bitscanForward(board.getOurPieces(KING))));
+    return gameStatus(-(board.squareUnderAttack(_bitscanForward(board.getOurPieces(KING)))<=63));
   }
   //Fifty Move Rule
   if(board.halfmoveClock>=100){return DRAW;}

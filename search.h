@@ -62,6 +62,8 @@ Node* selectChild(Node* parent){
     //Since our value ranges from -1 to 1 instead of 0 to 1, the c value in the ucb1 formula becomes 4
     float currPriority = -currNode->value+(4*parentVisitsTerm)/sqrtl(currNode->visits);
 
+    assert(currPriority>=-1);
+
     if(currPriority>maxPriority){
       maxPriority = currPriority;
       maxPriorityNodeIndex = currNode->index;
@@ -91,9 +93,12 @@ void expand(Node* parent, chess::MoveList& moves){
 
 float playout(chess::Board& board, chess::Move lastMove){
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
+  assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){return _gameStatus;}
-  
-  return evaluation::evaluate(board, lastMove);
+
+  float eval = evaluation::evaluate(board, lastMove);
+  assert(-1<=eval && 1>=eval);
+  return eval;
 }
 
 Node* findBestMove(Node* parent){
@@ -228,6 +233,7 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
 
         chess::makeMove(movedBoard, currNode->edge);
         float result = playout(movedBoard, currNode->edge);
+        assert(-1<=result && 1>=result);
         backpropagate(result, currNode);
 
         currNode = currNode->nextSibling;
