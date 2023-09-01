@@ -91,12 +91,29 @@ void go(std::istringstream input, chess::Board board){
 
   input >> token;
   if(token == "infinite"){
-    search::search(board, uint32_t(-1));
+    search::search(board, search::timeManagement(search::INFINITE));
   }
-  if(token == "nodes"){
-    uint32_t maxNodes;
+  else if(token == "nodes"){
+    int maxNodes;
     input >> maxNodes;
-    search::search(board, maxNodes);
+    search::search(board, search::timeManagement(search::NODES, maxNodes));
+  }
+  else{
+    search::timeManagement tm(search::TIME);
+    int time;
+
+    if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += time/20000.0;}}
+    else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += time/20000.0;}}
+    else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += time/20000.0;}}
+    else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += time/20000.0;}}
+
+    while(input >> token){
+      if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += time/20000.0;}}
+      else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += time/20000.0;}}
+      else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += time/20000.0;}}
+      else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += time/20000.0;}}
+    }
+    search::search(board, tm);
   }
 }
 //Custom commands
@@ -167,6 +184,7 @@ void loop(chess::Board board){
     if(token == "bpinned"){bitboards::printBoard(board.generateKingMasks().bishopPinnedPieces); std::cout << "\n";}
     if(token == "staticeval"){std::cout << evaluation::evaluate(board) << "\n";}
     if(token == "see"){std::cin >> token; chess::Move move = getMoveFromString(board, token); std::cout << evaluation::SEE(board, move.getEndSquare()) << "\n";}
+    if(token == "zobrist"){std::cout << zobrist::getHash(board) << "\n";}
   }
 }
 }

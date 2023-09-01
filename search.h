@@ -6,8 +6,6 @@
 
 namespace search{
 
-
-
 enum backpropagationStrategy{AVERAGE, MINIMAX};
 backpropagationStrategy backpropStrat = MINIMAX;
 enum selectionStrategy{UCB};
@@ -197,8 +195,21 @@ void backpropagate(float result, Node* currNode){
     currNode = currNode->parent;
   }
 }
+//Code relating to the time manager
+enum timeManagementType{
+  INFINITE,
+  TIME,
+  NODES
+};
+
+struct timeManagement{
+  timeManagementType tmType = INFINITE;
+  float limit; //For infinite, this does not matter. For Nodes, this is the amount of nodes. For Time, it is the amount of seconds
+  timeManagement(timeManagementType _tmType, uint32_t _limit = 0): tmType(_tmType), limit(_limit) {}
+  timeManagement(): tmType(INFINITE), limit(0){}
+};
 //The main search function
-void search(const chess::Board& rootBoard, uint32_t maxNodes){
+void search(const chess::Board& rootBoard, timeManagement tm){
   auto start = std::chrono::steady_clock::now();
 
   nodes = 0;
@@ -208,9 +219,10 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
   Node root = Node(nullptr, 0, chess::Move(), 0); root.visits = 1;
   Node* currNode = &root; 
   
-  int lastNodeCheck = 0;
+  int lastNodeCheck = 1;
+  std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
-  while(nodes<maxNodes){
+  while((tm.tmType == INFINITE) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (nodes<tm.limit && tm.tmType == NODES)){
     currNode = &root;
     chess::Board board = rootBoard;
     while(currNode->firstChild != nullptr){
@@ -245,37 +257,11 @@ void search(const chess::Board& rootBoard, uint32_t maxNodes){
       lastNodeCheck++;
       printSearchInfo(root, start);
     }
+    elapsed = std::chrono::steady_clock::now() - start;
   }
   //Output the final result of the search
-  currNode = &root;
-  lastNodeCheck++;
-  
-    std::cout << "\nNODES: " << nodes << " SELDEPTH: " << int(seldepth) <<"\n";
-    currNode = root.firstChild;
-    while(currNode != nullptr){
-      std::cout << currNode->edge.toStringRep() << ": Q:" << -currNode->value << " N:" << currNode->visits << " PV:";
-      Node* pvNode = currNode;
-      while(pvNode->firstChild != nullptr){
-        pvNode = findBestMove(pvNode);
-        std::cout << pvNode->edge.toStringRep() << " ";
-      }
-      std::cout << "\n";
-      currNode = currNode->nextSibling;
-    }
-
-  std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
-
-  std::cout << "\ninfo nodes " << nodes <<
-    " nps " << round(nodes/elapsed.count()) <<
-    " time " << round(elapsed.count()*1000) <<
-    " score cp " << round((log(2/(-findBestValue(&root)+1)-1)/-1.946)*100) <<  " wdl " << round(((-findBestValue(&root)+1)/2)*1000) << " 0 " << 1000-round(((-findBestValue(&root)+1)/2)*1000) << 
-    " pv ";
-  currNode = &root;
-  while(currNode->firstChild != nullptr){
-    currNode = findBestMove(currNode);
-    std::cout << currNode->edge.toStringRep() << " ";
-  }
-  std::cout << "\nbestmove " << findBestMove(&root)->edge.toStringRep() << " ponder " << findBestMove(findBestMove(&root))->edge.toStringRep() << "\n";
+  printSearchInfo(root, start);
+  std::cout << "\nbestmove " << findBestMove(&root)->edge.toStringRep() << "\n";
 }
 
 }//namespace search

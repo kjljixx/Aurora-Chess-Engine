@@ -44,6 +44,7 @@ struct Board{
 
   //use to check for repetitions
   U64 history[128];
+  bool hashed; //if there is a zobrist hash of the position in history, this is true
 
   //constructor
   Board(
@@ -70,16 +71,19 @@ struct Board{
   sideToMove(sideToMove),
   castlingRights(castlingRights),
   enPassant(enPassant),
-  halfmoveClock(halfmoveClock)
+  halfmoveClock(halfmoveClock),
+  hashed(false)
   {
   }
 
   Board(){
     setToFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    hashed = false;
   }
 
   Board(std::string fen){
     setToFen(fen);
+    hashed = false;
   }
 
   void setToFen(std::string fenString) {
@@ -826,7 +830,8 @@ gameStatus getGameStatus(Board& board, bool isLegalMoves){
   (_popCount(board.bishops | board.knights)<=1))
   {return DRAW;}
   //Threefold Repetition
-  if(std::count(std::begin(board.history), &board.history[board.halfmoveClock], board.history[board.halfmoveClock]) >= 2){return DRAW;}
+  if(std::count(std::begin(board.history), &board.history[board.halfmoveClock], board.history[board.halfmoveClock]) >= 2)
+  {return DRAW;}
 
   return ONGOING;
 }
