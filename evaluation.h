@@ -240,7 +240,7 @@ int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
   board.white = white;
   board.black = black;
 
-  return values[0];
+  return -values[0];
 }
 
 float evaluate(chess::Board& board, chess::Move lastMove = chess::Move()){

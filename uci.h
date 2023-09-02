@@ -183,7 +183,7 @@ void loop(chess::Board board){
     if(token == "bpinmask"){bitboards::printBoard(board.generateKingMasks().bishopPinmask); std::cout << "\n";}
     if(token == "bpinned"){bitboards::printBoard(board.generateKingMasks().bishopPinnedPieces); std::cout << "\n";}
     if(token == "staticeval"){std::cout << evaluation::evaluate(board) << "\n";}
-    if(token == "see"){std::cin >> token; chess::Move move = getMoveFromString(board, token); std::cout << evaluation::SEE(board, move.getEndSquare()) << "\n";}
+    if(token == "see"){std::cin >> token; uint8_t square = squareNotationToIndex(token); std::cout << evaluation::SEE(board, square) << "\n";}
     if(token == "zobrist"){std::cout << zobrist::getHash(board) << "\n";}
   }
 }

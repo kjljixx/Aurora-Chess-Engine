@@ -49,6 +49,15 @@ struct Node{
   }
 };
 
+void destroyTree(Node* root){
+  if(root){
+    destroyTree(root->firstChild);
+    destroyTree(root->nextSibling);
+
+    delete root;
+  }
+}
+
 Node* selectChild(Node* parent){
   Node* currNode = parent->firstChild;
   float maxPriority = -2;
@@ -132,8 +141,8 @@ float findBestValue(Node* parent){
   return currBestValue;
 }
 
-void printSearchInfo(Node& root, std::chrono::_V2::steady_clock::time_point start){
-  Node* currNode = &root;
+void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point start){
+  Node* currNode = root;
 
   std::cout << "\nNODES: " << nodes << " SELDEPTH: " << int(seldepth) <<"\n";
   currNode = currNode->firstChild;
@@ -153,9 +162,9 @@ void printSearchInfo(Node& root, std::chrono::_V2::steady_clock::time_point star
   std::cout << "\ninfo nodes " << nodes <<
     " nps " << round(nodes/elapsed.count()) <<
     " time " << round(elapsed.count()*1000) <<
-    " score cp " << round((log(2/(-findBestValue(&root)+1)-1)/-1.946)*100) <<  " wdl " << round(((-findBestValue(&root)+1)/2)*1000) << " 0 " << 1000-round(((-findBestValue(&root)+1)/2)*1000) << 
+    " score cp " << round((log(2/(-findBestValue(root)+1)-1)/-1.946)*100) <<  " wdl " << round(((-findBestValue(root)+1)/2)*1000) << " 0 " << 1000-round(((-findBestValue(root)+1)/2)*1000) << 
     " pv ";
-  currNode = &root;
+  currNode = root;
   while(currNode->firstChild != nullptr){
     currNode = findBestMove(currNode);
     std::cout << currNode->edge.toStringRep() << " ";
@@ -216,14 +225,15 @@ void search(const chess::Board& rootBoard, timeManagement tm){
   seldepth = 0;
   ourSide = rootBoard.sideToMove;
 
-  Node root = Node(nullptr, 0, chess::Move(), 0); root.visits = 1;
-  Node* currNode = &root; 
+  Node* root = new Node(nullptr, 0, chess::Move(), 0);
+  root->visits = 1;
+  Node* currNode = root; 
   
   int lastNodeCheck = 1;
   std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
   while((tm.tmType == INFINITE) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (nodes<tm.limit && tm.tmType == NODES)){
-    currNode = &root;
+    currNode = root;
     chess::Board board = rootBoard;
     while(currNode->firstChild != nullptr){
       currNode = selectChild(currNode);
@@ -261,7 +271,9 @@ void search(const chess::Board& rootBoard, timeManagement tm){
   }
   //Output the final result of the search
   printSearchInfo(root, start);
-  std::cout << "\nbestmove " << findBestMove(&root)->edge.toStringRep() << "\n";
+  std::cout << "\nbestmove " << findBestMove(root)->edge.toStringRep() << "\n";
+
+  destroyTree(root);
 }
 
 }//namespace search
