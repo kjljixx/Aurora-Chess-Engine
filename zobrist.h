@@ -130,6 +130,7 @@ U64 updateHash(chess::Board& board, chess::Move move){
 }
 }//namespace
 namespace chess{
+  //The normal Board.makeMove except we update the zobrist hash. Use this rather than Board.makeMove for making moves during a game
   void makeMove(chess::Board& board, chess::Move move){
     if(board.hashed){
       U64 newHash = zobrist::updateHash(board, move);

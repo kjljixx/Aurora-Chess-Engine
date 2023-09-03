@@ -652,11 +652,10 @@ bool isLegalMoves(Board& board){
   while(pieceBitboard){
     piecePos = _popLsb(pieceBitboard);
 
-    if(lookupTables::knightTable[piecePos] & notOurPieces & _kingMasks.checkmask, piecePos){return true;};
+    if(lookupTables::knightTable[piecePos] & notOurPieces & _kingMasks.checkmask){return true;}
   }
 
   pieceBitboard = (ourPieces & board.kings);
-  if(!(ourPieces & board.kings)){board.printBoard();}
   piecePos = _bitscanForward(pieceBitboard);
   board.canCurrentlyCastle = 0;
 
@@ -681,6 +680,7 @@ bool isLegalMoves(Board& board){
     }
   }
 
+
   pieceBitboard = (ourPieces & board.pawns);
   while(pieceBitboard){
     piecePos = _popLsb(pieceBitboard);
@@ -691,23 +691,22 @@ bool isLegalMoves(Board& board){
       //So just using the rook mask suffices
       if(!(1ULL << piecePos & _kingMasks.bishopPinnedPieces)){
         U64 singlePushBb = lookupTables::pawnPushTable[board.sideToMove][piecePos] & ~board.occupied;
-        if(board.sideToMove == WHITE){if((singlePushBb | (singlePushBb << 8 & bitboards::rank4 & ~board.occupied)) & _kingMasks.checkmask & _kingMasks.rookPinmask, piecePos){return true;};}
-        else{if((singlePushBb | (singlePushBb >> 8 & bitboards::rank5 & ~board.occupied)) & _kingMasks.checkmask & _kingMasks.rookPinmask, piecePos){return true;};}
+        if(board.sideToMove == WHITE){if((singlePushBb | (singlePushBb << 8 & bitboards::rank4 & ~board.occupied)) & _kingMasks.checkmask & _kingMasks.rookPinmask){return true;};}
+        else{if((singlePushBb | (singlePushBb >> 8 & bitboards::rank5 & ~board.occupied)) & _kingMasks.checkmask & _kingMasks.rookPinmask){return true;};}
       }
 
       //Using similar logic, using just the bishop mask suffices
       if(!(1ULL << piecePos & _kingMasks.rookPinnedPieces)){
-        if(lookupTables::pawnAttackTable[board.sideToMove][piecePos] & theirPieces & _kingMasks.checkmask & _kingMasks.bishopPinmask, piecePos){return true;};
+        if(lookupTables::pawnAttackTable[board.sideToMove][piecePos] & theirPieces & _kingMasks.checkmask & _kingMasks.bishopPinmask){return true;};
       }
     }
     else{
       U64 singlePushBb = lookupTables::pawnPushTable[board.sideToMove][piecePos] & ~board.occupied;
-      if(board.sideToMove == WHITE){if((singlePushBb | (singlePushBb << 8 & bitboards::rank4 & ~board.occupied)) & _kingMasks.checkmask, piecePos){return true;};}
-      else{if((singlePushBb | (singlePushBb >> 8 & bitboards::rank5 & ~board.occupied)) & _kingMasks.checkmask, piecePos){return true;};}
+      if(board.sideToMove == WHITE){if((singlePushBb | (singlePushBb << 8 & bitboards::rank4 & ~board.occupied)) & _kingMasks.checkmask){return true;};}
+      else{if((singlePushBb | (singlePushBb >> 8 & bitboards::rank5 & ~board.occupied)) & _kingMasks.checkmask){return true;};}
 
-      if(lookupTables::pawnAttackTable[board.sideToMove][piecePos] & theirPieces & _kingMasks.checkmask, piecePos){return true;};
+      if(lookupTables::pawnAttackTable[board.sideToMove][piecePos] & theirPieces & _kingMasks.checkmask){return true;};
     }
-
   }
   //With en passant, we can just test the move
   if(board.enPassant){
@@ -740,10 +739,10 @@ bool isLegalMoves(Board& board){
     //if rook is pinned by a bishop it cannot move, so we only check for if it is pinned by a rook
     if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){continue;}
     if(1ULL << piecePos & _kingMasks.rookPinnedPieces){
-      if(lookupTables::getRookAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask & _kingMasks.rookPinmask, piecePos){return true;};  
+      if(lookupTables::getRookAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask & _kingMasks.rookPinmask){return true;};  
     }
     else{
-      if(lookupTables::getRookAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask, piecePos){return true;};     
+      if(lookupTables::getRookAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask){return true;};     
     }
   }
 
@@ -754,10 +753,10 @@ bool isLegalMoves(Board& board){
     //if bishop is pinned by a rook it cannot move, so we only check for if it is pinned by a bishop
     if(1ULL << piecePos & _kingMasks.rookPinnedPieces){continue;}
     if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){
-      if(lookupTables::getBishopAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask & _kingMasks.bishopPinmask, piecePos){return true;};    
+      if(lookupTables::getBishopAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask & _kingMasks.bishopPinmask){return true;};    
     }
     else{
-      if(lookupTables::getBishopAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask, piecePos){return true;};   
+      if(lookupTables::getBishopAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask){return true;};   
     }
   }
 
@@ -770,20 +769,20 @@ bool isLegalMoves(Board& board){
     //if rook is pinned by a bishop it cannot move, so we only check for if it is pinned by a rook
     if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){}
     else if(1ULL << piecePos & _kingMasks.rookPinnedPieces){
-      if(lookupTables::getRookAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask & _kingMasks.rookPinmask, piecePos){return true;}; 
+      if(lookupTables::getRookAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask & _kingMasks.rookPinmask){return true;}; 
     }
     else{
-      if(lookupTables::getRookAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask, piecePos){return true;};   
+      if(lookupTables::getRookAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask){return true;};   
     }
 
     //as a bishop:
     //if bishop is pinned by a rook it cannot move, so we only check for if it is pinned by a bishop
     if(1ULL << piecePos & _kingMasks.rookPinnedPieces){}
     else if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){
-      if(lookupTables::getBishopAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask & _kingMasks.bishopPinmask, piecePos){return true;};   
+      if(lookupTables::getBishopAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask & _kingMasks.bishopPinmask){return true;};   
     }
     else{
-      if(lookupTables::getBishopAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask, piecePos){return true;}; 
+      if(lookupTables::getBishopAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask){return true;}; 
     }
   }
 
@@ -820,6 +819,7 @@ gameStatus getGameStatus(Board& board, bool isLegalMoves){
     else{return DRAW;}
   }*/
   if(!isLegalMoves){
+    std::cout << gameStatus(-(board.squareUnderAttack(_bitscanForward(board.getOurPieces(KING)))<=63));
     //If our king is under attack, we lost from checkmate. Otherwise, it is a draw by stalemate.
     return gameStatus(-(board.squareUnderAttack(_bitscanForward(board.getOurPieces(KING)))<=63));
   }

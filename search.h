@@ -10,9 +10,7 @@ enum backpropagationStrategy{AVERAGE, MINIMAX};
 backpropagationStrategy backpropStrat = MINIMAX;
 enum selectionStrategy{UCB};
 
-uint32_t nodes = 0;
 uint8_t seldepth = 0;
-chess::Colors ourSide;
 
 void init(){
   lookupTables::init();
@@ -49,12 +47,31 @@ struct Node{
   }
 };
 
-void destroyTree(Node* root){
-  if(root){
-    destroyTree(root->firstChild);
-    destroyTree(root->nextSibling);
+Node* root = nullptr;
+chess::Board searchRootBoard;
 
-    delete root;
+void destroyTree(Node* node){
+  if(node){
+    destroyTree(node->firstChild);
+    destroyTree(node->nextSibling);
+
+    delete node;
+  }
+}
+//destroytree except we don't delete the siblings of the node
+void destroySubtree(Node* node){
+  if(node){
+    destroyTree(node->firstChild);
+
+    delete node;
+  }
+}
+//the node argument passed in moveRootToChild should be the first child of the root
+void moveRootToChild(Node* node, Node* newRoot){
+  if(node){
+    moveRootToChild(node->nextSibling, newRoot);
+    
+    if(node!=newRoot && node!=root){destroySubtree(node);}
   }
 }
 
@@ -87,12 +104,10 @@ void expand(Node* parent, chess::MoveList& moves){
 
   parent->firstChild = new Node(parent, 0, moves[0], parent->depth+1);
   Node* currNode = parent->firstChild;
-  nodes++;
 
   for(int i=1; i<moves.size(); i++){
     currNode->nextSibling = new Node(parent, i, moves[i], parent->depth+1);
     currNode = currNode->nextSibling;
-    nodes++;
   }
 
   if(parent->depth+1>seldepth){seldepth = parent->depth+1;}
@@ -144,7 +159,7 @@ float findBestValue(Node* parent){
 void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point start){
   Node* currNode = root;
 
-  std::cout << "\nNODES: " << nodes << " SELDEPTH: " << int(seldepth) <<"\n";
+  std::cout << "\nNODES: " << root->visits << " SELDEPTH: " << seldepth-root->depth <<"\n";
   currNode = currNode->firstChild;
   while(currNode != nullptr){
   std::cout << currNode->edge.toStringRep() << ": Q:" << -currNode->value << " N:" << currNode->visits << " PV:";
@@ -159,8 +174,8 @@ void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point star
 
   std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
-  std::cout << "\ninfo nodes " << nodes <<
-    " nps " << round(nodes/elapsed.count()) <<
+  std::cout << "\ninfo nodes " << root->visits <<
+    " nps " << round(root->visits/elapsed.count()) <<
     " time " << round(elapsed.count()*1000) <<
     " score cp " << round((log(2/(-findBestValue(root)+1)-1)/-1.946)*100) <<  " wdl " << round(((-findBestValue(root)+1)/2)*1000) << " 0 " << 1000-round(((-findBestValue(root)+1)/2)*1000) << 
     " pv ";
@@ -175,6 +190,7 @@ void backpropagate(float result, Node* currNode){
   //Backpropogate results
 
   bool runFindBestMove = false;
+  bool continueBackprop = true;
   float oldCurrNodeValue;
 
   while(currNode != nullptr){
@@ -183,21 +199,23 @@ void backpropagate(float result, Node* currNode){
       result = -result;
     }
     else if(backpropStrat == MINIMAX){
-      //If currNode is the best move and is backpropagated to become worse, we need to run findBestMove for the parent of currNode
-      oldCurrNodeValue = -2;
-      if(currNode->parent && currNode->value == currNode->parent->value){oldCurrNodeValue = currNode->value;}
+      if(continueBackprop){
+        //If currNode is the best move and is backpropagated to become worse, we need to run findBestMove for the parent of currNode
+        oldCurrNodeValue = -2;
+        if(currNode->parent && currNode->value == currNode->parent->value){oldCurrNodeValue = currNode->value;}
 
-      if(currNode->firstChild == nullptr){currNode->value = result;}//This is for the case where currNode is a leaf node
-      else{
-        //If the result is less than the current value, there is no point in continuing the backpropagation
-        if(-result >= currNode->value && !runFindBestMove){break;}
+        if(currNode->firstChild == nullptr){currNode->value = result;}//This is for the case where currNode is a leaf node
+        else{
+          //If the result is less than the current value, there is no point in continuing the backpropagation
+          if(-result >= currNode->value && !runFindBestMove){continueBackprop = false;}
 
-        currNode->value = runFindBestMove ? -findBestValue(currNode) : -result;
+          currNode->value = runFindBestMove ? -findBestValue(currNode) : -result;
+        }
+
+        runFindBestMove = currNode->value > oldCurrNodeValue;
+
+        result = currNode->value;
       }
-
-      runFindBestMove = currNode->value > oldCurrNodeValue;
-
-      result = currNode->value;
     }
 
     currNode->visits++;
@@ -218,30 +236,32 @@ struct timeManagement{
   timeManagement(): tmType(INFINITE), limit(0){}
 };
 //The main search function
+
 void search(const chess::Board& rootBoard, timeManagement tm){
   auto start = std::chrono::steady_clock::now();
 
-  nodes = 0;
-  seldepth = 0;
-  ourSide = rootBoard.sideToMove;
+  if(!root){root = new Node();}
 
-  Node* root = new Node(nullptr, 0, chess::Move(), 0);
-  root->visits = 1;
-  Node* currNode = root; 
+  searchRootBoard = rootBoard;
+
+  chess::Colors ourSide = rootBoard.sideToMove;
+
+  Node* currNode = root;
   
   int lastNodeCheck = 1;
   std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
-  while((tm.tmType == INFINITE) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (nodes<tm.limit && tm.tmType == NODES)){
+  while((tm.tmType == INFINITE) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (root->visits<tm.limit && tm.tmType == NODES)){
     currNode = root;
     chess::Board board = rootBoard;
+    //Traverse the search tree
     while(currNode->firstChild != nullptr){
       currNode = selectChild(currNode);
       chess::makeMove(board, currNode->edge);
     }
+    //Expand & Backpropagate new values
     if(currNode->isTerminal){
       backpropagate(currNode->value, currNode);
-      nodes++;
     }
     else{
       //Reached a leaf node
@@ -261,19 +281,39 @@ void search(const chess::Board& rootBoard, timeManagement tm){
         currNode = currNode->nextSibling;
       }
     }
-
-    //output some information on the search occasionally
-    if(nodes >= lastNodeCheck*500000){
+    //Output some information on the search occasionally
+    elapsed = std::chrono::steady_clock::now() - start;
+    if(elapsed.count() >= lastNodeCheck*5){
       lastNodeCheck++;
       printSearchInfo(root, start);
     }
-    elapsed = std::chrono::steady_clock::now() - start;
   }
   //Output the final result of the search
+  Node* x = findBestMove(root);
   printSearchInfo(root, start);
   std::cout << "\nbestmove " << findBestMove(root)->edge.toStringRep() << "\n";
 
-  destroyTree(root);
+}
+//Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
+void makeMove(chess::Board& board, chess::Move move){
+  if(root == nullptr || zobrist::getHash(board) != zobrist::getHash(searchRootBoard)){chess::makeMove(board, move); return;}
+
+  chess::makeMove(board, move);
+
+  Node* newRoot = root->firstChild;
+  while(newRoot != nullptr){
+    if(newRoot->edge == move){break;}
+    newRoot = newRoot->nextSibling;
+  }
+
+  if(newRoot == nullptr){root = nullptr; return;}
+
+  moveRootToChild(root->firstChild, newRoot);
+  newRoot->parent = nullptr; newRoot->nextSibling = nullptr; newRoot->index = 0; newRoot->edge = chess::Move(); newRoot->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
+
+  chess::makeMove(searchRootBoard, move);
+
+  root = newRoot;
 }
 
 }//namespace search
