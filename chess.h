@@ -819,7 +819,6 @@ gameStatus getGameStatus(Board& board, bool isLegalMoves){
     else{return DRAW;}
   }*/
   if(!isLegalMoves){
-    std::cout << gameStatus(-(board.squareUnderAttack(_bitscanForward(board.getOurPieces(KING)))<=63));
     //If our king is under attack, we lost from checkmate. Otherwise, it is a draw by stalemate.
     return gameStatus(-(board.squareUnderAttack(_bitscanForward(board.getOurPieces(KING)))<=63));
   }

@@ -104,14 +104,14 @@ void go(std::istringstream input, chess::Board board){
 
     if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += time/20000.0;}}
     else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += time/20000.0;}}
-    else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += time/20000.0;}}
-    else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += time/20000.0;}}
+    else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += 0/20000.0;}}
+    else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += 0/20000.0;}}
 
     while(input >> token){
-      if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += time/20000.0;}}
-      else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += time/20000.0;}}
-      else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += time/20000.0;}}
-      else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += time/20000.0;}}
+      if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += 0/20000.0;}}
+      else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += 0/20000.0;}}
+      else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += 0/20000.0;}}
+      else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += 0/20000.0;}}
     }
     search::search(board, tm);
   }
