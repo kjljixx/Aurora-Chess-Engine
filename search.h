@@ -113,12 +113,12 @@ void expand(Node* parent, chess::MoveList& moves){
   if(parent->depth+1>seldepth){seldepth = parent->depth+1;}
 }
 
-float playout(chess::Board& board, chess::Move lastMove){
+float playout(chess::Board& board, Node* currNode){
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){return _gameStatus;}
 
-  float eval = evaluation::evaluate(board, lastMove);
+  float eval = evaluation::evaluate(board, currNode->edge, currNode->parent->value);
   assert(-1<=eval && 1>=eval);
   return eval;
 }
@@ -274,7 +274,7 @@ void search(const chess::Board& rootBoard, timeManagement tm){
         chess::Board movedBoard = board;
 
         chess::makeMove(movedBoard, currNode->edge);
-        float result = playout(movedBoard, currNode->edge);
+        float result = playout(movedBoard, currNode);
         assert(-1<=result && 1>=result);
         backpropagate(result, currNode);
 

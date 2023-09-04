@@ -162,12 +162,16 @@ int* eg_table[6] =
     eg_king_table
 };
 
-int gamephaseInc[7] = {0, 0, 1, 1, 2, 4, 0};
+int gamephaseInc[6] = {0, 1, 1, 2, 4, 0};
+
+int gamePhase = 4;
+
+int currentPieceSquareTableEval = 0;
 
 int pieceSquareTable(chess::Board& board){
   int mg[2];
   int eg[2];
-  int gamePhase = 0;
+  gamePhase = 0;
 
   mg[chess::WHITE] = 0;
   mg[chess::BLACK] = 0;
@@ -186,7 +190,7 @@ int pieceSquareTable(chess::Board& board){
             mg[0] += mg_table[pc-1][sq^56] + mg_value[pc-1];
             eg[0] += eg_table[pc-1][sq^56] + mg_value[pc-1];
           }
-          gamePhase += gamephaseInc[pc];
+          gamePhase += gamephaseInc[pc-1];
       }
   }
 
@@ -194,17 +198,22 @@ int pieceSquareTable(chess::Board& board){
   int mgScore = mg[board.sideToMove] - mg[!board.sideToMove];
   int egScore = eg[board.sideToMove] - eg[!board.sideToMove];
 
+  if (gamePhase > 24){gamePhase = 24;} /* in case of early promotion */
   int mgPhase = gamePhase;
-  if (mgPhase > 24) mgPhase = 24; /* in case of early promotion */
   int egPhase = 24 - mgPhase;
-  return (mgScore * mgPhase + egScore * egPhase) / 24;
+
+  currentPieceSquareTableEval = (mgScore * mgPhase + egScore * egPhase) / 24;
+  return currentPieceSquareTableEval;
 }
 
 //Static Exchange Evaluation
 int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
+  gamePhase = 24;
   int values[32];
   int i=0;
-  values[i] = mg_value[board.findPiece(lastMoveEndSquare)];
+
+  chess::Pieces currPiece = board.findPiece(lastMoveEndSquare);
+  values[i] = (mg_value[currPiece-1] * gamePhase + eg_value[currPiece-1] * (24-gamePhase))/24;
 
   chess::Colors us = board.sideToMove;
   U64 white = board.white;
@@ -214,12 +223,11 @@ int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
   bool isOurSideToMove = false;
 
   uint8_t piecePos = board.squareUnderAttack(lastMoveEndSquare);
-  chess::Pieces leastValuableAttacker;
-  leastValuableAttacker = board.findPiece(piecePos);
+  chess::Pieces leastValuableAttacker = board.findPiece(piecePos);
 
   while(leastValuableAttacker){
     i++;
-    values[i] = mg_value[leastValuableAttacker] - values[i-1];
+    values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + eg_value[leastValuableAttacker-1] * (24-gamePhase))/24 - values[i-1];
 
     if(std::max(-values[i-1], values[i]) < 0){break;}
 
@@ -242,10 +250,10 @@ int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
   board.white = white;
   board.black = black;
 
-  return -values[0];
+  return values[0];
 }
 
-float evaluate(chess::Board& board, chess::Move lastMove = chess::Move()){
+float evaluate(chess::Board& board, chess::Move lastMove = chess::Move(), float previousEval = 0){
   int cpEvaluation = 0;
 
   //Piece Square Table Eval
