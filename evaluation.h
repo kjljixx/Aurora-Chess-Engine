@@ -180,18 +180,19 @@ int pieceSquareTable(chess::Board& board){
 
   /* evaluate each piece */
   for (int sq = 0; sq < 64; ++sq) {
-      chess::Pieces pc = board.findPiece(sq);
-      if (pc != chess::null) {
-          if((1ULL << sq) & board.black){
-            mg[1] += mg_table[pc-1][sq] + mg_value[pc-1];
-            eg[1] += eg_table[pc-1][sq] + mg_value[pc-1];
-          }
-          else{
-            mg[0] += mg_table[pc-1][sq^56] + mg_value[pc-1];
-            eg[0] += eg_table[pc-1][sq^56] + mg_value[pc-1];
-          }
-          gamePhase += gamephaseInc[pc-1];
+    if(!((1ULL << sq) & board.occupied)){continue;}
+    chess::Pieces pc = board.findPiece(sq);
+    if (pc != chess::null) {
+      if((1ULL << sq) & board.black){
+        mg[1] += mg_table[pc-1][sq] + mg_value[pc-1];
+        eg[1] += eg_table[pc-1][sq] + mg_value[pc-1];
       }
+      else{
+        mg[0] += mg_table[pc-1][sq^56] + mg_value[pc-1];
+        eg[0] += eg_table[pc-1][sq^56] + mg_value[pc-1];
+      }
+      gamePhase += gamephaseInc[pc-1];
+    }
   }
 
   /* tapered eval */
