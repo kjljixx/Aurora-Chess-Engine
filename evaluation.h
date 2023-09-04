@@ -254,6 +254,6 @@ float evaluate(chess::Board& board, chess::Move lastMove = chess::Move()){
     cpEvaluation += std::max(0, SEE(board, lastMove.getEndSquare()));
   }
 
-  return (2/(1+expl(-cpEvaluation*0.01*1.946*cpToWDLStretchFactor))-1)*0.999; //convert cp eval to wdl for ucb algorithm. Multiply by 0.999 to make sure definite wins (checkmates) are prioritised.
+  return fmax(fmin(atan(cpEvaluation/100.0)/1.56375, 1),-1)*0.999999; //convert cp eval to wdl for ucb algorithm. Multiply by 0.999 to make sure definite wins (checkmates) are prioritised.
 }
 }

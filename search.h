@@ -177,7 +177,7 @@ void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point star
   std::cout << "\ninfo nodes " << root->visits <<
     " nps " << round(root->visits/elapsed.count()) <<
     " time " << round(elapsed.count()*1000) <<
-    " score cp " << round((log(2/(-findBestValue(root)+1)-1)/-1.946)*100) <<  " wdl " << round(((-findBestValue(root)+1)/2)*1000) << " 0 " << 1000-round(((-findBestValue(root)+1)/2)*1000) << 
+    " score cp " << round(tan(-findBestValue(root)*1.56375)*100) <<  " wdl " << round(((-findBestValue(root)+1)/2)*1000) << " 0 " << 1000-round(((-findBestValue(root)+1)/2)*1000) << 
     " pv ";
   currNode = root;
   while(currNode->firstChild != nullptr){
@@ -283,7 +283,7 @@ void search(const chess::Board& rootBoard, timeManagement tm){
     }
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
-    if(elapsed.count() >= lastNodeCheck*5){
+    if(elapsed.count() >= lastNodeCheck*2){
       lastNodeCheck++;
       printSearchInfo(root, start);
     }
