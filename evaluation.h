@@ -3,8 +3,10 @@
 #include <algorithm>
 
 namespace evaluation{
-float cpToWDLStretchFactor = 1; //stretches the WDL evaluation
+//Evaluation Parameters
+int evalStabilityConstant = 10;
 
+//Taken from PeSTO: https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 int mg_value[6] = { 82, 337, 365, 477, 1025,  0};
 int eg_value[6] = { 94, 281, 297, 512,  936,  0};
 
@@ -253,6 +255,8 @@ float evaluate(chess::Board& board, chess::Move lastMove = chess::Move()){
   if(lastMove.value){
     cpEvaluation += std::max(0, SEE(board, lastMove.getEndSquare()));
   }
+
+  cpEvaluation += evalStabilityConstant; //bias the eval to stabilize when searching;
 
   return fmax(fmin(atan(cpEvaluation/100.0)/1.56375, 1),-1)*0.999999; //convert cp eval to wdl for ucb algorithm. Multiply by 0.999 to make sure definite wins (checkmates) are prioritised.
 }
