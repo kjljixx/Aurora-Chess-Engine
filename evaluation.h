@@ -238,6 +238,10 @@ int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
     leastValuableAttacker = board.findPiece(piecePos);
   }
 
+  board.sideToMove = us;
+  board.white = white;
+  board.black = black;
+
   if(i == 0){
     return 0;
   }
@@ -246,9 +250,6 @@ int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
     values[i-1] = -std::max(-values[i-1], values[i]);
   }
 
-  board.sideToMove = us;
-  board.white = white;
-  board.black = black;
 
   return values[0];
 }
