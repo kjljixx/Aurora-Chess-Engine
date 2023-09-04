@@ -289,7 +289,6 @@ void search(const chess::Board& rootBoard, timeManagement tm){
     }
   }
   //Output the final result of the search
-  Node* x = findBestMove(root);
   printSearchInfo(root, start);
   std::cout << "\nbestmove " << findBestMove(root)->edge.toStringRep() << "\n";
 
