@@ -208,7 +208,6 @@ int pieceSquareTable(chess::Board& board){
 
 //Static Exchange Evaluation
 int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
-  gamePhase = 24;
   int values[32];
   int i=0;
 
