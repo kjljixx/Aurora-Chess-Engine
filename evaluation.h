@@ -261,9 +261,13 @@ float evaluate(chess::Board& board, chess::Move lastMove = chess::Move(), float 
   cpEvaluation += pieceSquareTable(board);
 
   //Static Exchange Eval
-  if(lastMove.value){
-    cpEvaluation += std::max(0, SEE(board, lastMove.getEndSquare()));
+  int maxSEE = 0;
+  U64 theirPieces = board.getTheirPieces();
+  for(int i=0; i<64; i++){
+    if((1ULL << i) & ~theirPieces){continue;}
+    maxSEE = std::max(maxSEE, SEE(board, i));
   }
+  cpEvaluation += maxSEE;
 
   cpEvaluation += evalStabilityConstant; //bias the eval to stabilize when searching;
 
