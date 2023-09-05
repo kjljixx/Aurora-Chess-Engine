@@ -355,25 +355,19 @@ struct Board{
   uint8_t squareUnderAttack(uint8_t square){
     U64 theirPieces = getTheirPieces();
 
-    U64 attackBb = lookupTables::pawnAttackTable[sideToMove][square] & pawns & theirPieces;
-    if(attackBb){return _bitscanForward(attackBb);}
+    if(lookupTables::pawnAttackTable[sideToMove][square] & pawns & theirPieces){return _bitscanForward(lookupTables::pawnAttackTable[sideToMove][square] & pawns & theirPieces);}
 
-    attackBb = lookupTables::knightTable[square] & knights & theirPieces;
-    if(attackBb){return _bitscanForward(attackBb);}
+    if(lookupTables::knightTable[square] & knights & theirPieces){return _bitscanForward(lookupTables::knightTable[square] & knights & theirPieces);}
 
     U64 bishopAttacks = lookupTables::getBishopAttacks(square, white | black) & theirPieces;
-    attackBb = bishopAttacks & bishops;
-    if(attackBb){return _bitscanForward(attackBb);}
+    if(bishopAttacks & bishops){return _bitscanForward(bishopAttacks & bishops);}
 
     U64 rookAttacks = lookupTables::getRookAttacks(square, white | black) & theirPieces;
-    attackBb = rookAttacks & rooks;
-    if(attackBb){return _bitscanForward(attackBb);}
+    if(rookAttacks & rooks){return _bitscanForward(rookAttacks & rooks);}
 
-    attackBb = (bishopAttacks | rookAttacks) & queens;
-    if(attackBb){return _bitscanForward(attackBb);}
+    if((bishopAttacks | rookAttacks) & queens){return _bitscanForward((bishopAttacks | rookAttacks) & queens);}
 
-    attackBb = lookupTables::kingTable[square] & kings & theirPieces;
-    if(attackBb){return _bitscanForward(attackBb);}
+    if(lookupTables::kingTable[square] & kings & theirPieces){return _bitscanForward(lookupTables::kingTable[square] & kings & theirPieces);}
 
     return 64;
   }

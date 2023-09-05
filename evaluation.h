@@ -271,6 +271,6 @@ float evaluate(chess::Board& board, chess::Move lastMove = chess::Move(), float 
   cpEvaluation += maxSEE;
 
   cpEvaluation += evalStabilityConstant; //bias the eval to stabilize when searching
-  return fmax(fmin(atan(cpEvaluation/100.0)/1.56375, 1),-1)*0.999999; //convert cp eval to wdl for ucb algorithm. Multiply by 0.999 to make sure definite wins (checkmates) are prioritised.
+  return fmaxf(fminf(atan(cpEvaluation/100.0)/1.56375, 1),-1)*0.999999; //convert cp eval to wdl for ucb algorithm. Multiply by 0.999 to make sure definite wins (checkmates) are prioritised.
 }
 }
