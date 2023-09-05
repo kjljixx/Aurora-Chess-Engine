@@ -6,6 +6,7 @@
 
 namespace search{
 
+//parameters for search
 enum backpropagationStrategy{AVERAGE, MINIMAX};
 backpropagationStrategy backpropStrat = MINIMAX;
 float explorationFactor = 4;
