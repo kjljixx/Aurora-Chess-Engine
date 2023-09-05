@@ -255,13 +255,6 @@ int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
   return values[0];
 }
 
-float offset = 0;
-
-float randomOffset(){
-  offset >= 0.1 ? offset = 0 : offset += 0.00001;
-  return offset;
-}
-
 float evaluate(chess::Board& board, chess::Move lastMove = chess::Move(), float previousEval = 0){
   int cpEvaluation = 0;
 

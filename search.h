@@ -116,7 +116,10 @@ void expand(Node* parent, chess::MoveList& moves){
 float playout(chess::Board& board, Node* currNode){
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   assert(-1<=_gameStatus && 2>=_gameStatus);
-  if(_gameStatus != chess::ONGOING){return _gameStatus;}
+  if(_gameStatus != chess::ONGOING){
+    if(_gameStatus == chess::LOSS){return _gameStatus+0.00000001*currNode->depth;}
+    return _gameStatus;
+  }
 
   float eval = evaluation::evaluate(board, currNode->edge, currNode->parent->value);
   assert(-1<=eval && 1>=eval);
