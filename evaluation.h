@@ -1,6 +1,7 @@
 #include "zobrist.h"
 #include <math.h>
 #include <algorithm>
+#include <random>
 
 namespace evaluation{
 //Evaluation Parameters
@@ -254,6 +255,13 @@ int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
   return values[0];
 }
 
+float offset = 0;
+
+float randomOffset(){
+  offset >= 0.1 ? offset = 0 : offset += 0.00001;
+  return offset;
+}
+
 float evaluate(chess::Board& board, chess::Move lastMove = chess::Move(), float previousEval = 0){
   int cpEvaluation = 0;
 
@@ -269,8 +277,7 @@ float evaluate(chess::Board& board, chess::Move lastMove = chess::Move(), float 
   }
   cpEvaluation += maxSEE;
 
-  cpEvaluation += evalStabilityConstant; //bias the eval to stabilize when searching;
-
+  cpEvaluation += evalStabilityConstant; //bias the eval to stabilize when searching
   return fmax(fmin(atan(cpEvaluation/100.0)/1.56375, 1),-1)*0.999999; //convert cp eval to wdl for ucb algorithm. Multiply by 0.999 to make sure definite wins (checkmates) are prioritised.
 }
 }

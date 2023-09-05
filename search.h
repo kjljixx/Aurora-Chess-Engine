@@ -146,9 +146,7 @@ float findBestValue(Node* parent){
   Node* currNode = parent->firstChild;
   while(currNode != nullptr){
     float currNodeValue = currNode->value;
-    if(currNodeValue < currBestValue){
-      currBestValue = currNodeValue;
-    }
+    if(currNodeValue>=-1){currBestValue = fminf(currBestValue, currNodeValue);}
 
     currNode = currNode->nextSibling;
   }
@@ -199,22 +197,26 @@ void backpropagate(float result, Node* currNode){
       result = -result;
     }
     else if(backpropStrat == MINIMAX){
+      //We only need to backpropagate two types of results here: the current best child becomes worse, or there is a new best child
       if(continueBackprop){
-        //If currNode is the best move and is backpropagated to become worse, we need to run findBestMove for the parent of currNode
-        oldCurrNodeValue = -2;
-        if(currNode->parent && currNode->value == currNode->parent->value){oldCurrNodeValue = currNode->value;}
+        //If currNode is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currNode
+        oldCurrNodeValue = 2;
+        if(currNode->parent && -currNode->value == currNode->parent->value){oldCurrNodeValue = currNode->value;}
 
-        if(currNode->firstChild == nullptr){currNode->value = result;}//This is for the case where currNode is a leaf node
+        if(currNode->firstChild == nullptr){currNode->value = result; if(currNode->parent->firstChild == currNode){currNode->parent->value = -result;}}//This is for the case where currNode is a leaf node
         else{
-          //If the result is less than the current value, there is no point in continuing the backpropagation
-          if(-result >= currNode->value && !runFindBestMove){continueBackprop = false;}
+          //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
+          if(result <= currNode->value && !runFindBestMove){continueBackprop = false; continue;}
 
-          currNode->value = runFindBestMove ? -findBestValue(currNode) : -result;
+          currNode->value = runFindBestMove ? -findBestValue(currNode) : result;
         }
 
-        runFindBestMove = currNode->value > oldCurrNodeValue;
+        assert(-1<=currNode->value && 1>=currNode->value);
 
-        result = currNode->value;
+
+        runFindBestMove = currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
+
+        result = -currNode->value;
       }
     }
 

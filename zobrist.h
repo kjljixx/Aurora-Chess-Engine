@@ -3,7 +3,7 @@
 namespace zobrist{
 U64 seed = 1070372;
 //From Stockfish
-uint64_t random_U64() {
+U64 random_U64() {
 	seed ^= seed >> 12;
 	seed ^= seed << 25;
 	seed ^= seed >> 27;
