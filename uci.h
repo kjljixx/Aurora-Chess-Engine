@@ -116,6 +116,23 @@ void go(std::istringstream input, chess::Board board){
     search::search(board, tm);
   }
 }
+void setOption(std::istringstream input){
+  std::string token;
+  input >> token; //input the "name" token
+  input >> token;
+  if(token == "explorationfactor"){
+    input >> token; //input the "value" token
+    float value;
+    input >> value;
+    search::explorationFactor = value;
+  }
+  if(token == "evalstabilitybias"){
+    input >> token; //input the "value" token
+    int value;
+    input >> value;
+    evaluation::evalStabilityConstant = value;
+  }
+}
 //Custom commands
 chess::Board makeMoves(chess::Board &board, std::istringstream input){
   std::string token;
@@ -169,7 +186,7 @@ void loop(chess::Board board){
 
   while(true){
     std::cin >> token;
-    if(token == "uci"){std::cout << "id name Aurora\nid author kjljixx\n\nuciok\n";} //TODO: add engine options before printing uciok
+    if(token == "uci"){std::cout << "id name Aurora\nid author kjljixx\n\noption name explorationfactor type string default " << search::explorationFactor << "\noption name evalstabilitybias type spin default " << evaluation::evalStabilityConstant << " min -1024 max 1024\n\nuciok\n";}
     if(token == "isready"){std::cout << "readyok\n";} //TODO: make sure we are actually ready before printing readyok
     if(token == "perft"){int depth; std::cin >> depth; perftDiv(board, depth);}
     if(token == "position"){std::getline(std::cin, token); board = position(std::istringstream(token));}

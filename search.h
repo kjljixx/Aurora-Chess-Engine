@@ -8,7 +8,7 @@ namespace search{
 
 enum backpropagationStrategy{AVERAGE, MINIMAX};
 backpropagationStrategy backpropStrat = MINIMAX;
-enum selectionStrategy{UCB};
+float explorationFactor = 4;
 
 uint8_t seldepth = 0;
 
@@ -80,11 +80,10 @@ Node* selectChild(Node* parent){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = sqrtl(logl(parent->visits));
+  const float parentVisitsTerm = sqrtl(explorationFactor*logl(parent->visits));
 
   while(currNode != nullptr){
-    //Since our value ranges from -1 to 1 instead of 0 to 1, the c value in the ucb1 formula becomes 4
-    float currPriority = -currNode->value+(4*parentVisitsTerm)/sqrtl(currNode->visits);
+    float currPriority = -currNode->value+parentVisitsTerm/sqrtl(currNode->visits);
 
     assert(currPriority>=-1);
 
