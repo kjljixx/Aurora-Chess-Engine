@@ -121,7 +121,7 @@ float playout(chess::Board& board, Node* currNode){
     return _gameStatus;
   }
 
-  float eval = evaluation::evaluate(board, currNode->edge, currNode->parent->value);
+  float eval = fmaxf(fminf(atan(evaluation::evaluate(board)/100.0)/1.56375, 1),-1)*0.999999;
   assert(-1<=eval && 1>=eval);
   return eval;
 }

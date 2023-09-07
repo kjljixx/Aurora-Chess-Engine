@@ -8,8 +8,13 @@ namespace evaluation{
 int evalStabilityConstant = 10;
 
 //Taken from PeSTO: https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
-int mg_value[6] = { 82, 337, 365, 477, 1025, 10000};
-int eg_value[6] = { 94, 281, 297, 512,  936, 10000};
+int mg_value[6] = {82, 337, 365, 477, 1025, 10000};
+int eg_value[6] = {94, 281, 297, 512,  936, 10000};
+
+int mg_passedPawnBonus[8] = {0, 10, 10, 15, 20, 25, 30, 0};
+int eg_passedPawnBonus[8] = {0, 20, 25, 35, 45, 60, 80, 0};
+
+int* passedPawnBonuses[2] = {mg_passedPawnBonus, eg_passedPawnBonus};
 
 int mg_pawn_table[64] = {
       0,   0,   0,   0,   0,   0,  0,   0,
@@ -255,7 +260,45 @@ int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
   return values[0];
 }
 
-float evaluate(chess::Board& board, chess::Move lastMove = chess::Move(), float previousEval = 0){
+int passedPawns(chess::Board& board){
+  int mg_score = 0;
+  int eg_score = 0;
+  U64 pieceBitboard = board.getOurPieces(chess::PAWN);
+  U64 theirPawns = board.getTheirPieces(chess::PAWN);
+  while(pieceBitboard){
+    uint8_t piecePos = _popLsb(pieceBitboard);
+    if((lookupTables::passedPawnTable[board.sideToMove][piecePos] & theirPawns) == 0ULL){
+      uint8_t pawnRank = squareIndexToRank(piecePos);
+      if(board.sideToMove == chess::WHITE){
+        mg_score += passedPawnBonuses[0][pawnRank];
+        eg_score += passedPawnBonuses[1][pawnRank];
+      }
+      else{
+        mg_score += passedPawnBonuses[0][7-pawnRank];
+        eg_score += passedPawnBonuses[1][7-pawnRank];
+      }
+    }
+  }
+  pieceBitboard = board.getTheirPieces(chess::PAWN);
+  theirPawns = board.getOurPieces(chess::PAWN);
+  while(pieceBitboard){
+    uint8_t piecePos = _popLsb(pieceBitboard);
+    if((lookupTables::passedPawnTable[!board.sideToMove][piecePos] & theirPawns) == 0ULL){
+      uint8_t pawnRank = squareIndexToRank(piecePos);
+      if((!board.sideToMove) == chess::WHITE){
+        mg_score -= passedPawnBonuses[0][pawnRank];
+        eg_score -= passedPawnBonuses[1][pawnRank];
+      }
+      else{
+        mg_score -= passedPawnBonuses[0][7-pawnRank];
+        eg_score -= passedPawnBonuses[1][7-pawnRank];
+      }
+    }
+  }
+  return (gamePhase*mg_score+(24-gamePhase)*eg_score)/24;
+}
+
+int evaluate(chess::Board& board, chess::Move lastMove = chess::Move(), float previousEval = 0){
   int cpEvaluation = 0;
 
   //Piece Square Table Eval
@@ -270,7 +313,10 @@ float evaluate(chess::Board& board, chess::Move lastMove = chess::Move(), float 
   }
   cpEvaluation += maxSEE;
 
+  cpEvaluation += passedPawns(board);
+
   cpEvaluation += evalStabilityConstant; //bias the eval to stabilize when searching
-  return fmaxf(fminf(atan(cpEvaluation/100.0)/1.56375, 1),-1)*0.999999; //convert cp eval to wdl for ucb algorithm. Multiply by 0.999 to make sure definite wins (checkmates) are prioritised.
+
+  return cpEvaluation;
 }
 }

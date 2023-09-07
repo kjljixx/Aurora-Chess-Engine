@@ -132,6 +132,20 @@ void setOption(std::istringstream input){
     input >> value;
     evaluation::evalStabilityConstant = value;
   }
+
+  //Hidden options for tuning
+  std::string prefixes[2] = {"mg_", "eg_"};
+  std::string postfixes[6] = {"2", "3", "4", "5", "6", "7"};
+  for(int i=0; i<2; i++){
+    for(int j=0; j<6; j++){
+      if(token == prefixes[i]+"passedPawnBonus"+postfixes[j]){
+          input >> token; //input the "value" token
+          int value;
+          input >> value;
+          evaluation::passedPawnBonuses[i][j+1] = value;
+      }
+    }
+  }
 }
 //Custom commands
 chess::Board makeMoves(chess::Board &board, std::istringstream input){

@@ -176,6 +176,10 @@ void initKingTable();
 void initRookTable();
 void initBishopTable();
 
+//Lookup tables for evaluation
+void initPassedPawnTable();
+U64 passedPawnTable[2][64];
+
 //used to pregenerate moves to initialize lookup tables
 U64 pregenerateRookMoves(int square, U64 blockers);
 U64 pregenerateBishopMoves(int square, U64 blockers);
@@ -188,6 +192,8 @@ void init(){
   initKingTable();
   initRookTable();
   initBishopTable();
+  
+  initPassedPawnTable();
 }
 
 void initPawnTable(){
@@ -340,6 +346,13 @@ inline U64 getBishopAttacks(uint8_t square, U64 blockers) {
 
 inline U64 getRookAttacks(uint8_t square, U64 blockers) {
   return rookTable[square][((blockers & rookMasks[square]) * rookMagics[square]) >> (64 - rookIndexBits[square])];
+}
+
+void initPassedPawnTable(){
+  for(int i=0; i<64; i++){
+    passedPawnTable[0][i] = rays::rays[0][i] | ((rays::rays[0][i] << 1) & ~bitboards::fileA) | ((rays::rays[0][i] >> 1) & ~bitboards::fileH);
+    passedPawnTable[1][i] = rays::rays[1][i] | ((rays::rays[1][i] << 1) & ~bitboards::fileA) | ((rays::rays[1][i] >> 1) & ~bitboards::fileH);
+  }
 }
 
 }
