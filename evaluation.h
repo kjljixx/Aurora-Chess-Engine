@@ -11,8 +11,8 @@ int evalStabilityConstant = 10;
 int mg_value[6] = {82, 337, 365, 477, 1025, 10000};
 int eg_value[6] = {94, 281, 297, 512,  936, 10000};
 
-int mg_passedPawnBonus[8] = {0, 10, 10, 15, 20, 25, 30, 0};
-int eg_passedPawnBonus[8] = {0, 20, 25, 35, 45, 60, 80, 0};
+int mg_passedPawnBonus[8] = {0, 0, 3, 12, 26, 17, 40, 0};
+int eg_passedPawnBonus[8] = {0, 33, 23, 29, 54, 46, 74, 0};
 
 int* passedPawnBonuses[2] = {mg_passedPawnBonus, eg_passedPawnBonus};
 
