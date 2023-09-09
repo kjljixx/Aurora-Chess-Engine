@@ -298,7 +298,7 @@ int passedPawns(chess::Board& board){
   return (gamePhase*mg_score+(24-gamePhase)*eg_score)/24;
 }
 
-int evaluate(chess::Board& board, chess::Move lastMove = chess::Move(), float previousEval = 0){
+int evaluate(chess::Board& board){
   int cpEvaluation = 0;
 
   //Piece Square Table Eval

@@ -631,6 +631,7 @@ Move* generateLegalMoves(Board &board, Move* legalMoves){
 }
 
 //Returns whether or not there is a legal move on the given board
+//Used for stalemate and checkmate detection in calls for the getGameStatus() function below
 bool isLegalMoves(Board& board){
   //Extremely useful source on how pointers/arrays work: https://cplusplus.com/doc/tutorial/pointers/
   uint8_t piecePos;

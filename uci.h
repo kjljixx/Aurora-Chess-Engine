@@ -116,6 +116,27 @@ void go(std::istringstream input, chess::Board board){
     search::search(board, tm);
   }
 }
+void respondUci(){
+  std::cout <<  "id name Aurora\n"
+                "id author kjljixx\n"
+                "\n"
+                "option name explorationfactor type string default " << search::explorationFactor << "\n"
+                "option name evalstabilitybias type spin default " << evaluation::evalStabilityConstant << " min -1024 max 1024\n"
+                "option name mg_passedpawnbonus2 type spin default " << evaluation::mg_passedPawnBonus[1] << " min -1024 max 1024\n"
+                "option name mg_passedpawnbonus3 type spin default " << evaluation::mg_passedPawnBonus[2] << " min -1024 max 1024\n"
+                "option name mg_passedpawnbonus4 type spin default " << evaluation::mg_passedPawnBonus[3] << " min -1024 max 1024\n"
+                "option name mg_passedpawnbonus5 type spin default " << evaluation::mg_passedPawnBonus[4] << " min -1024 max 1024\n"
+                "option name mg_passedpawnbonus6 type spin default " << evaluation::mg_passedPawnBonus[5] << " min -1024 max 1024\n"
+                "option name mg_passedpawnbonus7 type spin default " << evaluation::mg_passedPawnBonus[6] << " min -1024 max 1024\n"
+                "option name eg_passedpawnbonus2 type spin default " << evaluation::eg_passedPawnBonus[1] << " min -1024 max 1024\n"
+                "option name eg_passedpawnbonus3 type spin default " << evaluation::eg_passedPawnBonus[2] << " min -1024 max 1024\n"
+                "option name eg_passedpawnbonus4 type spin default " << evaluation::eg_passedPawnBonus[3] << " min -1024 max 1024\n"
+                "option name eg_passedpawnbonus5 type spin default " << evaluation::eg_passedPawnBonus[4] << " min -1024 max 1024\n"
+                "option name eg_passedpawnbonus6 type spin default " << evaluation::eg_passedPawnBonus[5] << " min -1024 max 1024\n"
+                "option name eg_passedpawnbonus7 type spin default " << evaluation::eg_passedPawnBonus[6] << " min -1024 max 1024\n"
+                "\n"
+                "uciok\n";
+}
 void setOption(std::istringstream input){
   std::string token;
   input >> token; //input the "name" token
@@ -138,7 +159,7 @@ void setOption(std::istringstream input){
   std::string postfixes[6] = {"2", "3", "4", "5", "6", "7"};
   for(int i=0; i<2; i++){
     for(int j=0; j<6; j++){
-      if(token == prefixes[i]+"passedPawnBonus"+postfixes[j]){
+      if(token == prefixes[i]+"passedpawnbonus"+postfixes[j]){
           input >> token; //input the "value" token
           int value;
           input >> value;
@@ -200,7 +221,8 @@ void loop(chess::Board board){
 
   while(true){
     std::cin >> token;
-    if(token == "uci"){std::cout << "id name Aurora\nid author kjljixx\n\noption name explorationfactor type string default " << search::explorationFactor << "\noption name evalstabilitybias type spin default " << evaluation::evalStabilityConstant << " min -1024 max 1024\n\nuciok\n";}
+    if(token == "uci"){respondUci();}
+    if(token == "setoption"){std::getline(std::cin, token); setOption(std::istringstream(token));}
     if(token == "isready"){std::cout << "readyok\n";} //TODO: make sure we are actually ready before printing readyok
     if(token == "perft"){int depth; std::cin >> depth; perftDiv(board, depth);}
     if(token == "position"){std::getline(std::cin, token); board = position(std::istringstream(token));}
