@@ -9,7 +9,7 @@ namespace search{
 //parameters for search
 enum backpropagationStrategy{AVERAGE, MINIMAX};
 backpropagationStrategy backpropStrat = MINIMAX;
-float explorationFactor = 4;
+float explorationFactor = 2.58;
 
 uint8_t seldepth = 0;
 
