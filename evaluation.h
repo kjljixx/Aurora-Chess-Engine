@@ -219,7 +219,7 @@ int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
   int i=0;
 
   chess::Pieces currPiece = board.findPiece(lastMoveEndSquare);
-  values[i] = (mg_value[currPiece-1] * gamePhase + eg_value[currPiece-1] * (24-gamePhase))/24;
+  values[i] = (mg_value[currPiece-1] * gamePhase + eg_value[currPiece-1] * (24-gamePhase));
 
   chess::Colors us = board.sideToMove;
   U64 white = board.white;
@@ -233,7 +233,7 @@ int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
 
   while(leastValuableAttacker){
     i++;
-    values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + eg_value[leastValuableAttacker-1] * (24-gamePhase))/24 - values[i-1];
+    values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + eg_value[leastValuableAttacker-1] * (24-gamePhase)) - values[i-1];
 
     if(std::max(-values[i-1], values[i]) < 0){break;}
 
@@ -257,7 +257,7 @@ int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
   }
 
 
-  return values[0];
+  return values[0]/24;
 }
 
 int passedPawns(chess::Board& board){
