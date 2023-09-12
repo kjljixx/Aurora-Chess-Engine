@@ -29,13 +29,15 @@ struct Node{
   float value;
   bool isTerminal;
   uint8_t depth;
+  float sPriority;
+  bool updatePriority;
 
   Node(Node* parent, uint8_t index, chess::Move edge, uint8_t depth) :
   parent(parent), index(index),
   firstChild(nullptr), nextSibling(nullptr),
-  visits(0), value(-2), edge(edge), isTerminal(false), depth(depth) {}
+  visits(0), value(-2), edge(edge), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true) {}
 
-  Node() : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(-2), edge(chess::Move()), isTerminal(false), depth(0) {}
+  Node() : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(-2), edge(chess::Move()), isTerminal(false), depth(0), sPriority(-1), updatePriority(true) {}
 
   Node* getChildByIndex(uint8_t index){
     Node* currNode = firstChild;
@@ -84,7 +86,11 @@ Node* selectChild(Node* parent){
   const float parentVisitsTerm = sqrtl(explorationFactor*logl(parent->visits));
 
   while(currNode != nullptr){
-    float currPriority = -currNode->value+parentVisitsTerm/sqrtl(currNode->visits);
+    if(currNode->updatePriority){
+      currNode->sPriority = -currNode->value+parentVisitsTerm/sqrtl(currNode->visits);
+      currNode->updatePriority = false;
+    }
+    float currPriority = currNode->sPriority;
 
     assert(currPriority>=-1);
 
@@ -224,6 +230,7 @@ void backpropagate(float result, Node* currNode){
     }
 
     currNode->visits++;
+    currNode->updatePriority = true;
     currNode = currNode->parent;
   }
 }

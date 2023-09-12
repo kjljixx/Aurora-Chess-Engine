@@ -5,7 +5,7 @@
 
 namespace evaluation{
 //Evaluation Parameters
-int evalStabilityConstant = 10;
+int evalStabilityConstant = 9;
 
 //Taken from PeSTO: https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 int mg_value[6] = {82, 337, 365, 477, 1025, 10000};
@@ -209,16 +209,16 @@ int pieceSquareTable(chess::Board& board){
   int mgPhase = gamePhase;
   int egPhase = 24 - mgPhase;
 
-  currentPieceSquareTableEval = (mgScore * mgPhase + egScore * egPhase) / 24;
+  currentPieceSquareTableEval = (mgScore * mgPhase + egScore * egPhase)/24;
   return currentPieceSquareTableEval;
 }
 
 //Static Exchange Evaluation
-int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
+int SEE(chess::Board& board, uint8_t targetSquare){
   int values[32];
   int i=0;
 
-  chess::Pieces currPiece = board.findPiece(lastMoveEndSquare);
+  chess::Pieces currPiece = board.findPiece(targetSquare); //The original target piece; piece of the opponent of the current sideToMove
   values[i] = (mg_value[currPiece-1] * gamePhase + eg_value[currPiece-1] * (24-gamePhase));
 
   chess::Colors us = board.sideToMove;
@@ -228,7 +228,7 @@ int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
   board.sideToMove = chess::Colors(!board.sideToMove);
   bool isOurSideToMove = false;
 
-  uint8_t piecePos = board.squareUnderAttack(lastMoveEndSquare);
+  uint8_t piecePos = board.squareUnderAttack(targetSquare);
   chess::Pieces leastValuableAttacker = board.findPiece(piecePos);
 
   while(leastValuableAttacker){
@@ -240,7 +240,7 @@ int SEE(chess::Board& board, uint8_t lastMoveEndSquare){
     board.sideToMove = chess::Colors(!board.sideToMove); isOurSideToMove = !isOurSideToMove;
     board.unsetColors(1ULL << piecePos, chess::Colors(isOurSideToMove ? us : !us));
 
-    piecePos = board.squareUnderAttack(lastMoveEndSquare);
+    piecePos = board.squareUnderAttack(targetSquare);
     leastValuableAttacker = board.findPiece(piecePos);
   }
 
