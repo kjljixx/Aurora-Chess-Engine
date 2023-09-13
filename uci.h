@@ -121,6 +121,7 @@ void respondUci(){
                 "id author kjljixx\n"
                 "\n"
                 "option name explorationfactor type string default " << search::explorationFactor << "\n"
+                "option name evalscalefactor type string default " << search::evalScaleFactor << "\n"
                 "option name evalstabilitybias type spin default " << evaluation::evalStabilityConstant << " min -1024 max 1024\n"
                 "option name mg_passedpawnbonus2 type spin default " << evaluation::mg_passedPawnBonus[1] << " min -1024 max 1024\n"
                 "option name mg_passedpawnbonus3 type spin default " << evaluation::mg_passedPawnBonus[2] << " min -1024 max 1024\n"
@@ -153,8 +154,12 @@ void setOption(std::istringstream input){
     input >> value;
     evaluation::evalStabilityConstant = value;
   }
-
-  //Hidden options for tuning
+  if(token == "evaleScaleFactor"){
+    input >> token; //input the "value" token
+    float value;
+    input >> value;
+    search::evalScaleFactor = value;
+  }
   std::string prefixes[2] = {"mg_", "eg_"};
   std::string postfixes[6] = {"2", "3", "4", "5", "6", "7"};
   for(int i=0; i<2; i++){

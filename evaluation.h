@@ -7,7 +7,7 @@ namespace evaluation{
 //Evaluation Parameters
 int evalStabilityConstant = 9;
 
-//Taken from PeSTO: https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
+//Piece square tables taken from PeSTO: https://www.chessprogramming.org/PeSTO%27s_Evaluation_Function
 int mg_value[6] = {82, 337, 365, 477, 1025, 10000};
 int eg_value[6] = {94, 281, 297, 512,  936, 10000};
 
@@ -319,4 +319,93 @@ int evaluate(chess::Board& board){
 
   return cpEvaluation;
 }
+
+//Takes in the current board and a list of moves from the current position
+//Then calculates the static evaluation of all children of the node of the current board
+//It incrementally changes the evaluation based on the move, so it is much faster than running evaluate() on each child position
+//Returns a pointer to the start of the array with all of the evaluations
+/*int* evaluateAllChildren(chess::Board& board, chess::MoveList moves){
+  const int parentEval = evaluate(board);
+
+  int results[moves.size()];
+  int* currResult = results;
+
+  for(chess::Move move : moves){
+    *currResult = parentEval;
+    const uint8_t startSquare = move.getStartSquare();
+    const uint8_t endSquare = move.getEndSquare();
+    const chess::Pieces movingPiece = board.findPiece(startSquare);
+    const chess::MoveFlags moveFlags = move.getMoveFlags();
+
+    *currResult -= (mg_value[movingPiece-1] + mg_table[movingPiece-1][startSquare]);
+
+    if(moveFlags == chess::ENPASSANT){
+      hash ^= pieceKeys[2*(chess::PAWN-1)+(board.sideToMove ? 0 : 1)][(board.sideToMove ? endSquare + 8 : endSquare - 8)];
+    }
+    else{
+      if(board.getTheirPieces() & (1ULL << endSquare)){
+        hash ^= pieceKeys[2*(board.findPiece(endSquare)-1)+(board.sideToMove ? 0 : 1)][endSquare];
+      }
+    }
+
+    if(moveFlags == chess::CASTLE){
+      uint8_t rookStartSquare;
+      uint8_t rookEndSquare;
+      //Queenside Castling
+      if(squareIndexToFile(endSquare) == 2){
+        rookStartSquare = board.sideToMove*56;
+        rookEndSquare = 3+board.sideToMove*56;
+      }
+      //Kingside Castling
+      else{
+        rookStartSquare = 7+board.sideToMove*56;
+        rookEndSquare = 5+board.sideToMove*56;
+      }
+      hash ^= pieceKeys[2*(chess::ROOK-1)+(board.sideToMove ? 1 : 0)][rookStartSquare];
+
+      hash ^= pieceKeys[2*(chess::ROOK-1)+(board.sideToMove ? 1 : 0)][rookEndSquare];
+    }
+
+    if(moveFlags == chess::PROMOTION){hash ^= pieceKeys[2*(move.getPromotionPiece()-1)+(board.sideToMove ? 1 : 0)][endSquare];}
+    else{hash ^= pieceKeys[2*(movingPiece-1)+(board.sideToMove ? 1 : 0)][endSquare];}
+
+    if(board.enPassant){
+      hash ^= enPassantKeys[squareIndexToFile(_bitscanForward(board.enPassant))]; //remove en passant from hash
+    }
+    if(movingPiece == chess::PAWN){
+      //double pawn push by white
+      if((1ULL << endSquare) == (1ULL << startSquare) << 16){
+        hash ^= enPassantKeys[squareIndexToFile(endSquare)];
+      }
+      //double pawn push by black
+      else if((1ULL << endSquare) == (1ULL << startSquare) >> 16){
+        hash ^= enPassantKeys[squareIndexToFile(endSquare)];
+      }
+    }
+    bool castlingRightsChanged = false;
+    //Remove castling rights if king moved
+    if(movingPiece == chess::KING){
+      if(board.sideToMove == chess::WHITE && board.castlingRights & (0x1 | 0x2)){
+        hash ^= castlingKeys[board.castlingRights & ~(0x1 | 0x2)];
+        castlingRightsChanged = true;
+      }
+      else if(board.castlingRights & (0x4 | 0x8)){
+        hash ^= castlingKeys[board.castlingRights & ~(0x4 | 0x8)];
+        castlingRightsChanged = true;
+      }
+    }
+    //Remove castling rights if rook moved from starting square or if rook was captured
+    if(((startSquare == 0 && movingPiece == chess::ROOK) || endSquare == 0) && board.castlingRights & ~0x2){hash ^= castlingKeys[board.castlingRights & ~0x2]; castlingRightsChanged = true;}
+    if(((startSquare == 7 && movingPiece == chess::ROOK) || endSquare == 7) && board.castlingRights & ~0x1){hash ^= castlingKeys[board.castlingRights & ~0x1]; castlingRightsChanged = true;}
+    if(((startSquare == 56 && movingPiece == chess::ROOK) || endSquare == 56) && board.castlingRights & ~0x8){hash ^= castlingKeys[board.castlingRights & ~0x8]; castlingRightsChanged = true;}
+    if(((startSquare == 63 && movingPiece == chess::ROOK) || endSquare == 63) && board.castlingRights & ~0x4){hash ^= castlingKeys[board.castlingRights & ~0x4]; castlingRightsChanged = true;}
+
+    if(castlingRightsChanged){hash ^= castlingKeys[board.castlingRights];} //remove original castling rights if castling rights changed
+
+    hash ^= sideToMoveKey;
+
+    return hash;
+  }
+  return 0;
+}*/
 }

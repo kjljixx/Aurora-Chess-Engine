@@ -10,6 +10,7 @@ namespace search{
 enum backpropagationStrategy{AVERAGE, MINIMAX};
 backpropagationStrategy backpropStrat = MINIMAX;
 float explorationFactor = 2.58;
+float evalScaleFactor = 1;
 
 uint8_t seldepth = 0;
 
@@ -127,7 +128,7 @@ float playout(chess::Board& board, Node* currNode){
     return _gameStatus;
   }
 
-  float eval = fmaxf(fminf(atan(evaluation::evaluate(board)/100.0)/1.56375, 1),-1)*0.999999;
+  float eval = fmaxf(fminf(atan(evaluation::evaluate(board)*evalScaleFactor/100.0)/1.56375, 1),-1)*0.999999;
   assert(-1<=eval && 1>=eval);
   return eval;
 }
