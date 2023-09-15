@@ -117,10 +117,10 @@ U64 updateHash(chess::Board& board, chess::Move move){
     }
   }
   //Remove castling rights if rook moved from starting square or if rook was captured
-  if(((startSquare == 0 && movingPiece == chess::ROOK) || endSquare == 0) && board.castlingRights & ~0x2){hash ^= castlingKeys[board.castlingRights & ~0x2]; castlingRightsChanged = true;}
-  if(((startSquare == 7 && movingPiece == chess::ROOK) || endSquare == 7) && board.castlingRights & ~0x1){hash ^= castlingKeys[board.castlingRights & ~0x1]; castlingRightsChanged = true;}
-  if(((startSquare == 56 && movingPiece == chess::ROOK) || endSquare == 56) && board.castlingRights & ~0x8){hash ^= castlingKeys[board.castlingRights & ~0x8]; castlingRightsChanged = true;}
-  if(((startSquare == 63 && movingPiece == chess::ROOK) || endSquare == 63) && board.castlingRights & ~0x4){hash ^= castlingKeys[board.castlingRights & ~0x4]; castlingRightsChanged = true;}
+  if(((startSquare == 0 && movingPiece == chess::ROOK) || endSquare == 0) && board.castlingRights & 0x2){hash ^= castlingKeys[board.castlingRights & ~0x2]; castlingRightsChanged = true;}
+  if(((startSquare == 7 && movingPiece == chess::ROOK) || endSquare == 7) && board.castlingRights & 0x1){hash ^= castlingKeys[board.castlingRights & ~0x1]; castlingRightsChanged = true;}
+  if(((startSquare == 56 && movingPiece == chess::ROOK) || endSquare == 56) && board.castlingRights & 0x8){hash ^= castlingKeys[board.castlingRights & ~0x8]; castlingRightsChanged = true;}
+  if(((startSquare == 63 && movingPiece == chess::ROOK) || endSquare == 63) && board.castlingRights & 0x4){hash ^= castlingKeys[board.castlingRights & ~0x4]; castlingRightsChanged = true;}
 
   if(castlingRightsChanged){hash ^= castlingKeys[board.castlingRights];} //remove original castling rights if castling rights changed
 
