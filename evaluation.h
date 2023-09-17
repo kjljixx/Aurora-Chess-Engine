@@ -170,7 +170,7 @@ int* eg_table[6] =
 
 int gamephaseInc[6] = {0, 1, 1, 2, 4, 0};
 
-int gamePhase = 4;
+int gamePhase = 24;
 
 int currentPieceSquareTableEval = 0;
 
@@ -213,13 +213,19 @@ int pieceSquareTable(chess::Board& board){
   return currentPieceSquareTableEval;
 }
 
+int seeiterations = 0;
 //Static Exchange Evaluation
+//Returns the value in cp from the current board's sideToMove's perspective on how good capturing an enemy piece on targetSquare is
+//Returns 0 if the capture is not good for the current board's sideToMove or if there is no capture
 int SEE(chess::Board& board, uint8_t targetSquare){
   int values[32];
   int i=0;
 
   chess::Pieces currPiece = board.findPiece(targetSquare); //The original target piece; piece of the opponent of the current sideToMove
   values[i] = (mg_value[currPiece-1] * gamePhase + eg_value[currPiece-1] * (24-gamePhase));
+  /*values[i] = (
+    (mg_value[currPiece-1] + mg_table[currPiece-1][board.sideToMove ? targetSquare^56 : targetSquare]) * gamePhase
+   +(eg_value[currPiece-1] + eg_table[currPiece-1][board.sideToMove ? targetSquare^56 : targetSquare]) * (24-gamePhase));*/
 
   chess::Colors us = board.sideToMove;
   U64 white = board.white;
@@ -231,11 +237,26 @@ int SEE(chess::Board& board, uint8_t targetSquare){
   uint8_t piecePos = board.squareUnderAttack(targetSquare);
   chess::Pieces leastValuableAttacker = board.findPiece(piecePos);
 
-  while(leastValuableAttacker){
-    i++;
-    values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + eg_value[leastValuableAttacker-1] * (24-gamePhase)) - values[i-1];
+  //See https://www.chessprogramming.org/Alpha-Beta#Negamax_Framework for the recursive implementation this implementation is based on
+  int alpha = -999999;
+  int beta = 0;
 
-    if(std::max(-values[i-1], values[i]) < 0){break;}
+  while(leastValuableAttacker){
+    seeiterations++;
+    i++;
+
+    //Alpha Beta pruning does not affect the result of the SEE
+    if(-values[i-1] >= beta){break;}
+    if(-values[i-1] > alpha){alpha = -values[i-1];}
+    int placeholder = alpha; alpha = -beta; beta = -placeholder;
+
+    //The value for the enemy of the side of the leastValuableAttacker if the leastValuableAttacker is captured
+    values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + eg_value[leastValuableAttacker-1] * (24-gamePhase)) - values[i-1];
+    /*uint8_t _piecePos = board.sideToMove ? piecePos^56 : piecePos; //for use in pieceSquareTable calculation below
+    values[i-1] += (-mg_table[leastValuableAttacker-1][_piecePos] + mg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare]) * gamePhase
+                  +(-eg_table[leastValuableAttacker-1][_piecePos] + eg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare]) * (24-gamePhase);
+    values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + eg_value[leastValuableAttacker-1] * (24-gamePhase)) - (values[i-1] - mg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare] * gamePhase - eg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare] * (24-gamePhase));*/
+
 
     board.sideToMove = chess::Colors(!board.sideToMove); isOurSideToMove = !isOurSideToMove;
     board.unsetColors(1ULL << piecePos, chess::Colors(isOurSideToMove ? us : !us));
@@ -252,12 +273,7 @@ int SEE(chess::Board& board, uint8_t targetSquare){
     return 0;
   }
 
-  while(--i > 0){
-    values[i-1] = -std::max(-values[i-1], values[i]);
-  }
-
-
-  return values[0]/24;
+  return (isOurSideToMove ? beta : -beta)/24;
 }
 
 int passedPawns(chess::Board& board){

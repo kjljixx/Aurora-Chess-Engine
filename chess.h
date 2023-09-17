@@ -351,7 +351,7 @@ struct Board{
     if(numAttackers==0){_kingMasks.checkmask = 0xFFFFFFFFFFFFFFFFULL;}
     return _kingMasks;
   }
-  //Returns the square of the piece which is attacking the square, if there is one. Otherwise returns 64
+  //Returns the square of the enemy piece which is attacking the square, if there is one. Otherwise returns 64
   uint8_t squareUnderAttack(uint8_t square){
     U64 theirPieces = getTheirPieces();
 
