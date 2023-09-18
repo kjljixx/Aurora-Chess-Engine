@@ -235,13 +235,12 @@ int SEE(chess::Board& board, uint8_t targetSquare){
   bool isOurSideToMove = false;
 
   uint8_t piecePos = board.squareUnderAttack(targetSquare);
-  chess::Pieces leastValuableAttacker = board.findPiece(piecePos);
 
   //See https://www.chessprogramming.org/Alpha-Beta#Negamax_Framework for the recursive implementation this implementation is based on
   int alpha = -999999;
   int beta = 0;
 
-  while(leastValuableAttacker){
+  while(piecePos<=63){
     seeiterations++;
     i++;
 
@@ -250,6 +249,7 @@ int SEE(chess::Board& board, uint8_t targetSquare){
     if(-values[i-1] > alpha){alpha = -values[i-1];}
     int placeholder = alpha; alpha = -beta; beta = -placeholder;
 
+    chess::Pieces leastValuableAttacker = board.findPiece(piecePos);
     //The value for the enemy of the side of the leastValuableAttacker if the leastValuableAttacker is captured
     values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + eg_value[leastValuableAttacker-1] * (24-gamePhase)) - values[i-1];
     /*uint8_t _piecePos = board.sideToMove ? piecePos^56 : piecePos; //for use in pieceSquareTable calculation below
@@ -262,7 +262,6 @@ int SEE(chess::Board& board, uint8_t targetSquare){
     board.unsetColors(1ULL << piecePos, chess::Colors(isOurSideToMove ? us : !us));
 
     piecePos = board.squareUnderAttack(targetSquare);
-    leastValuableAttacker = board.findPiece(piecePos);
   }
 
   board.sideToMove = us;

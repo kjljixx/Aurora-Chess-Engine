@@ -279,7 +279,7 @@ void search(const chess::Board& rootBoard, timeManagement tm){
     else{
       //Reached a leaf node
       chess::MoveList moves(board);
-      if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){currNode->isTerminal=true; continue;}
+      if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currNode->value>=-1); currNode->isTerminal=true; continue;}
       expand(currNode, moves);
       //Simulate for all new nodes
       currNode = currNode->firstChild;
