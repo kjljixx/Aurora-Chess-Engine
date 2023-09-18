@@ -45,6 +45,7 @@ struct Board{
   //use to check for repetitions
   U64 history[128];
   bool hashed; //if there is a zobrist hash of the position in history, this is true
+  uint8_t startHistoryIndex; //When a fen is entered, we want getGameStatus to ignore all items of history before the halfmoveClock of the fen
 
   //constructor
   Board(
@@ -167,6 +168,8 @@ struct Board{
 
     //white, black, and occupied
     occupied = white | black;
+
+    startHistoryIndex = halfmoveClock;
   }
 
   void printBoard(){
@@ -371,6 +374,21 @@ struct Board{
 
     return 64;
   }
+
+  //returns a bitboard with all pieces of a certain color attacking a certain square. Mainly used for Static Exchange Evaluation
+  U64 squareAttackers(uint8_t square, Colors color){
+    U64 pieces = getPieces(color);
+
+    U64 bishopAttacks = lookupTables::getBishopAttacks(square, white | black) & pieces;
+    U64 rookAttacks = lookupTables::getRookAttacks(square, white | black) & pieces;
+
+    return (lookupTables::pawnAttackTable[sideToMove][square] & pawns & pieces)
+          |(lookupTables::knightTable[square] & knights & pieces)
+          |(bishopAttacks & bishops)
+          |(rookAttacks & rooks)
+          |((bishopAttacks | rookAttacks) & queens)
+          |(lookupTables::kingTable[square] & kings & pieces); 
+  }
   
   //squareUnderAttack() except we update canCurrentlyCastle
   bool kingUnderAttack(uint8_t square){
@@ -416,6 +434,7 @@ struct Board{
     else{
       if(getTheirPieces() & (1ULL << endSquare)){
         halfmoveClock = 0;
+        startHistoryIndex = 0;
         unsetColors((1ULL << endSquare), Colors(!sideToMove));
         unsetPieces(UNKNOWN, (1ULL << endSquare));
       }
@@ -449,6 +468,7 @@ struct Board{
     enPassant = 0ULL;
     if(movingPiece == PAWN){
       halfmoveClock = 0;
+      startHistoryIndex = 0;
       enPassant = 0ULL;
 
       //double pawn push by white
@@ -716,7 +736,7 @@ bool isLegalMoves(Board& board){
       board.unsetColors(1ULL << startSquare, board.sideToMove);
       //check if king is under attack
       if(!(board.squareUnderAttack(_bitscanForward(ourPieces & board.kings)<=63))){
-        board.setColors(board.enPassant << 8, Colors(!board.sideToMove));
+        if(board.sideToMove == WHITE){board.setColors(board.enPassant >> 8, Colors(!board.sideToMove));} else{board.setColors(board.enPassant << 8, Colors(!board.sideToMove));}
         board.setColors(1ULL << startSquare, board.sideToMove);
         board.unsetColors(board.enPassant, board.sideToMove);
 
@@ -824,7 +844,7 @@ gameStatus getGameStatus(Board& board, bool isLegalMoves){
   (_popCount(board.bishops | board.knights)<=1))
   {return DRAW;}
   //Threefold Repetition
-  if(std::count(std::begin(board.history), &board.history[board.halfmoveClock], board.history[board.halfmoveClock]) >= 2)
+  if(std::count(&board.history[board.startHistoryIndex], &board.history[board.halfmoveClock], board.history[board.halfmoveClock]) >= 2)
   {return DRAW;}
 
   return ONGOING;
