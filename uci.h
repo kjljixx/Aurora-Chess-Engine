@@ -220,7 +220,6 @@ chess::Move getMoveFromString(chess::Board &board, std::string token){
 
 //The main UCI loop which detects input and runs other functions based on it
 void loop(chess::Board board){
-  std::cout.precision(10);
 
   std::string token;
 

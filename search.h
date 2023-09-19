@@ -18,6 +18,7 @@ void init(){
   lookupTables::init();
   zobrist::init();
   srand(time(NULL));
+  std::cout.precision(10);
 }
 
 struct Node{
@@ -254,6 +255,8 @@ void search(const chess::Board& rootBoard, timeManagement tm){
   auto start = std::chrono::steady_clock::now();
 
   if(!root){root = new Node();}
+
+  seldepth = 0;
 
   searchRootBoard = rootBoard;
 
