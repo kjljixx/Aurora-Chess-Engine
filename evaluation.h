@@ -217,7 +217,8 @@ int seeiterations = 0;
 //Static Exchange Evaluation
 //Returns the value in cp from the current board's sideToMove's perspective on how good capturing an enemy piece on targetSquare is
 //Returns 0 if the capture is not good for the current board's sideToMove or if there is no capture
-int SEE(chess::Board& board, uint8_t targetSquare){
+//Threshold is the highest SEE value we have already found (see the part in evaluate() which runs SEE())
+int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0){
   int values[32];
   int i=0;
 
@@ -238,7 +239,7 @@ int SEE(chess::Board& board, uint8_t targetSquare){
 
   //See https://www.chessprogramming.org/Alpha-Beta#Negamax_Framework for the recursive implementation this implementation is based on
   int alpha = -999999;
-  int beta = 0;
+  int beta = -(threshold*24);
 
   while(piecePos<=63){
     seeiterations++;
@@ -267,10 +268,6 @@ int SEE(chess::Board& board, uint8_t targetSquare){
   board.sideToMove = us;
   board.white = white;
   board.black = black;
-
-  if(i == 0){
-    return 0;
-  }
 
   return (isOurSideToMove ? beta : -beta)/24;
 }
@@ -324,7 +321,7 @@ int evaluate(chess::Board& board){
   U64 theirPieces = board.getTheirPieces();
   for(int i=0; i<64; i++){
     if((1ULL << i) & ~theirPieces){continue;}
-    maxSEE = std::max(maxSEE, SEE(board, i));
+    maxSEE = SEE(board, i, maxSEE);
   }
   cpEvaluation += maxSEE;
 
