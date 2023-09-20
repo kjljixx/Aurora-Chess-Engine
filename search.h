@@ -15,7 +15,7 @@ float evalScaleFactor = 1;
 uint8_t seldepth = 0;
 
 void init(){
-  lookupTables::init();
+  evaluation::init();
   zobrist::init();
   srand(time(NULL));
   std::cout.precision(10);
