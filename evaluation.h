@@ -175,41 +175,31 @@ int gamePhase = 24;
 int currentPieceSquareTableEval = 0;
 
 int pieceSquareTable(chess::Board& board){
-  int mg[2];
-  int eg[2];
   gamePhase = 0;
 
-  mg[chess::WHITE] = 0;
-  mg[chess::BLACK] = 0;
-  eg[chess::WHITE] = 0;
-  eg[chess::BLACK] = 0;
+  int mgScore = 0;
+  int egScore = 0;
 
   /* evaluate each piece */
-  for (int sq = 0; sq < 64; ++sq) {
-    if(!((1ULL << sq) & board.occupied)){continue;}
-    chess::Pieces pc = board.findPiece(sq);
-    if (pc != chess::null) {
-      if((1ULL << sq) & board.black){
-        mg[1] += mg_table[pc-1][sq] + mg_value[pc-1];
-        eg[1] += eg_table[pc-1][sq] + mg_value[pc-1];
-      }
-      else{
-        mg[0] += mg_table[pc-1][sq^56] + mg_value[pc-1];
-        eg[0] += eg_table[pc-1][sq^56] + mg_value[pc-1];
-      }
-      gamePhase += gamephaseInc[pc-1];
+  for(int piece = chess::PAWN; piece < chess::KING; piece++){
+    U64 pieceBitboard = board.getOurPieces(chess::Pieces(piece));
+    while(pieceBitboard){
+      uint8_t piecePos = _popLsb(pieceBitboard);
+      mgScore += mg_table[piece-1][piecePos] + mg_value[piece-1];
+      egScore += eg_table[piece-1][piecePos] + eg_value[piece-1];
+    }
+    pieceBitboard = board.getTheirPieces(chess::Pieces(piece));
+    while(pieceBitboard){
+      uint8_t piecePos = _popLsb(pieceBitboard);
+      mgScore -= mg_table[piece-1][piecePos] + mg_value[piece-1];
+      egScore -= eg_table[piece-1][piecePos] + eg_value[piece-1];
     }
   }
 
   /* tapered eval */
-  int mgScore = mg[board.sideToMove] - mg[!board.sideToMove];
-  int egScore = eg[board.sideToMove] - eg[!board.sideToMove];
-
   if (gamePhase > 24){gamePhase = 24;} /* in case of early promotion */
-  int mgPhase = gamePhase;
-  int egPhase = 24 - mgPhase;
 
-  currentPieceSquareTableEval = (mgScore * mgPhase + egScore * egPhase)/24;
+  currentPieceSquareTableEval = (mgScore * gamePhase + egScore * (24-gamePhase))/24;
   return currentPieceSquareTableEval;
 }
 
@@ -318,11 +308,32 @@ int evaluate(chess::Board& board){
 
   //Static Exchange Eval
   int maxSEE = 0;
-  U64 theirPieces = board.getTheirPieces();
-  for(int i=0; i<64; i++){
-    if((1ULL << i) & ~theirPieces){continue;}
+  U64 theirPieces = board.getTheirPieces(chess::QUEEN);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
     maxSEE = SEE(board, i, maxSEE);
   }
+  theirPieces = board.getTheirPieces(chess::ROOK);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
+    maxSEE = SEE(board, i, maxSEE);
+  }
+  theirPieces = board.getTheirPieces(chess::BISHOP);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
+    maxSEE = SEE(board, i, maxSEE);
+  }
+  theirPieces = board.getTheirPieces(chess::KNIGHT);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
+    maxSEE = SEE(board, i, maxSEE);
+  }
+  theirPieces = board.getTheirPieces(chess::PAWN);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
+    maxSEE = SEE(board, i, maxSEE);
+  }
+
   cpEvaluation += maxSEE;
 
   cpEvaluation += passedPawns(board);
