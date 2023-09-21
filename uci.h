@@ -120,6 +120,7 @@ void respondUci(){
   std::cout <<  "id name Aurora\n"
                 "id author kjljixx\n"
                 "\n"
+                "option name outputlevel type spin default " << search::outputLevel << " min 0 max 3\n"
                 "option name explorationfactor type string default " << search::explorationFactor << "\n"
                 "option name evalscalefactor type string default " << search::evalScaleFactor << "\n"
                 "option name evalstabilitybias type spin default " << evaluation::evalStabilityConstant << " min -1024 max 1024\n"
@@ -142,6 +143,12 @@ void setOption(std::istringstream input){
   std::string token;
   input >> token; //input the "name" token
   input >> token;
+  if(token == "outputlevel"){
+    input >> token; //input the "value" token
+    int value;
+    input >> value;
+    search::outputLevel = value;
+  }
   if(token == "explorationfactor"){
     input >> token; //input the "value" token
     float value;

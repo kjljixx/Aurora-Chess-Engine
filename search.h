@@ -9,7 +9,14 @@ namespace search{
 //parameters for search
 enum backpropagationStrategy{AVERAGE, MINIMAX};
 backpropagationStrategy backpropStrat = MINIMAX;
-float explorationFactor = 2.58;
+float outputLevel = 0; //outputLevel:
+                       //0: only output bestmove at end of search
+                       //1: ouput bestmove and info at end of search
+                       //2: output bestmove and info at end of search and output info every 2 seconds
+                       //3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
+
+float explorationFactor = 1.315;
+float explorationExponentFactor = 0.5;
 float evalScaleFactor = 1;
 
 uint8_t seldepth = 0;
@@ -165,33 +172,37 @@ float findBestValue(Node* parent){
   return currBestValue;
 }
 
-void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point start){
+void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point start, bool finalResult){
   Node* currNode = root;
 
-  std::cout << "\nNODES: " << root->visits << " SELDEPTH: " << seldepth-root->depth <<"\n";
-  currNode = currNode->firstChild;
-  while(currNode != nullptr){
-  std::cout << currNode->edge.toStringRep() << ": Q:" << -currNode->value << " N:" << currNode->visits << " PV:";
-  Node* pvNode = currNode;
-  while(pvNode->firstChild != nullptr){
-    pvNode = findBestMove(pvNode);
-    std::cout << pvNode->edge.toStringRep() << " ";
-  }
-  std::cout << "\n";
-  currNode = currNode->nextSibling;
+  if(outputLevel==3){
+    std::cout << "\nNODES: " << root->visits << " SELDEPTH: " << seldepth-root->depth <<"\n";
+    currNode = currNode->firstChild;
+    while(currNode != nullptr){
+    std::cout << currNode->edge.toStringRep() << ": Q:" << -currNode->value << " N:" << currNode->visits << " PV:";
+    Node* pvNode = currNode;
+    while(pvNode->firstChild != nullptr){
+      pvNode = findBestMove(pvNode);
+      std::cout << pvNode->edge.toStringRep() << " ";
+    }
+    std::cout << "\n";
+    currNode = currNode->nextSibling;
+    }
   }
 
-  std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
+  if(outputLevel >= 2 || finalResult && outputLevel >= 1){
+    std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
-  std::cout << "\ninfo nodes " << root->visits <<
-    " nps " << round(root->visits/elapsed.count()) <<
-    " time " << round(elapsed.count()*1000) <<
-    " score cp " << round(tan(-findBestValue(root)*1.56375)*100) <<  " wdl " << round(((-findBestValue(root)+1)/2)*1000) << " 0 " << 1000-round(((-findBestValue(root)+1)/2)*1000) << 
-    " pv ";
-  currNode = root;
-  while(currNode->firstChild != nullptr){
-    currNode = findBestMove(currNode);
-    std::cout << currNode->edge.toStringRep() << " ";
+    std::cout << "\ninfo nodes " << root->visits <<
+      " nps " << round(root->visits/elapsed.count()) <<
+      " time " << round(elapsed.count()*1000) <<
+      " score cp " << round(tan(-findBestValue(root)*1.56375)*100) <<  " wdl " << round(((-findBestValue(root)+1)/2)*1000) << " 0 " << 1000-round(((-findBestValue(root)+1)/2)*1000) << 
+      " pv ";
+    currNode = root;
+    while(currNode->firstChild != nullptr){
+      currNode = findBestMove(currNode);
+      std::cout << currNode->edge.toStringRep() << " ";
+    }
   }
 }
 
@@ -301,11 +312,11 @@ void search(const chess::Board& rootBoard, timeManagement tm){
     elapsed = std::chrono::steady_clock::now() - start;
     if(elapsed.count() >= lastNodeCheck*2){
       lastNodeCheck++;
-      printSearchInfo(root, start);
+      printSearchInfo(root, start, false);
     }
   }
   //Output the final result of the search
-  printSearchInfo(root, start);
+  printSearchInfo(root, start, true);
   std::cout << "\nbestmove " << findBestMove(root)->edge.toStringRep() << "\n";
 
 }
