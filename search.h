@@ -9,7 +9,7 @@ namespace search{
 //parameters for search
 enum backpropagationStrategy{AVERAGE, MINIMAX};
 backpropagationStrategy backpropStrat = MINIMAX;
-float outputLevel = 0; //outputLevel:
+float outputLevel = 2; //outputLevel:
                        //0: only output bestmove at end of search
                        //1: ouput bestmove and info at end of search
                        //2: output bestmove and info at end of search and output info every 2 seconds
