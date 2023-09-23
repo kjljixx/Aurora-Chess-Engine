@@ -172,6 +172,9 @@ float findBestValue(Node* parent){
   return currBestValue;
 }
 
+int previousVisits = 0;
+int previousElapsed = 0;
+
 void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point start, bool finalResult){
   Node* currNode = root;
 
@@ -193,16 +196,19 @@ void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point star
   if(outputLevel >= 2 || finalResult && outputLevel >= 1){
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
-    std::cout << "\ninfo nodes " << root->visits <<
-      " nps " << round(root->visits/elapsed.count()) <<
+    std::cout << "\ninfo depth " << seldepth-root->depth <<
+      " nodes " << root->visits <<
+      " score cp " << round(tan(-findBestValue(root)*1.56375)*100) <<
+      " nps " << round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
       " time " << round(elapsed.count()*1000) <<
-      " score cp " << round(tan(-findBestValue(root)*1.56375)*100) <<  " wdl " << round(((-findBestValue(root)+1)/2)*1000) << " 0 " << 1000-round(((-findBestValue(root)+1)/2)*1000) << 
       " pv ";
     currNode = root;
     while(currNode->firstChild != nullptr){
       currNode = findBestMove(currNode);
       std::cout << currNode->edge.toStringRep() << " ";
     }
+
+    previousVisits = root->visits; previousElapsed = elapsed.count();
   }
 }
 
@@ -277,6 +283,8 @@ void search(const chess::Board& rootBoard, timeManagement tm){
   
   int lastNodeCheck = 1;
   std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
+  previousVisits = root->visits;
+  previousElapsed = 0;
 
   while((tm.tmType == INFINITE) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (root->visits<tm.limit && tm.tmType == NODES)){
     currNode = root;
