@@ -4,6 +4,10 @@
 #include <chrono>
 //See https://backscattering.de/chess/uci/ for information on the Universal Chess Interface, which this file implements
 namespace uci{
+
+//Some Parameters
+float searchTimeFactor = 0.05;
+
 //The "position" command
 chess::Board position(std::istringstream input){
   std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -102,14 +106,14 @@ void go(std::istringstream input, chess::Board board){
     search::timeManagement tm(search::TIME);
     int time;
 
-    if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += std::max(time/20000.0, 0.005);}}
-    else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += std::max(time/20000.0, 0.005);}}
+    if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += std::max(searchTimeFactor*time/1000.0, 0.005);}}
+    else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += std::max(searchTimeFactor*time/1000.0, 0.005);}}
     else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += 0/20000.0;}}
     else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += 0/20000.0;}}
 
     while(input >> token){
-      if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += std::max(time/20000.0, 0.005);}}
-      else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += std::max(time/20000.0, 0.005);}}
+      if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += std::max(searchTimeFactor*time/1000.0, 0.005);}}
+      else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += std::max(searchTimeFactor*time/1000.0, 0.005);}}
       else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += 0/20000.0;}}
       else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += 0/20000.0;}}
     }
@@ -124,6 +128,7 @@ void respondUci(){
                 "option name explorationfactor type string default " << search::explorationFactor << "\n"
                 "option name evalscalefactor type string default " << search::evalScaleFactor << "\n"
                 "option name evalstabilitybias type spin default " << evaluation::evalStabilityConstant << " min -1024 max 1024\n"
+                "option name searchtimeportion type string default " << searchTimeFactor << "\n"
                 "option name mg_passedpawnbonus2 type spin default " << evaluation::mg_passedPawnBonus[1] << " min -1024 max 1024\n"
                 "option name mg_passedpawnbonus3 type spin default " << evaluation::mg_passedPawnBonus[2] << " min -1024 max 1024\n"
                 "option name mg_passedpawnbonus4 type spin default " << evaluation::mg_passedPawnBonus[3] << " min -1024 max 1024\n"
@@ -161,11 +166,17 @@ void setOption(std::istringstream input){
     input >> value;
     evaluation::evalStabilityConstant = value;
   }
-  if(token == "evaleScaleFactor"){
+  if(token == "evalscalefactor"){
     input >> token; //input the "value" token
     float value;
     input >> value;
     search::evalScaleFactor = value;
+  }
+  if(token == "searchtimeportion"){
+    input >> token; //input the "value" token
+    float value;
+    input >> value;
+    searchTimeFactor = value;
   }
   std::string prefixes[2] = {"mg_", "eg_"};
   std::string postfixes[6] = {"2", "3", "4", "5", "6", "7"};
