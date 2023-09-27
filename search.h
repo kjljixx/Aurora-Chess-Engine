@@ -212,7 +212,7 @@ void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point star
   }
 }
 
-void backpropagate(float result, Node* currNode){
+void backpropagate(float result, Node* currNode, uint8_t visits){
   //Backpropogate results
 
   bool runFindBestMove = false;
@@ -220,32 +220,16 @@ void backpropagate(float result, Node* currNode){
   float oldCurrNodeValue = 2;
 
   if(backpropStrat == MINIMAX){
-    currNode->value = result; //Set the leaf node's value
+    if(currNode->parent && -currNode->value == currNode->parent->value){oldCurrNodeValue = currNode->value;}
+
+    currNode->value = result;
     assert(-1<=currNode->value && 1>=currNode->value);
 
-    if(currNode->parent->firstChild == currNode){
-      result = -result;
-      currNode->visits++;
-      currNode->updatePriority = true;
-      currNode = currNode->parent;
-
-      if(currNode->parent && -currNode->value == currNode->parent->value){oldCurrNodeValue = currNode->value;}
-      currNode->value = result;
-      assert(-1<=currNode->value && 1>=currNode->value);
-
-      runFindBestMove = currNode->value > oldCurrNodeValue;
-
-      result = -result;
-      currNode->visits++;
-      currNode->updatePriority = true;
-      currNode = currNode->parent;
-    }
-    else{
-      result = -result;
-      currNode->visits++;
-      currNode->updatePriority = true;
-      currNode = currNode->parent;
-    }
+    runFindBestMove = currNode->value > oldCurrNodeValue;
+    result = -result;
+    currNode->visits+=visits;
+    currNode->updatePriority = true;
+    currNode = currNode->parent;
   }
 
   while(currNode != nullptr){
@@ -273,7 +257,7 @@ void backpropagate(float result, Node* currNode){
       }
     }
 
-    currNode->visits++;
+    currNode->visits+=visits;
     currNode->updatePriority = true;
     currNode = currNode->parent;
   }
@@ -321,7 +305,7 @@ void search(const chess::Board& rootBoard, timeManagement tm){
     }
     //Expand & Backpropagate new values
     if(currNode->isTerminal){
-      backpropagate(currNode->value, currNode);
+      backpropagate(currNode->value, currNode, 1);
     }
     else{
       //Reached a leaf node
@@ -329,17 +313,25 @@ void search(const chess::Board& rootBoard, timeManagement tm){
       if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currNode->value>=-1); currNode->isTerminal=true; continue;}
       expand(currNode, moves);
       //Simulate for all new nodes
+      Node* parentNode = currNode; //This will be the root of the backpropagation
       currNode = currNode->firstChild;
+      float currBestValue = 2; //Find and only backpropagate the best value
       while(currNode != nullptr){
         chess::Board movedBoard = board;
 
         chess::makeMove(movedBoard, currNode->edge);
         float result = playout(movedBoard, currNode);
         assert(-1<=result && 1>=result);
-        backpropagate(result, currNode);
+        currNode->value = result;
+        currNode->visits = 1;
+        currNode->updatePriority = true;
+
+        currBestValue = fminf(currBestValue, result);
 
         currNode = currNode->nextSibling;
       }
+      //Backpropagate best value
+      backpropagate(-currBestValue, parentNode, moves.size());
     }
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;

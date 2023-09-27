@@ -56,7 +56,7 @@ std::string fens[AMOUNT_OF_FENS] = { //From Alexandria
 			"2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93"
 	};
 
-const int SECONDS_PER_POSITION = 2;
+const int SECONDS_PER_POSITION = 5;
 
 int main(){
   getchar();
@@ -73,11 +73,10 @@ int main(){
 
     nodes += search::root->visits;
 
-    std::cout << "\nFINISHED POSITION #" << i << " OF 50";
+    std::cout << "FINISHED POSITION #" << i << " OF 50";
+    std::cout << "\nNODES PER SECOND: " << double(nodes)/(SECONDS_PER_POSITION*i);
 
     search::destroyTree(search::root); search::root = nullptr;
   }
-
-  std::cout << "\nNODES PER SECOND: " << double(nodes)/(SECONDS_PER_POSITION*AMOUNT_OF_FENS);
   getchar();
 }
