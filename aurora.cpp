@@ -1,7 +1,7 @@
 #include "uci.h"
 
 int main() {
-  std::string version = "0.8-outputLevel";
+  std::string version = "0.8.1-backpropagationLeafParentFix";
   search::init();
   //tb_init("C:\\Users\\kjlji\\OneDrive\\Documents\\VSCode\\C++\\AuroraChessEngine-main\\3-4-5");
 
