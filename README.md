@@ -4,7 +4,7 @@
 
 # General
 
-Aurora is a work-in-progress UCI (Universal Chess Interface) compatible chess engine.
+Aurora is an actively developed UCI (Universal Chess Interface) compatible chess engine.
 This means that Aurora is a command-line-based engine and you will need a UCI-Compatible GUI in order to intuitively use Aurora.
 
 To use Aurora, simply download the source code and build ```aurora.cpp```.
