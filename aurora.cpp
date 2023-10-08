@@ -1,7 +1,7 @@
 #include "uci.h"
 
 int main() {
-  std::string version = "0.9.0-backpropagateInBatches";
+  std::string version = "0.9.1-explorationFactorTune";
   search::init();
   //tb_init("C:\\Users\\kjlji\\OneDrive\\Documents\\VSCode\\C++\\AuroraChessEngine-main\\3-4-5");
 

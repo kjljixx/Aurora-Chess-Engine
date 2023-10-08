@@ -15,8 +15,7 @@ float outputLevel = 2; //outputLevel:
                        //2: output bestmove and info at end of search and output info every 2 seconds
                        //3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 
-float explorationFactor = 1.315;
-float explorationExponentFactor = 0.5;
+float explorationFactor = 0.43758939032521665;
 float evalScaleFactor = 1;
 
 uint8_t seldepth = 0;
