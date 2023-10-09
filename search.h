@@ -21,6 +21,7 @@ float evalScaleFactor = 1;
 uint8_t seldepth = 0;
 
 void init(){
+  lookupTables::init();
   evaluation::init();
   zobrist::init();
   srand(time(NULL));
@@ -135,7 +136,7 @@ float playout(chess::Board& board, Node* currNode){
     return _gameStatus;
   }
 
-  float eval = fmaxf(fminf(atan(evaluation::evaluate(board)*evalScaleFactor/100.0)/1.56375, 1),-1)*0.999999;
+  float eval = fmaxf(fminf(atan((board.sideToMove ? evaluation::evaluate(board).blackToMove : evaluation::evaluate(board).whiteToMove)*evalScaleFactor/100.0)/1.56375, 1),-1)*0.999999;
   assert(-1<=eval && 1>=eval);
   return eval;
 }

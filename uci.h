@@ -127,20 +127,7 @@ void respondUci(){
                 "option name outputlevel type spin default " << search::outputLevel << " min 0 max 3\n"
                 "option name explorationfactor type string default " << search::explorationFactor << "\n"
                 "option name evalscalefactor type string default " << search::evalScaleFactor << "\n"
-                "option name evalstabilitybias type spin default " << evaluation::evalStabilityConstant << " min -1024 max 1024\n"
                 "option name searchtimeportion type string default " << searchTimeFactor << "\n"
-                "option name mg_passedpawnbonus2 type spin default " << evaluation::mg_passedPawnBonus[1] << " min -1024 max 1024\n"
-                "option name mg_passedpawnbonus3 type spin default " << evaluation::mg_passedPawnBonus[2] << " min -1024 max 1024\n"
-                "option name mg_passedpawnbonus4 type spin default " << evaluation::mg_passedPawnBonus[3] << " min -1024 max 1024\n"
-                "option name mg_passedpawnbonus5 type spin default " << evaluation::mg_passedPawnBonus[4] << " min -1024 max 1024\n"
-                "option name mg_passedpawnbonus6 type spin default " << evaluation::mg_passedPawnBonus[5] << " min -1024 max 1024\n"
-                "option name mg_passedpawnbonus7 type spin default " << evaluation::mg_passedPawnBonus[6] << " min -1024 max 1024\n"
-                "option name eg_passedpawnbonus2 type spin default " << evaluation::eg_passedPawnBonus[1] << " min -1024 max 1024\n"
-                "option name eg_passedpawnbonus3 type spin default " << evaluation::eg_passedPawnBonus[2] << " min -1024 max 1024\n"
-                "option name eg_passedpawnbonus4 type spin default " << evaluation::eg_passedPawnBonus[3] << " min -1024 max 1024\n"
-                "option name eg_passedpawnbonus5 type spin default " << evaluation::eg_passedPawnBonus[4] << " min -1024 max 1024\n"
-                "option name eg_passedpawnbonus6 type spin default " << evaluation::eg_passedPawnBonus[5] << " min -1024 max 1024\n"
-                "option name eg_passedpawnbonus7 type spin default " << evaluation::eg_passedPawnBonus[6] << " min -1024 max 1024\n"
                 "\n"
                 "uciok\n";
 }
@@ -160,12 +147,6 @@ void setOption(std::istringstream input){
     input >> value;
     search::explorationFactor = value;
   }
-  if(token == "evalstabilitybias"){
-    input >> token; //input the "value" token
-    int value;
-    input >> value;
-    evaluation::evalStabilityConstant = value;
-  }
   if(token == "evalscalefactor"){
     input >> token; //input the "value" token
     float value;
@@ -177,18 +158,6 @@ void setOption(std::istringstream input){
     float value;
     input >> value;
     searchTimeFactor = value;
-  }
-  std::string prefixes[2] = {"mg_", "eg_"};
-  std::string postfixes[6] = {"2", "3", "4", "5", "6", "7"};
-  for(int i=0; i<2; i++){
-    for(int j=0; j<6; j++){
-      if(token == prefixes[i]+"passedpawnbonus"+postfixes[j]){
-          input >> token; //input the "value" token
-          int value;
-          input >> value;
-          evaluation::passedPawnBonuses[i][j+1] = value;
-      }
-    }
   }
 }
 //Custom commands
@@ -260,8 +229,7 @@ void loop(chess::Board board){
     if(token == "rpinned"){bitboards::printBoard(board.generateKingMasks().rookPinnedPieces); std::cout << "\n";}
     if(token == "bpinmask"){bitboards::printBoard(board.generateKingMasks().bishopPinmask); std::cout << "\n";}
     if(token == "bpinned"){bitboards::printBoard(board.generateKingMasks().bishopPinnedPieces); std::cout << "\n";}
-    if(token == "staticeval"){std::cout << evaluation::evaluate(board) << "\n";}
-    if(token == "see"){std::cin >> token; uint8_t square = squareNotationToIndex(token); std::cout << evaluation::SEE(board, square) << "\n";}
+    if(token == "staticeval"){std::cout << (board.sideToMove ? evaluation::evaluate(board).blackToMove : evaluation::evaluate(board).whiteToMove) << "\n";}
     if(token == "zobrist"){std::cout << zobrist::getHash(board) << "\n";}
   }
 }
