@@ -40,13 +40,16 @@ struct Node{
   uint8_t depth;
   float sPriority;
   bool updatePriority;
+  evaluation::Eval staticeval;
 
-  Node(Node* parent, uint8_t index, chess::Move edge, uint8_t depth) :
+  Node(Node* parent, uint8_t index, chess::Move edge, uint8_t depth, evaluation::Eval eval) :
   parent(parent), index(index),
   firstChild(nullptr), nextSibling(nullptr),
-  visits(0), value(-2), edge(edge), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true) {}
+  visits(0), value(-2), edge(edge), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true),
+  staticeval(eval) {}
 
-  Node() : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(-2), edge(chess::Move()), isTerminal(false), depth(0), sPriority(-1), updatePriority(true) {}
+  Node() : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(-2), edge(chess::Move()), isTerminal(false), depth(0), sPriority(-1), updatePriority(true),
+  staticeval(evaluation::Eval()) {}
 
   Node* getChildByIndex(uint8_t index){
     Node* currNode = firstChild;
@@ -117,11 +120,11 @@ Node* selectChild(Node* parent){
 void expand(Node* parent, chess::MoveList& moves){
   if(moves.size()==0){return;}
 
-  parent->firstChild = new Node(parent, 0, moves[0], parent->depth+1);
+  parent->firstChild = new Node(parent, 0, moves[0], parent->depth+1, evaluation::Eval());
   Node* currNode = parent->firstChild;
 
   for(int i=1; i<moves.size(); i++){
-    currNode->nextSibling = new Node(parent, i, moves[i], parent->depth+1);
+    currNode->nextSibling = new Node(parent, i, moves[i], parent->depth+1, evaluation::Eval());
     currNode = currNode->nextSibling;
   }
 
