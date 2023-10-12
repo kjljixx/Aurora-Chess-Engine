@@ -9,7 +9,8 @@ int piecePairTable[2016][169];
 void init(){
   for(int i=0; i<2016; i++){
     for(int j=0; j<169; j++){
-      piecePairTable[i][j] = (rand() % 2)*2-1;
+      piecePairTable[i][j] = 0;
+      if(i==27 && j==17){piecePairTable[i][j] = 1;}
     }
   }
 }
@@ -106,23 +107,28 @@ Eval updateEvalOnSquare(Eval prevEval, chess::Board& board, uint8_t square, ches
   if(newPiece >= 7){newPiece -= 6;}
   else if(newPiece >= 1){newPiece += 6;}
 
-  for(int i=0; i<square; i++){
-    int currPiece = board.findPiece(i);
-    if(whitePieces & (1ULL << i)){currPiece += 6;}
+  for(int i=0; i<63; i++){
+    if(i != square){
+      int currPiece = board.findPiece(i);
+      if(whitePieces & (1ULL << i)){currPiece += 6;}
 
-    int squarePairIndex = squarePairToIndex(i^56, square^56, true);
+      i^=56; square^=56;
 
-    prevEval.blackToMove -= piecePairTable[squarePairIndex][(13*changingPiece)+(currPiece)];
-    prevEval.blackToMove += piecePairTable[squarePairIndex][(13*newPiece)+(currPiece)];
-  }
-  for(int i=(square+1); i<64; i++){
-    int currPiece = board.findPiece(i);
-    if(whitePieces & (1ULL << i)){currPiece += 6;}
+      if(i < square){
+        int squarePairIndex = squarePairToIndex(i, square, false);
 
-    int squarePairIndex = squarePairToIndex(square^56, i^56, true);
+        prevEval.blackToMove -= piecePairTable[squarePairIndex][(13*changingPiece)+(currPiece)];
+        prevEval.blackToMove += piecePairTable[squarePairIndex][(13*newPiece)+(currPiece)];
+      }
+      else{
+        int squarePairIndex = squarePairToIndex(square, i, false);
 
-    prevEval.blackToMove -= piecePairTable[squarePairIndex][(13*currPiece)+(changingPiece)];
-    prevEval.blackToMove += piecePairTable[squarePairIndex][(13*currPiece)+(newPiece)];
+        prevEval.blackToMove -= piecePairTable[squarePairIndex][(13*currPiece)+(changingPiece)];
+        prevEval.blackToMove += piecePairTable[squarePairIndex][(13*currPiece)+(newPiece)];
+      }
+
+      i^=56; square^=56;
+    }
   }
 
   return prevEval;
@@ -236,5 +242,7 @@ Eval updateEvalOnMove(Eval prevEval, chess::Board& board, chess::Move move){
   else{
     board.history[board.halfmoveClock] = zobrist::getHash(board);
   }
+
+  return prevEval;
 }
 }
