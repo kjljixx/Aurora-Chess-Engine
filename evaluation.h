@@ -54,13 +54,24 @@ Eval evaluate(chess::Board& board){
   }
   for(int i=0; i<63; i++){
     for(int j=i+1; j<64; j++){
-      int piecePair = 0;
-      if(whitePieces & (1ULL << i)){piecePair += board.findPiece(i) + 6;}
-      else{piecePair += board.findPiece(i);}
-      if(whitePieces & (1ULL << j)){piecePair += 13*(board.findPiece(j) + 6);}
-      else{piecePair += 13*board.findPiece(j);}
+      if((j^56) > (i^56)){
+        int piecePair = 0;
+        if(whitePieces & (1ULL << i)){piecePair += board.findPiece(i) + 6;}
+        else{piecePair += board.findPiece(i);}
+        if(whitePieces & (1ULL << j)){piecePair += 13*(board.findPiece(j) + 6);}
+        else{piecePair += 13*board.findPiece(j);}
 
-      evaluation.blackToMove += piecePairTable[squarePairToIndex(i^56, j^56, true)][piecePair];
+        evaluation.blackToMove += piecePairTable[squarePairToIndex(i^56, j^56, false)][piecePair];
+      }
+      else{
+        int piecePair = 0;
+        if(whitePieces & (1ULL << i)){piecePair += 13*(board.findPiece(i) + 6);}
+        else{piecePair += 13*board.findPiece(i);}
+        if(whitePieces & (1ULL << j)){piecePair += board.findPiece(j) + 6;}
+        else{piecePair += board.findPiece(j);}
+
+        evaluation.blackToMove += piecePairTable[squarePairToIndex(j^56, i^56, false)][piecePair];
+      }
     }
   }
 
