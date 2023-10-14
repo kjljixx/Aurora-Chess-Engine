@@ -85,8 +85,8 @@ Eval updateEvalOnSquare(Eval prevEval, chess::Board& board, uint8_t square, ches
   }
   for(int i=square+1; i<64; i++){
     int currPiece = board.mailbox[i];
-    prevEval.whiteToMove -= piecePairTable[square][i][13*board.mailbox[i]+currPiece];
-    prevEval.whiteToMove += piecePairTable[square][i][13*board.mailbox[i]+currPiece];
+    prevEval.whiteToMove -= piecePairTable[square][i][13*currPiece+changingPiece];
+    prevEval.whiteToMove += piecePairTable[square][i][13*currPiece+newPiece];
   }
 
   if(changingPiece >= 7){changingPiece -= 6;}
