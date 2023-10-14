@@ -47,6 +47,8 @@ struct Board{
   bool hashed; //if there is a zobrist hash of the position in history, this is true
   uint8_t startHistoryIndex; //When a fen is entered, we want getGameStatus to ignore all items of history before the halfmoveClock of the fen
 
+  uint8_t mailbox[64] = {0}; //mailbox representation of the board
+
   //constructor
   Board(
   U64 pawns,
@@ -75,14 +77,17 @@ struct Board{
   halfmoveClock(halfmoveClock),
   hashed(false)
   {
+    for(int i=0; i<64; i++){mailbox[i] = 0;}
   }
 
   Board(){
+    for(int i=0; i<64; i++){mailbox[i] = 0;}
     setToFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     hashed = false;
   }
 
   Board(std::string fen){
+    for(int i=0; i<64; i++){mailbox[i] = 0;}
     setToFen(fen);
     hashed = false;
   }
@@ -109,29 +114,29 @@ struct Board{
     fenStream >> token;
     for (auto currChar : token) {
     switch (currChar) {
-      case 'p': pawns |= (1ULL << boardPos); black |= (1ULL << boardPos++);
+      case 'p': mailbox[boardPos] = 7; pawns |= (1ULL << boardPos); black |= (1ULL << boardPos++);
       break;
-      case 'r': rooks |= (1ULL << boardPos); black |= (1ULL << boardPos++);
+      case 'r': mailbox[boardPos] = 10; rooks |= (1ULL << boardPos); black |= (1ULL << boardPos++);
       break;
-      case 'n': knights |= (1ULL << boardPos); black |= (1ULL << boardPos++);
+      case 'n': mailbox[boardPos] = 8; knights |= (1ULL << boardPos); black |= (1ULL << boardPos++);
       break;
-      case 'b': bishops |= (1ULL << boardPos); black |= (1ULL << boardPos++);
+      case 'b': mailbox[boardPos] = 9; bishops |= (1ULL << boardPos); black |= (1ULL << boardPos++);
       break;
-      case 'q': queens |= (1ULL << boardPos); black |= (1ULL << boardPos++);
+      case 'q': mailbox[boardPos] = 11; queens |= (1ULL << boardPos); black |= (1ULL << boardPos++);
       break;
-      case 'k': kings |= (1ULL << boardPos); black |= (1ULL << boardPos++);
+      case 'k': mailbox[boardPos] = 12; kings |= (1ULL << boardPos); black |= (1ULL << boardPos++);
       break;
-      case 'P': pawns |= (1ULL << boardPos); white |= (1ULL << boardPos++);
+      case 'P': mailbox[boardPos] = 1; pawns |= (1ULL << boardPos); white |= (1ULL << boardPos++);
       break;
-      case 'R': rooks |= (1ULL << boardPos); white |= (1ULL << boardPos++);
+      case 'R': mailbox[boardPos] = 4; rooks |= (1ULL << boardPos); white |= (1ULL << boardPos++);
       break;
-      case 'N': knights |= (1ULL << boardPos); white |= (1ULL << boardPos++);
+      case 'N': mailbox[boardPos] = 2; knights |= (1ULL << boardPos); white |= (1ULL << boardPos++);
       break;
-      case 'B': bishops |= (1ULL << boardPos); white |= (1ULL << boardPos++);
+      case 'B': mailbox[boardPos] = 3; bishops |= (1ULL << boardPos); white |= (1ULL << boardPos++);
       break;
-      case 'Q': queens |= (1ULL << boardPos); white |= (1ULL << boardPos++);
+      case 'Q': mailbox[boardPos] = 5; queens |= (1ULL << boardPos); white |= (1ULL << boardPos++);
       break;
-      case 'K': kings |= (1ULL << boardPos); white |= (1ULL << boardPos++);
+      case 'K': mailbox[boardPos] = 6; kings |= (1ULL << boardPos); white |= (1ULL << boardPos++);
       break;
       case '/': boardPos -= 16; // Go down 1ULL rank
       break;
@@ -403,15 +408,10 @@ struct Board{
   Pieces findPiece(uint8_t square){
     if(square>63){return null;}
 
-    U64 startSquare = 1ULL << square;
-    if(queens & startSquare){return QUEEN;}
-    if(rooks & startSquare){return ROOK;}
-    if(bishops & startSquare){return BISHOP;}
-    if(pawns & startSquare){return PAWN;}
-    if(knights & startSquare){return KNIGHT;}
-    if(kings & startSquare){return KING;}
+    int pieces = mailbox[square];
+    if(pieces >= 7){pieces -= 6;}
 
-    return null;
+    return chess::Pieces(pieces);
   }
 
   void makeMove(Move move){
@@ -421,6 +421,7 @@ struct Board{
     const Pieces movingPiece = findPiece(startSquare);
     const MoveFlags moveFlags = move.getMoveFlags();
 
+    mailbox[startSquare] = 0;
     unsetColors((1ULL << startSquare), sideToMove);
     unsetPieces(movingPiece, (1ULL << startSquare));
 
@@ -428,6 +429,8 @@ struct Board{
       U64 theirPawnSquare;
       if(sideToMove == WHITE){theirPawnSquare = (1ULL << endSquare) >> 8;}
       else{theirPawnSquare = (1ULL << endSquare) << 8;}
+      uint8_t theirPawnSq = _bitscanForward(theirPawnSquare);
+      mailbox[theirPawnSq] = 0;
       unsetColors(theirPawnSquare, Colors(!sideToMove));
       unsetPieces(PAWN, theirPawnSquare);
     }
@@ -435,6 +438,7 @@ struct Board{
       if(getTheirPieces() & (1ULL << endSquare)){
         halfmoveClock = 0;
         startHistoryIndex = 0;
+        mailbox[endSquare] = 0;
         unsetColors((1ULL << endSquare), Colors(!sideToMove));
         unsetPieces(UNKNOWN, (1ULL << endSquare));
       }
@@ -453,17 +457,19 @@ struct Board{
         rookStartSquare = 7+sideToMove*56;
         rookEndSquare = 5+sideToMove*56;
       }
+      mailbox[rookStartSquare] = 0;
       unsetColors(rookStartSquare, sideToMove);
       unsetPieces(ROOK, rookStartSquare);
 
+      mailbox[rookEndSquare] = sideToMove ? 10 : 4;
       setColors(rookEndSquare, sideToMove);
       setPieces(ROOK, rookEndSquare);
     }
 
     setColors((1ULL << endSquare), sideToMove);
 
-    if(moveFlags == PROMOTION){setPieces(move.getPromotionPiece(), (1ULL << endSquare));}
-    else{setPieces(movingPiece, (1ULL << endSquare));}
+    if(moveFlags == PROMOTION){mailbox[endSquare] = sideToMove ? move.getPromotionPiece()+6 : move.getPromotionPiece()+6; setPieces(move.getPromotionPiece(), (1ULL << endSquare));}
+    else{mailbox[endSquare] = movingPiece; setPieces(movingPiece, (1ULL << endSquare));}
 
     enPassant = 0ULL;
     if(movingPiece == PAWN){
