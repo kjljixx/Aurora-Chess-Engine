@@ -139,7 +139,7 @@ float playout(chess::Board& board, Node* currNode){
     return _gameStatus;
   }
 
-  float eval = fmaxf(fminf(atan((board.sideToMove ? evaluation::evaluate(board).blackToMove : evaluation::evaluate(board).whiteToMove)*evalScaleFactor/100.0)/1.56375, 1),-1)*0.999999;
+  float eval = fmaxf(fminf(atan((board.sideToMove ? currNode->staticeval.blackToMove : currNode->staticeval.whiteToMove)*evalScaleFactor/100.0)/1.56375, 1),-1)*0.999999;
   assert(-1<=eval && 1>=eval);
   return eval;
 }
@@ -316,13 +316,14 @@ void search(const chess::Board& rootBoard, timeManagement tm){
       if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currNode->value>=-1); currNode->isTerminal=true; continue;}
       expand(currNode, moves);
       //Simulate for all new nodes
-      Node* parentNode = currNode; //This will be the root of the backpropagation
+      Node* parentNode = currNode; //This will be the root of the backpropagatio
+      evaluation::Eval parentEval = parentNode->staticeval;
       currNode = currNode->firstChild;
       float currBestValue = 2; //Find and only backpropagate the best value
       while(currNode != nullptr){
         chess::Board movedBoard = board;
+        currNode->staticeval = evaluation::updateEvalOnMove(parentEval, movedBoard, currNode->edge);
 
-        chess::makeMove(movedBoard, currNode->edge);
         float result = playout(movedBoard, currNode);
         assert(-1<=result && 1>=result);
         currNode->value = result;
