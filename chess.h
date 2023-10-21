@@ -47,7 +47,7 @@ struct Board{
   bool hashed; //if there is a zobrist hash of the position in history, this is true
   uint8_t startHistoryIndex; //When a fen is entered, we want getGameStatus to ignore all items of history before the halfmoveClock of the fen
 
-  uint8_t mailbox[64] = {0}; //mailbox representation of the board
+  uint8_t mailbox[2][64] = {0}; //mailbox representation of the board, one for each side
 
   //constructor
   Board(
@@ -77,17 +77,17 @@ struct Board{
   halfmoveClock(halfmoveClock),
   hashed(false)
   {
-    for(int i=0; i<64; i++){mailbox[i] = 0;}
+    for(int i=0; i<64; i++){mailbox[0][i] = 0; mailbox[1][i] = 0;}
   }
 
   Board(){
-    for(int i=0; i<64; i++){mailbox[i] = 0;}
+    for(int i=0; i<64; i++){mailbox[0][i] = 0; mailbox[1][i] = 0;}
     setToFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
     hashed = false;
   }
 
   Board(std::string fen){
-    for(int i=0; i<64; i++){mailbox[i] = 0;}
+    for(int i=0; i<64; i++){mailbox[0][i] = 0; mailbox[1][i] = 0;}
     setToFen(fen);
     hashed = false;
   }
@@ -114,29 +114,29 @@ struct Board{
     fenStream >> token;
     for (auto currChar : token) {
     switch (currChar) {
-      case 'p': mailbox[boardPos] = 7; pawns |= (1ULL << boardPos); black |= (1ULL << boardPos++);
+      case 'p': mailbox[0][boardPos] = 7; mailbox[1][boardPos^56] = 1; pawns |= (1ULL << boardPos); black |= (1ULL << boardPos++);
       break;
-      case 'r': mailbox[boardPos] = 10; rooks |= (1ULL << boardPos); black |= (1ULL << boardPos++);
+      case 'r': mailbox[0][boardPos] = 10; mailbox[1][boardPos^56] = 4; rooks |= (1ULL << boardPos); black |= (1ULL << boardPos++);
       break;
-      case 'n': mailbox[boardPos] = 8; knights |= (1ULL << boardPos); black |= (1ULL << boardPos++);
+      case 'n': mailbox[0][boardPos] = 8; mailbox[1][boardPos^56] = 2; knights |= (1ULL << boardPos); black |= (1ULL << boardPos++);
       break;
-      case 'b': mailbox[boardPos] = 9; bishops |= (1ULL << boardPos); black |= (1ULL << boardPos++);
+      case 'b': mailbox[0][boardPos] = 9; mailbox[1][boardPos^56] = 3; bishops |= (1ULL << boardPos); black |= (1ULL << boardPos++);
       break;
-      case 'q': mailbox[boardPos] = 11; queens |= (1ULL << boardPos); black |= (1ULL << boardPos++);
+      case 'q': mailbox[0][boardPos] = 11; mailbox[1][boardPos^56] = 5; queens |= (1ULL << boardPos); black |= (1ULL << boardPos++);
       break;
-      case 'k': mailbox[boardPos] = 12; kings |= (1ULL << boardPos); black |= (1ULL << boardPos++);
+      case 'k': mailbox[0][boardPos] = 12; mailbox[1][boardPos^56] = 6; kings |= (1ULL << boardPos); black |= (1ULL << boardPos++);
       break;
-      case 'P': mailbox[boardPos] = 1; pawns |= (1ULL << boardPos); white |= (1ULL << boardPos++);
+      case 'P': mailbox[0][boardPos] = 1; mailbox[1][boardPos^56] = 7; pawns |= (1ULL << boardPos); white |= (1ULL << boardPos++);
       break;
-      case 'R': mailbox[boardPos] = 4; rooks |= (1ULL << boardPos); white |= (1ULL << boardPos++);
+      case 'R': mailbox[0][boardPos] = 4; mailbox[1][boardPos^56] = 10; rooks |= (1ULL << boardPos); white |= (1ULL << boardPos++);
       break;
-      case 'N': mailbox[boardPos] = 2; knights |= (1ULL << boardPos); white |= (1ULL << boardPos++);
+      case 'N': mailbox[0][boardPos] = 2; mailbox[1][boardPos^56] = 8; knights |= (1ULL << boardPos); white |= (1ULL << boardPos++);
       break;
-      case 'B': mailbox[boardPos] = 3; bishops |= (1ULL << boardPos); white |= (1ULL << boardPos++);
+      case 'B': mailbox[0][boardPos] = 3; mailbox[1][boardPos^56] = 9; bishops |= (1ULL << boardPos); white |= (1ULL << boardPos++);
       break;
-      case 'Q': mailbox[boardPos] = 5; queens |= (1ULL << boardPos); white |= (1ULL << boardPos++);
+      case 'Q': mailbox[0][boardPos] = 5; mailbox[1][boardPos^56] = 11; queens |= (1ULL << boardPos); white |= (1ULL << boardPos++);
       break;
-      case 'K': mailbox[boardPos] = 6; kings |= (1ULL << boardPos); white |= (1ULL << boardPos++);
+      case 'K': mailbox[0][boardPos] = 6; mailbox[1][boardPos^56] = 12; kings |= (1ULL << boardPos); white |= (1ULL << boardPos++);
       break;
       case '/': boardPos -= 16; // Go down 1ULL rank
       break;
@@ -408,7 +408,7 @@ struct Board{
   Pieces findPiece(uint8_t square){
     if(square>63){return null;}
 
-    int pieces = mailbox[square];
+    int pieces = mailbox[0][square];
     if(pieces >= 7){pieces -= 6;}
 
     return chess::Pieces(pieces);
@@ -421,7 +421,7 @@ struct Board{
     const Pieces movingPiece = findPiece(startSquare);
     const MoveFlags moveFlags = move.getMoveFlags();
 
-    mailbox[startSquare] = 0;
+    mailbox[0][startSquare] = 0; mailbox[1][startSquare^56] = 0;
     unsetColors((1ULL << startSquare), sideToMove);
     unsetPieces(movingPiece, (1ULL << startSquare));
 
@@ -430,7 +430,7 @@ struct Board{
       if(sideToMove == WHITE){theirPawnSquare = (1ULL << endSquare) >> 8;}
       else{theirPawnSquare = (1ULL << endSquare) << 8;}
       uint8_t theirPawnSq = _bitscanForward(theirPawnSquare);
-      mailbox[theirPawnSq] = 0;
+      mailbox[0][theirPawnSq] = 0; mailbox[1][theirPawnSq^56] = 0;
       unsetColors(theirPawnSquare, Colors(!sideToMove));
       unsetPieces(PAWN, theirPawnSquare);
     }
@@ -438,7 +438,7 @@ struct Board{
       if(getTheirPieces() & (1ULL << endSquare)){
         halfmoveClock = 0;
         startHistoryIndex = 0;
-        mailbox[endSquare] = 0;
+        mailbox[0][endSquare] = 0; mailbox[1][endSquare^56] = 0;
         unsetColors((1ULL << endSquare), Colors(!sideToMove));
         unsetPieces(UNKNOWN, (1ULL << endSquare));
       }
@@ -457,19 +457,24 @@ struct Board{
         rookStartSquare = 7+sideToMove*56;
         rookEndSquare = 5+sideToMove*56;
       }
-      mailbox[rookStartSquare] = 0;
+      mailbox[0][rookStartSquare] = 0; mailbox[1][rookStartSquare^56] = 0;
       unsetColors(rookStartSquare, sideToMove);
       unsetPieces(ROOK, rookStartSquare);
 
-      mailbox[rookEndSquare] = sideToMove ? 10 : 4;
+      mailbox[0][rookEndSquare] = sideToMove ? 10 : 4; mailbox[1][rookEndSquare^56] = sideToMove ? 4 : 10;
       setColors(rookEndSquare, sideToMove);
       setPieces(ROOK, rookEndSquare);
     }
 
     setColors((1ULL << endSquare), sideToMove);
 
-    if(moveFlags == PROMOTION){mailbox[endSquare] = sideToMove ? move.getPromotionPiece()+6 : move.getPromotionPiece()+6; setPieces(move.getPromotionPiece(), (1ULL << endSquare));}
-    else{mailbox[endSquare] = movingPiece; setPieces(movingPiece, (1ULL << endSquare));}
+    chess::Pieces endPiece = movingPiece;
+
+    if(moveFlags == PROMOTION){endPiece = move.getPromotionPiece();}
+    
+    mailbox[0][endSquare] = sideToMove ? movingPiece+6 : movingPiece;
+    mailbox[1][endSquare^56] = sideToMove ? movingPiece : movingPiece+6;
+    setPieces(movingPiece, (1ULL << endSquare));
 
     enPassant = 0ULL;
     if(movingPiece == PAWN){

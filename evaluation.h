@@ -6,6 +6,8 @@
 namespace evaluation{
 int piecePairTable[64][13][64][13];
 
+int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
+
 void init(){
   piecePairTable[0][4][28][1] = 1;
   piecePairTable[28][1][0][4] = 1;
@@ -54,45 +56,39 @@ U64 counter;
  }
 
 Eval updateEvalOnSquare(Eval prevEval, chess::Board& board, uint8_t square, chess::Pieces newPieceType, chess::Colors newPieceColor = chess::WHITE){
-  int changingPiece = board.mailbox[square];
+  int changingPiece = board.mailbox[0][square];
 
   int newPiece = (newPieceColor == chess::WHITE) || (newPieceType == chess::null) ? newPieceType : newPieceType+6;
   
   int currPiece;
 
   for(int i=0; i<square; i++){
-    currPiece = board.mailbox[i];
+    currPiece = board.mailbox[0][i];
     
     prevEval.whiteToMove -= piecePairTable[square][changingPiece][i][currPiece];
     prevEval.whiteToMove += piecePairTable[square][newPiece][i][currPiece];
   }
   for(int i=square+1; i<64; i++){
-    currPiece = board.mailbox[i];
+    currPiece = board.mailbox[0][i];
     
     prevEval.whiteToMove -= piecePairTable[square][changingPiece][i][currPiece];
     prevEval.whiteToMove += piecePairTable[square][newPiece][i][currPiece];
   }
 
-  if(changingPiece >= 7){changingPiece -= 6;}
-  else if(changingPiece >= 1){changingPiece += 6;}
+  changingPiece = switchPieceColor[changingPiece];
 
-  if(newPiece >= 7){newPiece -= 6;}
-  else if(newPiece >= 1){newPiece += 6;}
+  newPiece = switchPieceColor[newPiece];
 
   square ^= 56;
 
   for(int i=0; i<square; i++){
-    currPiece = board.mailbox[i^56];
-    if(currPiece >= 7){currPiece -= 6;}
-    else if(currPiece >= 1){currPiece += 6;}
+    currPiece = board.mailbox[1][i];
     
     prevEval.blackToMove -= piecePairTable[square][changingPiece][i][currPiece];
     prevEval.blackToMove += piecePairTable[square][newPiece][i][currPiece];
   }
   for(int i=square+1; i<64; i++){
-    currPiece = board.mailbox[i^56];
-    if(currPiece >= 7){currPiece -= 6;}
-    else if(currPiece >= 1){currPiece += 6;}
+    currPiece = board.mailbox[1][i];
     
     prevEval.blackToMove -= piecePairTable[square][changingPiece][i][currPiece];
     prevEval.blackToMove += piecePairTable[square][newPiece][i][currPiece];
@@ -114,7 +110,7 @@ Eval updateEvalOnMove(Eval prevEval, chess::Board& board, chess::Move move){
   const chess::MoveFlags moveFlags = move.getMoveFlags();
 
   prevEval = updateEvalOnSquare(prevEval, board, startSquare, chess::null);
-  board.mailbox[startSquare] = 0;
+  board.mailbox[0][startSquare] = 0; board.mailbox[1][startSquare^56] = 0;
   board.unsetColors((1ULL << startSquare), board.sideToMove);
   board.unsetPieces(movingPiece, (1ULL << startSquare));
 
@@ -126,7 +122,7 @@ Eval updateEvalOnMove(Eval prevEval, chess::Board& board, chess::Move move){
     uint8_t theirPawnSq = _bitscanForward(theirPawnSquare);
 
     prevEval = updateEvalOnSquare(prevEval, board, theirPawnSq, chess::null);
-    board.mailbox[theirPawnSq] = 0;
+    board.mailbox[0][theirPawnSq] = 0; board.mailbox[1][theirPawnSq^56] = 0;
     board.unsetColors(theirPawnSquare, chess::Colors(!board.sideToMove));
     board.unsetPieces(chess::PAWN, theirPawnSquare);
   }
@@ -136,7 +132,7 @@ Eval updateEvalOnMove(Eval prevEval, chess::Board& board, chess::Move move){
       board.startHistoryIndex = 0;
 
       prevEval = updateEvalOnSquare(prevEval, board, endSquare, chess::null);
-      board.mailbox[endSquare] = 0;
+      board.mailbox[0][endSquare] = 0; board.mailbox[1][endSquare^56] = 0;
       board.unsetColors((1ULL << endSquare), chess::Colors(!board.sideToMove));
       board.unsetPieces(chess::UNKNOWN, (1ULL << endSquare));
     }
@@ -157,24 +153,26 @@ Eval updateEvalOnMove(Eval prevEval, chess::Board& board, chess::Move move){
     }
 
     prevEval = updateEvalOnSquare(prevEval, board, rookStartSquare, chess::null);
-    board.mailbox[rookStartSquare] = 0;
+    board.mailbox[0][rookStartSquare] = 0; board.mailbox[1][rookStartSquare^56] = 0;
     board.unsetColors(rookStartSquare, board.sideToMove);
     board.unsetPieces(chess::ROOK, rookStartSquare);
 
     prevEval = updateEvalOnSquare(prevEval, board, rookEndSquare, chess::ROOK, board.sideToMove);
-    board.mailbox[rookEndSquare] = board.sideToMove ? 10 : 4;
+    board.mailbox[0][rookEndSquare] = board.sideToMove ? 10 : 4; board.mailbox[1][rookEndSquare^56] = board.sideToMove ? 4 : 10;
     board.setColors(rookEndSquare, board.sideToMove);
     board.setPieces(chess::ROOK, rookEndSquare);
   }
 
   if(moveFlags == chess::PROMOTION){
     prevEval = updateEvalOnSquare(prevEval, board, endSquare, move.getPromotionPiece(), board.sideToMove);
-    board.mailbox[endSquare] = board.sideToMove ? move.getPromotionPiece()+6 : move.getPromotionPiece();
+    board.mailbox[0][endSquare] = board.sideToMove ? move.getPromotionPiece()+6 : move.getPromotionPiece();
+    board.mailbox[1][endSquare^56] = board.sideToMove ? move.getPromotionPiece() : move.getPromotionPiece()+6;
     board.setPieces(move.getPromotionPiece(), (1ULL << endSquare));
   }
   else{
     prevEval = updateEvalOnSquare(prevEval, board, endSquare, movingPiece, board.sideToMove);
-    board.mailbox[endSquare] = movingPiece;
+    board.mailbox[0][endSquare] = board.sideToMove ? movingPiece+6 : movingPiece;
+    board.mailbox[1][endSquare] = board.sideToMove ? movingPiece : movingPiece+6;
     board.setPieces(movingPiece, (1ULL << endSquare));
   }
   board.setColors((1ULL << endSquare), board.sideToMove);
