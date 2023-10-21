@@ -4,17 +4,11 @@
 #include <random>
 
 namespace evaluation{
-int piecePairTable[64][64][169];
+int piecePairTable[64][13][64][13];
 
 void init(){
-  for(int i=0; i<64; i++){
-    for(int j=0; j<64; j++){
-      for(int k=0; k<64; k++){
-        piecePairTable[i][j][k] = 0;
-        if(i==0 && j==28 && k==17){piecePairTable[i][j][k] = 1;}
-      }
-    }
-  }
+  piecePairTable[0][4][28][1] = 1;
+  piecePairTable[28][1][0][4] = 1;
 }
 
 struct Eval{
@@ -31,62 +25,52 @@ Eval evaluate(chess::Board& board){
 
   U64 whitePieces = board.getPieces(chess::WHITE);
   U64 blackPieces = board.getPieces(chess::BLACK);
-  int index = 0;
   for(int i=0; i<63; i++){
     for(int j=i+1; j<64; j++){
-      int piecePair = 0;
-      if(blackPieces & (1ULL << i)){piecePair += board.findPiece(i) + 6;}
-      else{piecePair += board.findPiece(i);}
-      if(blackPieces & (1ULL << j)){piecePair += 13*(board.findPiece(j) + 6);}
-      else{piecePair += 13*board.findPiece(j);}
+      int pieceI;
+      int pieceJ;
+      if(blackPieces & (1ULL << i)){pieceI = board.findPiece(i) + 6;}
+      else{pieceI = board.findPiece(i);}
+      if(blackPieces & (1ULL << j)){pieceJ = board.findPiece(j) + 6;}
+      else{pieceJ = board.findPiece(j);}
 
-      evaluation.whiteToMove += piecePairTable[i][j][piecePair];
-      index++;
-    }
-  }
-  for(int i=0; i<63; i++){
-    for(int j=i+1; j<64; j++){
-      if((j^56) > (i^56)){
-        int piecePair = 0;
-        if(whitePieces & (1ULL << i)){piecePair += board.findPiece(i) + 6;}
-        else{piecePair += board.findPiece(i);}
-        if(whitePieces & (1ULL << j)){piecePair += 13*(board.findPiece(j) + 6);}
-        else{piecePair += 13*board.findPiece(j);}
+      evaluation.whiteToMove += piecePairTable[i][pieceI][j][pieceJ];
 
-        evaluation.blackToMove += piecePairTable[i^56][j^56][piecePair];
-      }
-      else{
-        int piecePair = 0;
-        if(whitePieces & (1ULL << i)){piecePair += 13*(board.findPiece(i) + 6);}
-        else{piecePair += 13*board.findPiece(i);}
-        if(whitePieces & (1ULL << j)){piecePair += board.findPiece(j) + 6;}
-        else{piecePair += board.findPiece(j);}
-
-        evaluation.blackToMove += piecePairTable[j^56][i^56][piecePair];
-      }
+      if(pieceI >= 7){pieceI -= 6;}
+      else if(pieceI >= 1){pieceI += 6;}
+      if(pieceJ >= 7){pieceJ -= 6;}
+      else if(pieceJ >= 1){pieceJ += 6;}
+      evaluation.blackToMove += piecePairTable[i^56][pieceI][j^56][pieceJ];
     }
   }
 
   return evaluation;
 }
 
-Eval updateEvalOnSquare(Eval prevEval, chess::Board& board, uint8_t square, chess::Pieces newPieceType, chess::Colors newPieceColor = chess::WHITE){
-  U64 whitePieces = board.getPieces(chess::WHITE);
-  U64 blackPieces = board.getPieces(chess::BLACK);
+U64 counter;
 
+ void fetchPiecePairTableValue(int a){
+   counter+=a;
+ }
+
+Eval updateEvalOnSquare(Eval prevEval, chess::Board& board, uint8_t square, chess::Pieces newPieceType, chess::Colors newPieceColor = chess::WHITE){
   int changingPiece = board.mailbox[square];
 
   int newPiece = (newPieceColor == chess::WHITE) || (newPieceType == chess::null) ? newPieceType : newPieceType+6;
+  
+  int currPiece;
 
   for(int i=0; i<square; i++){
-    int currPiece = board.mailbox[i];
-    prevEval.whiteToMove -= piecePairTable[i][square][13*changingPiece+currPiece];
-    prevEval.whiteToMove += piecePairTable[i][square][13*newPiece+currPiece];
+    currPiece = board.mailbox[i];
+    
+    prevEval.whiteToMove -= piecePairTable[square][changingPiece][i][currPiece];
+    prevEval.whiteToMove += piecePairTable[square][newPiece][i][currPiece];
   }
   for(int i=square+1; i<64; i++){
-    int currPiece = board.mailbox[i];
-    prevEval.whiteToMove -= piecePairTable[square][i][13*currPiece+changingPiece];
-    prevEval.whiteToMove += piecePairTable[square][i][13*currPiece+newPiece];
+    currPiece = board.mailbox[i];
+    
+    prevEval.whiteToMove -= piecePairTable[square][changingPiece][i][currPiece];
+    prevEval.whiteToMove += piecePairTable[square][newPiece][i][currPiece];
   }
 
   if(changingPiece >= 7){changingPiece -= 6;}
@@ -98,18 +82,20 @@ Eval updateEvalOnSquare(Eval prevEval, chess::Board& board, uint8_t square, ches
   square ^= 56;
 
   for(int i=0; i<square; i++){
-    int currPiece = board.mailbox[i^56];
+    currPiece = board.mailbox[i^56];
     if(currPiece >= 7){currPiece -= 6;}
     else if(currPiece >= 1){currPiece += 6;}
-    prevEval.blackToMove -= piecePairTable[i][square][13*changingPiece+currPiece];
-    prevEval.blackToMove += piecePairTable[i][square][13*newPiece+currPiece];
+    
+    prevEval.blackToMove -= piecePairTable[square][changingPiece][i][currPiece];
+    prevEval.blackToMove += piecePairTable[square][newPiece][i][currPiece];
   }
   for(int i=square+1; i<64; i++){
-    int currPiece = board.mailbox[i^56];
+    currPiece = board.mailbox[i^56];
     if(currPiece >= 7){currPiece -= 6;}
     else if(currPiece >= 1){currPiece += 6;}
-    prevEval.blackToMove -= piecePairTable[square][i][13*currPiece+changingPiece];
-    prevEval.blackToMove += piecePairTable[square][i][13*currPiece+newPiece];
+    
+    prevEval.blackToMove -= piecePairTable[square][changingPiece][i][currPiece];
+    prevEval.blackToMove += piecePairTable[square][newPiece][i][currPiece];
   }
 
   return prevEval;
