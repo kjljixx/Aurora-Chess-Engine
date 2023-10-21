@@ -10,7 +10,7 @@ This means that Aurora is a command-line-based engine and you will need a UCI-Co
 To use Aurora, simply download the source code and build ```aurora.cpp```.
 For example, if you use g++, run the following command in the directory of the source code:
 ```shell
-g++ aurora.cpp -o aurora
+g++ aurora.cpp -o aurora -O3
 ```
 
 You should now have a file named ```aurora.exe```, which is the engine. Now go to your GUI and find instructions for adding engines. When the GUI prompts you to choose a file/engine, choose ```aurora.exe```.
