@@ -124,6 +124,7 @@ void respondUci(){
   std::cout <<  "id name Aurora\n"
                 "id author kjljixx\n"
                 "\n"
+                "option name evalfile type string default eval.auroraeval\n"
                 "option name outputlevel type spin default " << search::outputLevel << " min 0 max 3\n"
                 "option name explorationfactor type string default " << search::explorationFactor << "\n"
                 "option name evalscalefactor type string default " << search::evalScaleFactor << "\n"
@@ -135,6 +136,13 @@ void setOption(std::istringstream input){
   std::string token;
   input >> token; //input the "name" token
   input >> token;
+  if(token == "evalfile"){
+    input >> token; //input the "value" token
+    std::string value;
+    input >> value;
+    evaluation::evalFile = value; 
+    evaluation::init();
+  }
   if(token == "outputlevel"){
     input >> token; //input the "value" token
     int value;

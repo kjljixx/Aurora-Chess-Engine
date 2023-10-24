@@ -468,13 +468,16 @@ struct Board{
 
     setColors((1ULL << endSquare), sideToMove);
 
-    chess::Pieces endPiece = movingPiece;
-
-    if(moveFlags == PROMOTION){endPiece = move.getPromotionPiece();}
-    
-    mailbox[0][endSquare] = sideToMove ? movingPiece+6 : movingPiece;
-    mailbox[1][endSquare^56] = sideToMove ? movingPiece : movingPiece+6;
-    setPieces(movingPiece, (1ULL << endSquare));
+    if(moveFlags == PROMOTION){
+      mailbox[0][endSquare] = sideToMove ? move.getPromotionPiece()+6 : move.getPromotionPiece();
+      mailbox[1][endSquare^56] = sideToMove ? move.getPromotionPiece() : move.getPromotionPiece()+6;
+      setPieces(move.getPromotionPiece(), (1ULL << endSquare));
+    }
+    else{
+      mailbox[0][endSquare] = sideToMove ? movingPiece+6 : movingPiece;
+      mailbox[1][endSquare^56] = sideToMove ? movingPiece : movingPiece+6;
+      setPieces(movingPiece, (1ULL << endSquare));
+    }
 
     enPassant = 0ULL;
     if(movingPiece == PAWN){
@@ -532,7 +535,7 @@ Move* generateLegalMoves(Board &board, Move* legalMoves){
   }
 
   pieceBitboard = (ourPieces & board.kings);
-  if(!(ourPieces & board.kings)){board.printBoard();}
+  assert(pieceBitboard);
   piecePos = _bitscanForward(pieceBitboard);
   board.canCurrentlyCastle = 0;
 

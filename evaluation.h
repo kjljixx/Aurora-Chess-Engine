@@ -1,16 +1,53 @@
 #include "zobrist.h"
+#include <fstream>
 #include <math.h>
 #include <algorithm>
 #include <random>
+#include <filesystem>
 
 namespace evaluation{
+
+const int EVAL_VERSION = 1;
+
+std::string evalFile = "eval.auroraeval";
+
+
 int piecePairTable[64][13][64][13];
 
 int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
 
 void init(){
-  piecePairTable[0][4][28][1] = 1;
-  piecePairTable[28][1][0][4] = 1;
+  std::ifstream pptFile{evalFile, std::ios::binary};
+  int token;
+
+  if(!std::filesystem::exists(evalFile)){
+    std::cout << "info string failed to load evalfile; could not find evalfile\n";
+    return;
+  }
+  
+  if(!pptFile.good()){
+    std::cout << "info string failed to load evalfile; could not open evalfile\n";
+    return;
+  }
+  pptFile >> token;
+  if(token != EVAL_VERSION){
+    std::cout << "info string failed to load evalfile; the version of the evalfile is not compatible with the engine\n";
+    return;
+  }
+
+  for(int i=0; i<64; i++){
+    for(int j=0; j<13; j++){
+      for(int k=i+1; k<64; k++){
+        for(int l=0; l<13; l++){
+          pptFile >> token;
+          piecePairTable[i][j][k][l] = token;
+          piecePairTable[k][l][i][j] = token;
+        }
+      }
+    }
+  }
+
+  std::cout << "info string evalfile loaded successfully\n";
 }
 
 struct Eval{
@@ -97,6 +134,7 @@ Eval updateEvalOnSquare(Eval prevEval, chess::Board& board, uint8_t square, ches
   return prevEval;
 }
 
+//Incrementally updates the Eval given based on a move made on the board
 Eval updateEvalOnMove(Eval prevEval, chess::Board& board, chess::Move move){
   U64 newHash;
   if(board.hashed){
