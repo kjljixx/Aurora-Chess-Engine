@@ -57,8 +57,10 @@ std::string fens[AMOUNT_OF_FENS] = { //From Alexandria
 	};
 
 const int SECONDS_PER_POSITION = 5;
+const int SEARCHES_PER_POSITION = 5;
 
 int main(){
+  std::cout << "BENCH";
   getchar();
   search::init();
   int nodes;
@@ -66,17 +68,17 @@ int main(){
   int i=0;
   for(std::string fen : fens){
     i++;
+    for(int j=0; j<SEARCHES_PER_POSITION; j++){
+      chess::Board board(fen);
 
-    chess::Board board(fen);
+      search::search(board, search::timeManagement(search::TIME, SECONDS_PER_POSITION));
 
-    search::search(board, search::timeManagement(search::TIME, SECONDS_PER_POSITION));
+      nodes += search::root->visits;
 
-    nodes += search::root->visits;
-
+      search::destroyTree(search::root); search::root = nullptr;
+    }
     std::cout << "FINISHED POSITION #" << i << " OF 50";
     std::cout << "\nNODES PER SECOND: " << double(nodes)/(SECONDS_PER_POSITION*i);
-
-    search::destroyTree(search::root); search::root = nullptr;
   }
   getchar();
 }
