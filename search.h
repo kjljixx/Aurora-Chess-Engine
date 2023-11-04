@@ -15,7 +15,8 @@ float outputLevel = 2; //outputLevel:
                        //2: output bestmove and info at end of search and output info every 2 seconds
                        //3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 
-float explorationFactor = 0.43758939032521665;
+//Tuned with Weather Factory with 28256 iterations(games) at 5+0.05
+float explorationFactor = 0.18672279654288734;
 float evalScaleFactor = 1;
 
 uint8_t seldepth = 0;
@@ -34,6 +35,7 @@ struct Node{
   Node* nextSibling;
   chess::Move edge;
   uint32_t visits;
+  uint32_t displayVisits;
   float value;
   bool isTerminal;
   uint8_t depth;
@@ -43,9 +45,9 @@ struct Node{
   Node(Node* parent, uint8_t index, chess::Move edge, uint8_t depth) :
   parent(parent), index(index),
   firstChild(nullptr), nextSibling(nullptr),
-  visits(0), value(-2), edge(edge), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true) {}
+  visits(0), displayVisits(0), value(-2), edge(edge), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true) {}
 
-  Node() : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(-2), edge(chess::Move()), isTerminal(false), depth(0), sPriority(-1), updatePriority(true) {}
+  Node() : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), displayVisits(0), value(-2), edge(chess::Move()), isTerminal(false), depth(0), sPriority(-1), updatePriority(true) {}
 
   Node* getChildByIndex(uint8_t index){
     Node* currNode = firstChild;
@@ -94,7 +96,7 @@ Node* selectChild(Node* parent){
   const float parentVisitsTerm = sqrtl(explorationFactor*logl(parent->visits));
 
   while(currNode != nullptr){
-    if(currNode->updatePriority){
+    if(true){
       currNode->sPriority = -currNode->value+parentVisitsTerm/sqrtl(currNode->visits);
       currNode->updatePriority = false;
     }
@@ -178,10 +180,10 @@ void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point star
   Node* currNode = root;
 
   if(outputLevel==3){
-    std::cout << "\nNODES: " << root->visits << " SELDEPTH: " << seldepth-root->depth <<"\n";
+    std::cout << "\nNODES: " << root->displayVisits << " SELDEPTH: " << seldepth-root->depth <<"\n";
     currNode = currNode->firstChild;
     while(currNode != nullptr){
-    std::cout << currNode->edge.toStringRep() << ": Q:" << -currNode->value << " N:" << currNode->visits << " PV:";
+    std::cout << currNode->edge.toStringRep() << ": Q:" << -currNode->value << " N:" << currNode->displayVisits << " SP:" << currNode->sPriority <<  " PV:";
     Node* pvNode = currNode;
     while(pvNode->firstChild != nullptr){
       pvNode = findBestMove(pvNode);
@@ -196,9 +198,9 @@ void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point star
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
     std::cout << "\ninfo depth " << seldepth-root->depth <<
-      " nodes " << root->visits <<
+      " nodes " << root->displayVisits <<
       " score cp " << round(tan(-findBestValue(root)*1.56375)*100) <<
-      " nps " << round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
+      " nps " << round((root->displayVisits-previousVisits)/(elapsed.count()-previousElapsed)) <<
       " time " << round(elapsed.count()*1000) <<
       " pv ";
     currNode = root;
@@ -207,7 +209,7 @@ void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point star
       std::cout << currNode->edge.toStringRep() << " ";
     }
 
-    previousVisits = root->visits; previousElapsed = elapsed.count();
+    previousVisits = root->displayVisits; previousElapsed = elapsed.count();
   }
 }
 
@@ -226,7 +228,8 @@ void backpropagate(float result, Node* currNode, uint8_t visits){
 
     runFindBestMove = currNode->value > oldCurrNodeValue;
     result = -result;
-    currNode->visits+=visits;
+    currNode->visits+=1;
+    currNode->displayVisits+=visits;
     currNode->updatePriority = true;
     currNode = currNode->parent;
   }
@@ -256,7 +259,8 @@ void backpropagate(float result, Node* currNode, uint8_t visits){
       }
     }
 
-    currNode->visits+=visits;
+    currNode->visits+=1;
+    currNode->displayVisits+=visits;
     currNode->updatePriority = true;
     currNode = currNode->parent;
   }
@@ -294,7 +298,7 @@ void search(const chess::Board& rootBoard, timeManagement tm){
   previousVisits = root->visits;
   previousElapsed = 0;
 
-  while((tm.tmType == INFINITE) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (root->visits<tm.limit && tm.tmType == NODES)){
+  while((tm.tmType == INFINITE) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (root->displayVisits<tm.limit && tm.tmType == NODES)){
     currNode = root;
     chess::Board board = rootBoard;
     //Traverse the search tree
@@ -323,6 +327,7 @@ void search(const chess::Board& rootBoard, timeManagement tm){
         assert(-1<=result && 1>=result);
         currNode->value = result;
         currNode->visits = 1;
+        currNode->displayVisits = 1;
         currNode->updatePriority = true;
 
         currBestValue = fminf(currBestValue, result);
