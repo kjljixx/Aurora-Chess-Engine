@@ -9,3 +9,8 @@ bd.bat
 b.bat
 testing
 bench.exe
+tuner
+sources.csv
+texel-tuner.h
+texelTuneEval.h
+tune.exe

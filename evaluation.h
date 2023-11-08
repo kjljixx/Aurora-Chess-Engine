@@ -1,3 +1,4 @@
+#pragma once
 #include "zobrist.h"
 #include <math.h>
 #include <algorithm>

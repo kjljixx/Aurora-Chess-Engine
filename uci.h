@@ -1,3 +1,4 @@
+#pragma once
 //Start reading code relating to move generation/chess rules in "bitboards.h"
 //After reading this file, go to files relating to search, starting with "search.h"
 #include "search.h"
