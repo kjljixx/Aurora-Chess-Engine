@@ -96,7 +96,7 @@ void go(std::istringstream input, chess::Board board){
 
   input >> token;
   if(token == "infinite"){
-    search::search(board, search::timeManagement(search::INFINITE));
+    search::search(board, search::timeManagement(search::FOREVER));
   }
   else if(token == "nodes"){
     int maxNodes;
@@ -191,6 +191,14 @@ void setOption(std::istringstream input){
       }
     }
   }
+  #if DATAGEN == 1
+    if(token == "datafile"){
+      input >> token; //input the "value" token
+      float value;
+      input >> value;
+      dataFilePath = value;
+    }
+  #endif
 }
 //Custom commands
 chess::Board makeMoves(chess::Board &board, std::istringstream input){

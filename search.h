@@ -1,9 +1,17 @@
 #pragma once
 #include "evaluation.h"
+#include <fstream>
 #include <time.h>
 #include <math.h>
 #include <memory>
 #include <chrono>
+#include <windows.h>
+
+//Set to 1 if you want to build a version of Aurora which generates data, 0 for the normal version.
+#define DATAGEN 0
+#if DATAGEN == 1
+  std::string dataFilePath;
+#endif
 
 namespace search{
 
@@ -268,16 +276,16 @@ void backpropagate(float result, Node* currNode, uint8_t visits){
 }
 //Code relating to the time manager
 enum timeManagementType{
-  INFINITE,
+  FOREVER,
   TIME,
   NODES
 };
 
 struct timeManagement{
-  timeManagementType tmType = INFINITE;
-  float limit; //For infinite, this does not matter. For Nodes, this is the amount of nodes. For Time, it is the amount of seconds
+  timeManagementType tmType = FOREVER;
+  float limit; //For FOREVER, this does not matter. For Nodes, this is the amount of nodes. For Time, it is the amount of seconds
   timeManagement(timeManagementType _tmType, uint32_t _limit = 0): tmType(_tmType), limit(_limit) {}
-  timeManagement(): tmType(INFINITE), limit(0){}
+  timeManagement(): tmType(FOREVER), limit(0){}
 };
 //The main search function
 
@@ -349,6 +357,16 @@ void search(const chess::Board& rootBoard, timeManagement tm){
   printSearchInfo(root, start, true);
   std::cout << "\nbestmove " << findBestMove(root)->edge.toStringRep() << "\n";
 
+  #if DATAGEN == 1
+    //Data Generation code
+    HANDLE dataFile = CreateFileA(dataFilePath, FILE_APPEND_DATA, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+    const std::string data = searchRootBoard.getFen() + " " + std::to_string(fminf(((searchRootBoard.sideToMove ? -root->value : root->value)+1)/2, 0.999999)) + "\n";
+    DWORD dwBytesToWrite = (DWORD)strlen(data.c_str());
+    DWORD dwBytesWritten = 0;
+    WriteFile(dataFile, data.c_str(), dwBytesToWrite, &dwBytesWritten, NULL);
+    CloseHandle(dataFile);
+  #endif
 }
 //Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
 void makeMove(chess::Board& board, chess::Move move){
