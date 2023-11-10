@@ -14,3 +14,7 @@ sources.csv
 texel-tuner.h
 texelTuneEval.h
 tune.exe
+dg.bat
+dgb.bat
+data
+auroradatagen.exe

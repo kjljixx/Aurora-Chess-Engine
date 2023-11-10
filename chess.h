@@ -111,7 +111,7 @@ struct Board{
     enPassant=0ULL;
     halfmoveClock=0;
 
-    U64 boardPos = 56; // Fen string starts at a8 = index 56
+    uint8_t boardPos = 56; // Fen string starts at a8 = index 56
     fenStream >> token;
     for (auto currChar : token) {
     switch (currChar) {
@@ -197,6 +197,72 @@ struct Board{
     std::cout << "\n  A B C D E F G H";
     std::cout << " HMC: " << halfmoveClock;
     std::cout << " STM: " << sideToMove;
+  }
+
+  std::string getFen(){
+    std::string fen;
+    U64 mask = 0;
+    for(int i=8; i>0; i--){
+      if(i != 8){fen += "/";}
+
+      int noPieceCounter = 0;
+      for(int j=0; j<8; j++){
+        mask = 0;
+        mask |= (1ULL << (i-1)*8+j);
+
+        if(occupied & mask){
+          if(noPieceCounter){fen += std::to_string(noPieceCounter); noPieceCounter = 0;}
+        }
+        else if(j == 7){
+          fen += std::to_string(noPieceCounter+1); noPieceCounter = 0;
+        }
+
+        if(pawns & mask){fen += char('P'+((mask & black) != 0)*32);}
+        else if(knights & mask){fen += char('N'+((mask & black) != 0)*32);}
+        else if(bishops & mask){fen += char('B'+((mask & black) != 0)*32);}
+        else if(rooks & mask){fen += char('R'+((mask & black) != 0)*32);}
+        else if(queens & mask){fen += char('Q'+((mask & black) != 0)*32);}
+        else if(kings & mask){fen += char('K'+((mask & black) != 0)*32);}
+
+        else{noPieceCounter++;}
+      }
+    }
+
+    fen += " ";
+    if(sideToMove){fen += "b";}
+    else{fen += "w";}
+
+    fen += " ";
+    if(castlingRights){
+      if(castlingRights & 0x1){
+        fen += "K";
+      }
+      if(castlingRights & 0x2){
+        fen += "Q";
+      }
+      if(castlingRights & 0x4){
+        fen += "k";
+      }
+      if(castlingRights & 0x8){
+        fen += "q";
+      }
+    }
+    else{
+      fen += "-";
+    }
+
+    fen += " ";
+    if(enPassant){
+      fen += squareIndexToNotation(_bitscanForward(enPassant));
+    }
+    else{
+      fen += "-";
+    }
+
+    fen += " ";
+    fen += std::to_string(halfmoveClock);
+
+    return fen;
   }
 
   U64 getPieces(Colors color){
