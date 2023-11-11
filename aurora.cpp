@@ -1,7 +1,10 @@
 #include "uci.h"
 
 int main() {
-  std::string version = "0.10.0-visitsAsExpansions";
+  std::string version = "0.10.1-tunedEvaluation";
+  #if DATAGEN == 1
+    version += "-datagen";
+  #endif
   search::init();
   //tb_init("C:\\Users\\kjlji\\OneDrive\\Documents\\VSCode\\C++\\AuroraChessEngine-main\\3-4-5");
 
