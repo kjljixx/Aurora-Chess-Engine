@@ -5,12 +5,12 @@
 #include <math.h>
 #include <memory>
 #include <chrono>
-#include <windows.h>
 
 //Set to 1 if you want to build a version of Aurora which generates data, 0 for the normal version.
 #define DATAGEN 0
 #if DATAGEN == 1
-  std::string dataFilePath;
+  #include <windows.h>
+  LPCSTR dataFilePath;
 #endif
 
 namespace search{
