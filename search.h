@@ -307,7 +307,7 @@ void search(const chess::Board& rootBoard, timeManagement tm){
   previousVisits = root->visits;
   previousElapsed = 0;
 
-  while((tm.tmType == INFINITE) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (root->displayVisits<tm.limit && tm.tmType == NODES)){
+  while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (root->displayVisits<tm.limit && tm.tmType == NODES)){
     currNode = root;
     chess::Board board = rootBoard;
     //Traverse the search tree
