@@ -9,3 +9,8 @@ bd.bat
 b.bat
 testing
 bench.exe
+data
+auroradatagen.exe
+dg.bat
+dgb.bat
+sources.csv

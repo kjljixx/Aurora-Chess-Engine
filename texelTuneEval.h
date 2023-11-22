@@ -1,20 +1,21 @@
-#pragma once
 #include "zobrist.h"
 #include <fstream>
 #include <math.h>
 #include <algorithm>
 #include <random>
 #include <filesystem>
+#include <array>
 
-namespace evaluation{
+namespace texelTuneEval{
 
 const int EVAL_VERSION = 1;
 
-//Included EvalFile trained on 500k fens using Texel Tuner
-//[7840s] Epoch 5900 (0.754214 eps), error 0.00398793, LR 0.0111653
 std::string evalFile = "eval.auroraeval";
 
-int piecePairTable[64][13][64][13];
+int piecePairTableIndicesToSingleIndex[64][13][64][13];
+
+int piecePairTable[64][13][64][13] = {0};
+double doublePiecePairTable[64][13][64][13] = {0};
 
 int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
 
@@ -37,7 +38,7 @@ void init(){
     return;
   }
 
-  int iter = 0;
+  int singleIndex = 0;
   for(int i=0; i<64; i++){
     for(int j=0; j<13; j++){
       for(int k=i+1; k<64; k++){
@@ -45,8 +46,12 @@ void init(){
           pptFile >> token;
           piecePairTable[i][j][k][l] = int(token);
           piecePairTable[k][l][i][j] = int(token);
+          doublePiecePairTable[i][j][k][l] = token;
+          doublePiecePairTable[k][l][i][j] = token;
 
-          iter++;
+          piecePairTableIndicesToSingleIndex[i][j][k][l] = singleIndex;
+          piecePairTableIndicesToSingleIndex[k][l][i][j] = singleIndex;
+          singleIndex++;
         }
       }
     }
@@ -64,31 +69,76 @@ struct Eval{
   Eval(int white, int black) : whiteToMove(white), blackToMove(black) {}
 };
 
-Eval evaluate(chess::Board& board){
-  Eval evaluation;
+std::vector<int> evaluate(std::array<int8_t, 65> board){
+  std::vector<int> coefficients;
+
+  for(int i=0; i<63; i++){
+   for(int j=i+1; j<64; j++){
+      int pieceI;
+      int pieceJ;
+
+      pieceI = board[i];
+      pieceJ = board[j];
+
+      if(board[64] == 1){ //White to move
+        coefficients.push_back(piecePairTableIndicesToSingleIndex[i][pieceI][j][pieceJ]);
+      }
+      else{ //Black to move
+        if(pieceI >= 7){pieceI -= 6;}
+        else if(pieceI >= 1){pieceI += 6;}
+        if(pieceJ >= 7){pieceJ -= 6;}
+        else if(pieceJ >= 1){pieceJ += 6;}
+
+        coefficients.push_back(piecePairTableIndicesToSingleIndex[i^56][pieceI][j^56][pieceJ]);
+      }
+   }
+  }
+
+  return coefficients;
+}
+
+std::vector<int> evaluate(chess::Board& board){
+  std::vector<int> coefficients;
 
   U64 whitePieces = board.getPieces(chess::WHITE);
   U64 blackPieces = board.getPieces(chess::BLACK);
   for(int i=0; i<63; i++){
-    for(int j=i+1; j<64; j++){
+   for(int j=i+1; j<64; j++){
       int pieceI;
       int pieceJ;
+
       if(blackPieces & (1ULL << i)){pieceI = board.findPiece(i) + 6;}
       else{pieceI = board.findPiece(i);}
       if(blackPieces & (1ULL << j)){pieceJ = board.findPiece(j) + 6;}
       else{pieceJ = board.findPiece(j);}
-
-      evaluation.whiteToMove += piecePairTable[i][pieceI][j][pieceJ];
+      
+      if(!board.sideToMove){
+        // std::cout << piecePairTableIndicesToSingleIndex[i][pieceI][j][pieceJ] << " ";
+        //std::cout << i << " " << pieceI << " " << j << " " << pieceJ << "  ";
+        coefficients.push_back(piecePairTableIndicesToSingleIndex[i][pieceI][j][pieceJ]);
+      }
 
       if(pieceI >= 7){pieceI -= 6;}
       else if(pieceI >= 1){pieceI += 6;}
       if(pieceJ >= 7){pieceJ -= 6;}
       else if(pieceJ >= 1){pieceJ += 6;}
-      evaluation.blackToMove += piecePairTable[i^56][pieceI][j^56][pieceJ];
-    }
+
+      if(board.sideToMove){
+        if((j^56) > (i^56)){
+          // if(piecePairTableIndicesToSingleIndex[i^56][pieceI][j^56][pieceJ]==0){
+          //   std::cout  << "S" << (i^56) << " " << (j^56) << " " << i << " " << j << " ";
+          // }
+          coefficients.push_back(piecePairTableIndicesToSingleIndex[i^56][pieceI][j^56][pieceJ]);
+        }
+        else{
+          // std::cout << "I" << piecePairTableIndicesToSingleIndex[j^56][pieceJ][i^56][pieceI] << " ";
+          coefficients.push_back(piecePairTableIndicesToSingleIndex[j^56][pieceJ][i^56][pieceI]);
+        }
+      }
+   }
   }
 
-  return evaluation;
+  return coefficients;
 }
 
 U64 counter;

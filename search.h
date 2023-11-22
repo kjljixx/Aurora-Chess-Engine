@@ -16,7 +16,7 @@ float outputLevel = 2; //outputLevel:
                        //3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 
 float explorationFactor = 0.43758939032521665;
-float evalScaleFactor = 1;
+float evalScaleFactor = 100000.0;
 
 uint8_t seldepth = 0;
 
@@ -139,7 +139,7 @@ float playout(chess::Board& board, Node* currNode){
     return _gameStatus;
   }
 
-  float eval = fmaxf(fminf(atan((board.sideToMove ? currNode->staticeval.blackToMove : currNode->staticeval.whiteToMove)*evalScaleFactor/100.0)/1.56375, 1),-1)*0.999999;
+  float eval = fmaxf(fminf(atan((board.sideToMove ? currNode->staticeval.blackToMove : currNode->staticeval.whiteToMove)/evalScaleFactor)/1.56375, 1),-1)*0.999999;
   assert(-1<=eval && 1>=eval);
   return eval;
 }

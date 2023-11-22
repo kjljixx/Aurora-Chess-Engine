@@ -1,3 +1,4 @@
+#pragma once
 //Start reading code relating to move generation/chess rules in "bitboards.h"
 //Then go to "lookup.h"
 #include <cstdint>

@@ -1,0 +1,1 @@
+g++ aurora.cpp -o auroradatagen -march=native -O3 -g
