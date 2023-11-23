@@ -14,7 +14,8 @@ namespace texelTuner{
         static parameters_t get_initial_parameters();
         static EvalResult get_fen_eval_result(const std::string& fen);
         static EvalResult get_external_eval_result(const texelChess::Board& board);
-        static EvalResult get_custom_board_representation_eval_result(const std::array<int8_t, 65>);
+        static EvalResult get_custom_board_representation_eval_result(const std::array<int8_t, 64>&);
+        static std::array<int8_t, 64> get_custom_board_representation_from_fen(const std::string& fen);
         static void print_parameters(const parameters_t& parameters, std::string evalfilepath = "eval.auroraeval");
     };
 
@@ -49,7 +50,7 @@ namespace texelTuner{
     return result;
   }
 
-  EvalResult auroraEval::get_custom_board_representation_eval_result(const std::array<int8_t, 65> board){
+  EvalResult auroraEval::get_custom_board_representation_eval_result(const std::array<int8_t, 64>& board){
     // std::cout << "NEWEVAL:";
     std::vector<int> coefficients = texelTuneEval::evaluate(board);
     EvalResult result;
@@ -58,6 +59,16 @@ namespace texelTuner{
     result.endgame_scale = 1;
     //result.score = trace.score;
     return result;
+  }
+  std::array<int8_t, 64> auroraEval::get_custom_board_representation_from_fen(const std::string& fen){
+    chess::Board board(fen);
+
+    std::array<int8_t, 64> customRep;
+    for(int i=0; i<64; i++){
+      customRep[i] = board.mailbox[board.sideToMove][i];
+    }
+
+    return customRep;
   }
   void auroraEval::print_parameters(const parameters_t& parameters, std::string evalfilepath){
     std::ofstream evalfile;

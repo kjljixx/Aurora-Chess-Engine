@@ -32,7 +32,7 @@ struct CoefficientEntry
 
 struct Entry
 {   
-    std::array<int8_t, 65> boardPos;
+    std::array<int8_t, 64> boardPos;
     //vector<CoefficientEntry> coefficients;
     tune_t wdl;
     bool white_to_move;
@@ -530,6 +530,7 @@ static void parse_fen(const bool side_to_move_wdl, const parameters_t& parameter
     const bool original_white_to_move = get_fen_color_to_move(original_fen);
     //cout << (entry.white_to_move ? "w" : "b") << " ";
     entry.wdl = get_fen_wdl(original_fen, original_white_to_move, entry.white_to_move, side_to_move_wdl);
+    entry.boardPos = TuneEval::get_custom_board_representation_from_fen(board.getFen());
     //get_coefficient_entries(eval_result.coefficients, entry.coefficients, static_cast<int32_t>(parameters.size()));
 #if TAPERED
     entry.phase = get_phase(board);
@@ -898,15 +899,19 @@ void Tuner::run(const std::vector<DataSource>& sources)
             
         }
 
+        cout << "Epoch " << epoch;
+
         if (epoch % 100 == 0)
         {
             const auto elapsed_ms = duration_cast<milliseconds>(high_resolution_clock::now() - loop_start).count();
             const auto epochs_per_second = epoch * 1000.0 / elapsed_ms;
             const tune_t error = get_average_error(thread_pool, entries, parameters, K);
             print_elapsed(start);
-            cout << "Epoch " << epoch << " (" << epochs_per_second << " eps), error " << error << ", LR " << learning_rate << endl;
+            cout << " (" << epochs_per_second << " eps), error " << error << ", LR " << learning_rate;
             TuneEval::print_parameters(parameters);
         }
+
+        cout << endl;
 
         if(epoch % learning_rate_drop_interval == 0)
         {

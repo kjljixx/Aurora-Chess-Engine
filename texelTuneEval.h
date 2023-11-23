@@ -69,29 +69,18 @@ struct Eval{
   Eval(int white, int black) : whiteToMove(white), blackToMove(black) {}
 };
 
-std::vector<int> evaluate(std::array<int8_t, 65> board){
-  std::vector<int> coefficients;
+std::vector<int> evaluate(const std::array<int8_t, 64>& board){
+  std::vector<int> coefficients(2016);
 
+  int pieceI;
+  int pieceJ;
   for(int i=0; i<63; i++){
-   for(int j=i+1; j<64; j++){
-      int pieceI;
-      int pieceJ;
-
-      pieceI = board[i];
+    pieceI = board[i];
+    for(int j=i+1; j<64; j++){
       pieceJ = board[j];
 
-      if(board[64] == 1){ //White to move
-        coefficients.push_back(piecePairTableIndicesToSingleIndex[i][pieceI][j][pieceJ]);
-      }
-      else{ //Black to move
-        if(pieceI >= 7){pieceI -= 6;}
-        else if(pieceI >= 1){pieceI += 6;}
-        if(pieceJ >= 7){pieceJ -= 6;}
-        else if(pieceJ >= 1){pieceJ += 6;}
-
-        coefficients.push_back(piecePairTableIndicesToSingleIndex[i^56][pieceI][j^56][pieceJ]);
-      }
-   }
+      coefficients.push_back(piecePairTableIndicesToSingleIndex[i][pieceI][j][pieceJ]);
+    }
   }
 
   return coefficients;
