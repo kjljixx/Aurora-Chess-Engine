@@ -27,7 +27,7 @@ struct WdlMarker
 struct CoefficientEntry
 {
     int16_t value;
-    int16_t index;
+    int index;
 };
 
 struct Entry
@@ -137,7 +137,7 @@ static void get_coefficient_entries(const coefficients_t& coefficients, vector<C
     }
 }
 
-static tune_t linear_eval(const vector<CoefficientEntry>& coefficients, const parameters_t& parameters)
+static tune_t linear_eval(const coefficients_t& coefficients, const parameters_t& parameters, bool white_to_move)
 {
     //tune_t score = entry.additional_score;
     tune_t score = 0;
@@ -153,7 +153,7 @@ static tune_t linear_eval(const vector<CoefficientEntry>& coefficients, const pa
 #else
     for (const auto& coefficient : coefficients)
     {
-        score += coefficient.value * parameters[coefficient.index];
+        score += (white_to_move ? 1 : -1) * parameters[coefficient];
     }
 #endif
 
@@ -684,7 +684,7 @@ static tune_t get_average_error(ThreadPool& thread_pool, const vector<Entry>& en
             for (int i = start; i < end; i++)
             {
                 const auto& entry = entries[i];
-                const auto eval = linear_eval(TuneEval::get_custom_board_representation_eval_result(entry.boardPos).coefficients, parameters);
+                const auto eval = linear_eval(TuneEval::get_custom_board_representation_eval_result(entry.boardPos).coefficients, parameters, entry.white_to_move);
                 const auto sig = sigmoid(K, eval);
                 const auto diff = entry.wdl - sig;
                 const auto entry_error = pow(diff, 2);
@@ -727,8 +727,9 @@ static tune_t find_optimal_k(ThreadPool& thread_pool, const vector<Entry>& entri
 }
 
 static void update_single_gradient(parameters_t& gradient, const Entry& entry, const parameters_t& params, tune_t K) {
+    coefficients_t coefficients = TuneEval::get_custom_board_representation_eval_result(entry.boardPos).coefficients;
 
-    const tune_t eval = linear_eval(entry, params);
+    const tune_t eval = linear_eval(coefficients, params, entry.white_to_move);
     const tune_t sig = sigmoid(K, eval);
     const tune_t res = (entry.wdl - sig) * sig * (1 - sig);
 
@@ -737,13 +738,13 @@ static void update_single_gradient(parameters_t& gradient, const Entry& entry, c
     const auto eg_base = res - mg_base;
 #endif
 
-    for (const auto& coefficient : entry.coefficients)
+    for (const auto& coefficient : coefficients)
     {
 #if TAPERED
         gradient[coefficient.index][static_cast<int32_t>(PhaseStages::Midgame)] += mg_base * coefficient.value;
         gradient[coefficient.index][static_cast<int32_t>(PhaseStages::Endgame)] += eg_base * coefficient.value * entry.endgame_scale;
 #else
-        gradient[coefficient.index] += res * coefficient.value;
+        gradient[coefficient] += res * (entry.white_to_move ? 1 : -1);
 #endif
     }
 }
