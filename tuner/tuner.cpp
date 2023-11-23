@@ -682,10 +682,14 @@ static tune_t get_average_error(ThreadPool& thread_pool, const vector<Entry>& en
             const auto start = static_cast<int>(thread_id * entries_per_thread);
             const auto end = static_cast<int>((thread_id + 1) * entries_per_thread - 1);
             tune_t error = 0;
+
+            coefficients_t coefficients(2016);
+
             for (int i = start; i < end; i++)
             {
                 const auto& entry = entries[i];
-                const auto eval = linear_eval(TuneEval::get_custom_board_representation_eval_result(entry.boardPos).coefficients, parameters, entry.white_to_move);
+                TuneEval::get_custom_board_representation_eval_result(entry.boardPos, coefficients);
+                const auto eval = linear_eval(coefficients, parameters, entry.white_to_move);
                 const auto sig = sigmoid(K, eval);
                 const auto diff = entry.wdl - sig;
                 const auto entry_error = pow(diff, 2);
@@ -727,9 +731,7 @@ static tune_t find_optimal_k(ThreadPool& thread_pool, const vector<Entry>& entri
     return K;
 }
 
-static void update_single_gradient(parameters_t& gradient, const Entry& entry, const parameters_t& params, tune_t K) {
-    coefficients_t coefficients = TuneEval::get_custom_board_representation_eval_result(entry.boardPos).coefficients;
-
+static void update_single_gradient(parameters_t& gradient, const Entry& entry, const parameters_t& params, tune_t K, coefficients_t& coefficients) {
     const tune_t eval = linear_eval(coefficients, params, entry.white_to_move);
     const tune_t sig = sigmoid(K, eval);
     const tune_t res = (entry.wdl - sig) * sig * (1 - sig);
@@ -764,11 +766,13 @@ static void compute_gradient(ThreadPool& thread_pool, parameters_t& gradient, co
             parameters_t gradient = parameters_t(params.size(), pair_t{});
 #else
             parameters_t gradient = parameters_t(params.size(), 0);
-#endif
+#endif      
+            coefficients_t coefficients(2016);
             for (int i = start; i < end; i++)
             {
                 const auto& entry = entries[i];
-                update_single_gradient(gradient, entry, params, K);
+                TuneEval::get_custom_board_representation_eval_result(entry.boardPos, coefficients);
+                update_single_gradient(gradient, entry, params, K, coefficients);
             }
             thread_gradients[thread_id] = gradient;
         });
@@ -899,15 +903,16 @@ void Tuner::run(const std::vector<DataSource>& sources)
             
         }
 
+        const auto elapsed_ms = duration_cast<milliseconds>(high_resolution_clock::now() - loop_start).count();
+        const auto epochs_per_second = epoch * 1000.0 / elapsed_ms;
         cout << "Epoch " << epoch;
+        cout << " (" << epochs_per_second << " eps)";
 
-        if (epoch % 100 == 0)
+        if (epoch % 10 == 0)
         {
-            const auto elapsed_ms = duration_cast<milliseconds>(high_resolution_clock::now() - loop_start).count();
-            const auto epochs_per_second = epoch * 1000.0 / elapsed_ms;
             const tune_t error = get_average_error(thread_pool, entries, parameters, K);
             print_elapsed(start);
-            cout << " (" << epochs_per_second << " eps), error " << error << ", LR " << learning_rate;
+            cout << ", error " << error << ", LR " << learning_rate;
             TuneEval::print_parameters(parameters);
         }
 
