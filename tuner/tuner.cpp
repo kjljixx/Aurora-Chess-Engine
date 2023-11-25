@@ -769,13 +769,20 @@ static void compute_gradient(ThreadPool& thread_pool, parameters_t& gradient, co
             parameters_t gradient = parameters_t(params.size(), 0);
 #endif      
             coefficients_t coefficients(2016);
-            for (int i = start; i < end; i++)
-            { 
-              if(rand() % 20 == 0){
-                const auto& entry = entries[i];
-                TuneEval::get_custom_board_representation_eval_result(entry.boardPos, coefficients);
-                update_single_gradient(gradient, entry, params, K, coefficients);
-              }
+
+            std::random_device rd;
+            std::mt19937 gen(rd());
+            std::vector<int> batch_data;
+            for (int i = start; i < end; ++i){
+                batch_data.push_back(i);
+            }
+            std::shuffle(batch_data.begin(), batch_data.end(), gen);
+            batch_data.resize(batch_size / thread_count);
+            for (int i = 0; i < (batch_size / thread_count); i++)
+            {
+              const auto& entry = entries[batch_data[i]];
+              TuneEval::get_custom_board_representation_eval_result(entry.boardPos, coefficients);
+              update_single_gradient(gradient, entry, params, K, coefficients);
             }
             thread_gradients[thread_id] = gradient;
         });
@@ -898,7 +905,7 @@ void Tuner::run(const std::vector<DataSource>& sources)
                 parameters[parameter_index][phase_stage] -= learning_rate * momentum[parameter_index][phase_stage] / (static_cast<tune_t>(1e-8) + sqrt(velocity[parameter_index][phase_stage]));
             }
 #else
-            const tune_t grad = -K / 400.0 * gradient[parameter_index] / (static_cast<tune_t>(entries.size()) / 20);
+            const tune_t grad = -K / 400.0 * gradient[parameter_index] / (static_cast<tune_t>(entries.size()) / 1000);
             momentum[parameter_index] = beta1 * momentum[parameter_index] + (1 - beta1) * grad;
             velocity[parameter_index] = beta2 * velocity[parameter_index] + (1 - beta2) * pow(grad, 2);
             parameters[parameter_index] -= learning_rate * (momentum[parameter_index] / (1e-8 + sqrt(velocity[parameter_index])));
@@ -908,10 +915,13 @@ void Tuner::run(const std::vector<DataSource>& sources)
 
         const auto elapsed_ms = duration_cast<milliseconds>(high_resolution_clock::now() - loop_start).count();
         const auto epochs_per_second = epoch * 1000.0 / elapsed_ms;
-        cout << "Epoch " << epoch;
-        cout << " (" << epochs_per_second << " eps)";
 
-        if (epoch % 50 == 0)
+        if(epoch % 100 == 0){
+          cout << "Epoch " << epoch;
+          cout << " (" << epochs_per_second << " eps)";
+        }
+
+        if (epoch % 10000 == 0)
         {
             const tune_t error = get_average_error(thread_pool, entries, parameters, K);
             print_elapsed(start);
@@ -919,7 +929,9 @@ void Tuner::run(const std::vector<DataSource>& sources)
             TuneEval::print_parameters(parameters);
         }
 
-        cout << endl;
+        if(epoch % 100 == 0){
+          cout << endl;
+        }
 
         if(epoch % learning_rate_drop_interval == 0)
         {
