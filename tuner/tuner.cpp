@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <thread>
 #include <vector>
+#include <random>
 
 using namespace std;
 using namespace std::chrono;
@@ -769,10 +770,12 @@ static void compute_gradient(ThreadPool& thread_pool, parameters_t& gradient, co
 #endif      
             coefficients_t coefficients(2016);
             for (int i = start; i < end; i++)
-            {
+            { 
+              if(rand() % 20 == 0){
                 const auto& entry = entries[i];
                 TuneEval::get_custom_board_representation_eval_result(entry.boardPos, coefficients);
                 update_single_gradient(gradient, entry, params, K, coefficients);
+              }
             }
             thread_gradients[thread_id] = gradient;
         });
@@ -895,10 +898,10 @@ void Tuner::run(const std::vector<DataSource>& sources)
                 parameters[parameter_index][phase_stage] -= learning_rate * momentum[parameter_index][phase_stage] / (static_cast<tune_t>(1e-8) + sqrt(velocity[parameter_index][phase_stage]));
             }
 #else
-            const tune_t grad = -K / 400.0 * gradient[parameter_index] / static_cast<tune_t>(entries.size());
+            const tune_t grad = -K / 400.0 * gradient[parameter_index] / (static_cast<tune_t>(entries.size()) / 20);
             momentum[parameter_index] = beta1 * momentum[parameter_index] + (1 - beta1) * grad;
             velocity[parameter_index] = beta2 * velocity[parameter_index] + (1 - beta2) * pow(grad, 2);
-            parameters[parameter_index] -= learning_rate * momentum[parameter_index] / (1e-8 + sqrt(velocity[parameter_index]));
+            parameters[parameter_index] -= learning_rate * (momentum[parameter_index] / (1e-8 + sqrt(velocity[parameter_index])));
 #endif
             
         }
@@ -908,7 +911,7 @@ void Tuner::run(const std::vector<DataSource>& sources)
         cout << "Epoch " << epoch;
         cout << " (" << epochs_per_second << " eps)";
 
-        if (epoch % 10 == 0)
+        if (epoch % 50 == 0)
         {
             const tune_t error = get_average_error(thread_pool, entries, parameters, K);
             print_elapsed(start);
