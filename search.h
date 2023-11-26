@@ -139,7 +139,7 @@ float playout(chess::Board& board, Node* currNode){
     return _gameStatus;
   }
 
-  float eval = fmaxf(fminf(atan((board.sideToMove ? currNode->staticeval.blackToMove : currNode->staticeval.whiteToMove)/evalScaleFactor)/1.56375, 1),-1)*0.999999;
+  float eval = fmaxf(fminf(2 / (1 + exp((board.sideToMove ? currNode->staticeval.blackToMove : currNode->staticeval.whiteToMove)*evalScaleFactor)) - 1, 1),-1)*0.999999;
   assert(-1<=eval && 1>=eval);
   return eval;
 }

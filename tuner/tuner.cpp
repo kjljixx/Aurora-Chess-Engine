@@ -769,20 +769,13 @@ static void compute_gradient(ThreadPool& thread_pool, parameters_t& gradient, co
             parameters_t gradient = parameters_t(params.size(), 0);
 #endif      
             coefficients_t coefficients(2016);
-
-            std::random_device rd;
-            std::mt19937 gen(rd());
-            std::vector<int> batch_data;
-            for (int i = start; i < end; ++i){
-                batch_data.push_back(i);
-            }
-            std::shuffle(batch_data.begin(), batch_data.end(), gen);
-            batch_data.resize(batch_size / thread_count);
-            for (int i = 0; i < (batch_size / thread_count); i++)
+            for (int i = start; i < end; i++)
             {
-              const auto& entry = entries[batch_data[i]];
-              TuneEval::get_custom_board_representation_eval_result(entry.boardPos, coefficients);
-              update_single_gradient(gradient, entry, params, K, coefficients);
+              if(rand() % 1000 == 0){
+                const auto& entry = entries[i];
+                TuneEval::get_custom_board_representation_eval_result(entry.boardPos, coefficients);
+                update_single_gradient(gradient, entry, params, K, coefficients);
+              }
             }
             thread_gradients[thread_id] = gradient;
         });
