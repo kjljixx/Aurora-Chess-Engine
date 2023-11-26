@@ -16,7 +16,7 @@ float outputLevel = 2; //outputLevel:
                        //3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 
 float explorationFactor = 0.43758939032521665;
-float evalScaleFactor = 100000.0;
+float evalScaleFactor = 2.1 / (400 * 100000);
 
 uint8_t seldepth = 0;
 
@@ -48,8 +48,8 @@ struct Node{
   visits(0), value(-2), edge(edge), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true),
   staticeval(eval) {}
 
-  Node() : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(-2), edge(chess::Move()), isTerminal(false), depth(0), sPriority(-1), updatePriority(true),
-  staticeval(evaluation::Eval()) {}
+  Node(evaluation::Eval eval) : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(-2), edge(chess::Move()), isTerminal(false), depth(0), sPriority(-1), updatePriority(true),
+  staticeval(eval) {}
 
   Node* getChildByIndex(uint8_t index){
     Node* currNode = firstChild;
@@ -139,7 +139,42 @@ float playout(chess::Board& board, Node* currNode){
     return _gameStatus;
   }
 
-  float eval = fmaxf(fminf(2 / (1 + exp((board.sideToMove ? currNode->staticeval.blackToMove : currNode->staticeval.whiteToMove)*evalScaleFactor)) - 1, 1),-1)*0.999999;
+  int cpEval = board.sideToMove ? currNode->staticeval.blackToMove : currNode->staticeval.whiteToMove;
+
+  // evaluation::calcGamePhase(board);
+
+  // //Static Exchange Eval
+  // int maxSEE = 0;
+  // U64 theirPieces = board.getTheirPieces(chess::QUEEN);
+  // while(theirPieces){
+  //   int i = _popLsb(theirPieces);
+  //   maxSEE = evaluation::SEE(board, i, maxSEE);
+  // }
+  // theirPieces = board.getTheirPieces(chess::ROOK);
+  // while(theirPieces){
+  //   int i = _popLsb(theirPieces);
+  //   maxSEE = evaluation::SEE(board, i, maxSEE);
+  // }
+  // theirPieces = board.getTheirPieces(chess::BISHOP);
+  // while(theirPieces){
+  //   int i = _popLsb(theirPieces);
+  //   maxSEE = evaluation::SEE(board, i, maxSEE);
+  // }
+  // theirPieces = board.getTheirPieces(chess::KNIGHT);
+  // while(theirPieces){
+  //   int i = _popLsb(theirPieces);
+  //   maxSEE = evaluation::SEE(board, i, maxSEE);
+  // }
+  // theirPieces = board.getTheirPieces(chess::PAWN);
+  // while(theirPieces){
+  //   int i = _popLsb(theirPieces);
+  //   maxSEE = evaluation::SEE(board, i, maxSEE);
+  // }
+  // cpEval += maxSEE*100000;
+
+  // cpEval += evaluation::passedPawns(board)*100000;
+
+  float eval = fmaxf(fminf(2 / (1 + exp(-(cpEval)*evalScaleFactor)) - 1, 1),-1)*0.999999;
   assert(-1<=eval && 1>=eval);
   return eval;
 }
@@ -280,10 +315,10 @@ struct timeManagement{
 };
 //The main search function
 
-void search(const chess::Board& rootBoard, timeManagement tm){
+void search(chess::Board& rootBoard, timeManagement tm){
   auto start = std::chrono::steady_clock::now();
 
-  if(!root){root = new Node();}
+  if(!root){root = new Node(evaluation::evaluate(rootBoard));}
 
   seldepth = 0;
 

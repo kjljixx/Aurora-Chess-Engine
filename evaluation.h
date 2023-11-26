@@ -10,6 +10,8 @@ namespace evaluation{
 
 const int EVAL_VERSION = 1;
 
+const int evalSharpeningFactor = 100000; //Generally, the higher this parameter is, the more accurate the eval (Unless integer overflow occurs)
+
 //Included EvalFile trained on 500k fens using Texel Tuner
 //[7840s] Epoch 5900 (0.754214 eps), error 0.00398793, LR 0.0111653
 std::string evalFile = "eval.auroraeval";
@@ -43,8 +45,8 @@ void init(){
       for(int k=i+1; k<64; k++){
         for(int l=0; l<13; l++){
           pptFile >> token;
-          piecePairTable[i][j][k][l] = int(token);
-          piecePairTable[k][l][i][j] = int(token);
+          piecePairTable[i][j][k][l] = int(token*100000);
+          piecePairTable[k][l][i][j] = int(token*100000);
 
           iter++;
         }
@@ -63,6 +65,122 @@ struct Eval{
 
   Eval(int white, int black) : whiteToMove(white), blackToMove(black) {}
 };
+
+int gamePhase = 24;
+int gamephaseInc[6] = {0, 1, 1, 2, 4, 0};
+
+void calcGamePhase(chess::Board& board){
+  gamePhase = 0;
+
+  /* evaluate each piece */
+  for(int piece = chess::PAWN; piece < chess::KING; piece++){
+    U64 pieceBitboard = board.getPieces(chess::Pieces(piece));
+    gamePhase += gamephaseInc[piece-1]*_popCount(pieceBitboard);
+  }
+
+  if (gamePhase > 24){gamePhase = 24;} /* in case of early promotion */
+}
+
+int mg_value[6] = {42, 184, 207, 261, 642, 10000};
+int eg_value[6] = {71, 242, 265, 538, 1067, 10000};
+//Static Exchange Evaluation
+//Returns the value in cp from the current board's sideToMove's perspective on how good capturing an enemy piece on targetSquare is
+//Returns 0 if the capture is not good for the current board's sideToMove or if there is no capture
+//Threshold is the highest SEE value we have already found (see the part in evaluate() which runs SEE())
+int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0){
+  int values[32];
+  int i=0;
+
+  chess::Pieces currPiece = board.findPiece(targetSquare); //The original target piece; piece of the opponent of the current sideToMove
+  values[i] = (mg_value[currPiece-1] * gamePhase + eg_value[currPiece-1] * (24-gamePhase));
+  /*values[i] = (
+    (mg_value[currPiece-1] + mg_table[currPiece-1][board.sideToMove ? targetSquare^56 : targetSquare]) * gamePhase
+   +(eg_value[currPiece-1] + eg_table[currPiece-1][board.sideToMove ? targetSquare^56 : targetSquare]) * (24-gamePhase));*/
+
+  chess::Colors us = board.sideToMove;
+  U64 white = board.white;
+  U64 black = board.black;
+
+  board.sideToMove = chess::Colors(!board.sideToMove);
+  bool isOurSideToMove = false;
+
+  uint8_t piecePos = board.squareUnderAttack(targetSquare);
+
+  //See https://www.chessprogramming.org/Alpha-Beta#Negamax_Framework for the recursive implementation this implementation is based on
+  int alpha = -999999;
+  int beta = -(threshold*24);
+
+  while(piecePos<=63){
+    i++;
+
+    //Alpha Beta pruning does not affect the result of the SEE
+    if(-values[i-1] >= beta){break;}
+    if(-values[i-1] > alpha){alpha = -values[i-1];}
+    int placeholder = alpha; alpha = -beta; beta = -placeholder;
+
+    chess::Pieces leastValuableAttacker = board.findPiece(piecePos);
+    //The value for the enemy of the side of the leastValuableAttacker if the leastValuableAttacker is captured
+    values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + eg_value[leastValuableAttacker-1] * (24-gamePhase)) - values[i-1];
+    /*uint8_t _piecePos = board.sideToMove ? piecePos^56 : piecePos; //for use in pieceSquareTable calculation below
+    values[i-1] += (-mg_table[leastValuableAttacker-1][_piecePos] + mg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare]) * gamePhase
+                  +(-eg_table[leastValuableAttacker-1][_piecePos] + eg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare]) * (24-gamePhase);
+    values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + eg_value[leastValuableAttacker-1] * (24-gamePhase)) - (values[i-1] - mg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare] * gamePhase - eg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare] * (24-gamePhase));*/
+
+
+    board.sideToMove = chess::Colors(!board.sideToMove); isOurSideToMove = !isOurSideToMove;
+    board.unsetColors(1ULL << piecePos, chess::Colors(isOurSideToMove ? us : !us));
+
+    piecePos = board.squareUnderAttack(targetSquare);
+  }
+
+  board.sideToMove = us;
+  board.white = white;
+  board.black = black;
+
+  return (isOurSideToMove ? beta : -beta)/24;
+}
+
+int mg_passedPawnBonus[8] = {0, 2, 3, 6, 14, 8, 71, 0};
+int eg_passedPawnBonus[8] = {0, 24, 16, 32, 59, 72, 187, 0};
+int* passedPawnBonuses[2] = {mg_passedPawnBonus, eg_passedPawnBonus};
+
+int passedPawns(chess::Board& board){
+  int mg_score = 0;
+  int eg_score = 0;
+  U64 pieceBitboard = board.getOurPieces(chess::PAWN);
+  U64 theirPawns = board.getTheirPieces(chess::PAWN);
+  while(pieceBitboard){
+    uint8_t piecePos = _popLsb(pieceBitboard);
+    if((lookupTables::passedPawnTable[board.sideToMove][piecePos] & theirPawns) == 0ULL){
+      uint8_t pawnRank = squareIndexToRank(piecePos);
+      if(board.sideToMove == chess::WHITE){
+        mg_score += passedPawnBonuses[0][pawnRank];
+        eg_score += passedPawnBonuses[1][pawnRank];
+      }
+      else{
+        mg_score += passedPawnBonuses[0][7-pawnRank];
+        eg_score += passedPawnBonuses[1][7-pawnRank];
+      }
+    }
+  }
+  pieceBitboard = board.getTheirPieces(chess::PAWN);
+  theirPawns = board.getOurPieces(chess::PAWN);
+  while(pieceBitboard){
+    uint8_t piecePos = _popLsb(pieceBitboard);
+    if((lookupTables::passedPawnTable[!board.sideToMove][piecePos] & theirPawns) == 0ULL){
+      uint8_t pawnRank = squareIndexToRank(piecePos);
+      if((!board.sideToMove) == chess::WHITE){
+        mg_score -= passedPawnBonuses[0][pawnRank];
+        eg_score -= passedPawnBonuses[1][pawnRank];
+      }
+      else{
+        mg_score -= passedPawnBonuses[0][7-pawnRank];
+        eg_score -= passedPawnBonuses[1][7-pawnRank];
+      }
+    }
+  }
+  return (gamePhase*mg_score+(24-gamePhase)*eg_score)/24;
+}
 
 Eval evaluate(chess::Board& board){
   Eval evaluation;
@@ -90,12 +208,6 @@ Eval evaluate(chess::Board& board){
 
   return evaluation;
 }
-
-U64 counter;
-
- void fetchPiecePairTableValue(int a){
-   counter+=a;
- }
 
 Eval updateEvalOnSquare(Eval prevEval, chess::Board& board, uint8_t square, chess::Pieces newPieceType, chess::Colors newPieceColor = chess::WHITE){
   int changingPiece = board.mailbox[0][square];

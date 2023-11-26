@@ -199,6 +199,18 @@ struct Board{
     std::cout << " STM: " << sideToMove;
   }
 
+  U64 getPieces(Pieces piece){
+    switch (piece) {
+      case PAWN: return pawns; break;
+      case KNIGHT: return knights; break;
+      case BISHOP: return bishops; break;
+      case ROOK: return rooks; break;
+      case QUEEN: return queens; break;
+      case KING: return kings; break;
+    }
+    return 0ULL;   
+  }
+
   U64 getPieces(Colors color){
     if(color==WHITE){return white;}
     return black;

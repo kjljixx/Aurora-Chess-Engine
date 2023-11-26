@@ -44,8 +44,8 @@ void init(){
       for(int k=i+1; k<64; k++){
         for(int l=0; l<13; l++){
           pptFile >> token;
-          piecePairTable[i][j][k][l] = int(token);
-          piecePairTable[k][l][i][j] = int(token);
+          piecePairTable[i][j][k][l] = int(token*100000);
+          piecePairTable[k][l][i][j] = int(token*100000);
           doublePiecePairTable[i][j][k][l] = token;
           doublePiecePairTable[k][l][i][j] = token;
 
