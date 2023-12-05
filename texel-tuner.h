@@ -24,11 +24,18 @@ namespace texelTuner{
 
     texelTuneEval::init();
 
+    for(int i=0; i<6; i++){
+      //int pair = texelTuneEval::mg_value[i];
+      pair_t pair = {texelTuneEval::mg_value[i], texelTuneEval::eg_value[i]};
+      parameters.push_back(pair);
+    }
     for(int i=0; i<64; i++){
       for(int j=0; j<13; j++){
         for(int k=i+1; k<64; k++){
           for(int l=0; l<13; l++){
-            parameters.push_back(texelTuneEval::doublePiecePairTable[i][j][k][l]);
+            //int pair = texelTuneEval::doublePiecePairTable[i][j][k][l];
+            pair_t pair = {texelTuneEval::doublePiecePairTable[0][i][j][k][l], texelTuneEval::doublePiecePairTable[1][i][j][k][l]};
+            parameters.push_back(pair);
           }
         }
       }
@@ -41,7 +48,7 @@ namespace texelTuner{
     chess::Board board(fen);
 
     // std::cout << "NEWEVAL:";
-    std::vector<int> coefficients = texelTuneEval::evaluate(board);
+    std::vector<int> coefficients = texelTuneEval::fullboardSEE(board);
     EvalResult result;
     //std::cout << "COEFF:";
     result.coefficients = coefficients;
@@ -69,15 +76,23 @@ namespace texelTuner{
     std::ofstream evalfile;
     evalfile.open(evalfilepath);
 
-    evalfile << "1 ";
-    int iter = 0;
-    for(int i=0; i<64; i++){
-      for(int j=0; j<13; j++){
-        for(int k=i+1; k<64; k++){
-          for(int l=0; l<13; l++){
-            evalfile << std::fixed//<< iter << ":"
-            << parameters[iter] << " ";
-            iter++;
+    evalfile << "2 ";
+    for(int a=0; a<2; a++){
+      for(int i=0; i<6; i++){
+        evalfile << std::fixed << parameters[i][a] << " ";
+      }
+    }
+    int iter = 6;
+    for(int a=0; a<2; a++){
+      iter = 6;
+      for(int i=0; i<64; i++){
+        for(int j=0; j<13; j++){
+          for(int k=i+1; k<64; k++){
+            for(int l=0; l<13; l++){
+              evalfile << std::fixed//<< iter << ":"
+              << parameters[iter][a] << " ";
+              iter++;
+            }
           }
         }
       }

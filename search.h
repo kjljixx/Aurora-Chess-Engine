@@ -40,16 +40,17 @@ struct Node{
   uint8_t depth;
   float sPriority;
   bool updatePriority;
-  evaluation::Eval staticeval;
+  evaluation::Eval mgStaticEval;
+  evaluation::Eval egStaticEval;
 
   Node(Node* parent, uint8_t index, chess::Move edge, uint8_t depth, evaluation::Eval eval) :
   parent(parent), index(index),
   firstChild(nullptr), nextSibling(nullptr),
   visits(0), value(-2), edge(edge), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true),
-  staticeval(eval) {}
+  mgStaticEval(eval) {}
 
   Node(evaluation::Eval eval) : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(-2), edge(chess::Move()), isTerminal(false), depth(0), sPriority(-1), updatePriority(true),
-  staticeval(eval) {}
+  mgStaticEval(eval) {}
 
   Node* getChildByIndex(uint8_t index){
     Node* currNode = firstChild;
@@ -138,8 +139,10 @@ float playout(chess::Board& board, Node* currNode){
     if(_gameStatus == chess::LOSS){return _gameStatus+0.00000001*currNode->depth;}
     return _gameStatus;
   }
-
-  int cpEval = board.sideToMove ? currNode->staticeval.blackToMove : currNode->staticeval.whiteToMove;
+  
+  int gamePhase = evaluation::calcGamePhase(board);
+  int cpEval = board.sideToMove ? currNode->mgStaticEval.blackToMove * gamePhase + currNode->egStaticEval.blackToMove * (24-gamePhase) :
+                                  currNode->mgStaticEval.whiteToMove * gamePhase + currNode->egStaticEval.whiteToMove * (24-gamePhase);
 
   // evaluation::calcGamePhase(board);
 
@@ -352,12 +355,12 @@ void search(chess::Board& rootBoard, timeManagement tm){
       expand(currNode, moves);
       //Simulate for all new nodes
       Node* parentNode = currNode; //This will be the root of the backpropagatio
-      evaluation::Eval parentEval = parentNode->staticeval;
+      evaluation::Eval parentEval = parentNode->mgStaticEval;
       currNode = currNode->firstChild;
       float currBestValue = 2; //Find and only backpropagate the best value
       while(currNode != nullptr){
         chess::Board movedBoard = board;
-        currNode->staticeval = evaluation::updateEvalOnMove(parentEval, movedBoard, currNode->edge);
+        currNode->mgStaticEval = evaluation::updateEvalOnMove(parentEval, movedBoard, currNode->edge);
 
         float result = playout(movedBoard, currNode);
         assert(-1<=result && 1>=result);

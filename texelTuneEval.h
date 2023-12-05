@@ -8,18 +8,19 @@
 
 namespace texelTuneEval{
 
-const int EVAL_VERSION = 1;
+const int EVAL_VERSION = 2;
 
 std::string evalFile = "eval.auroraeval";
 
 int piecePairTableIndicesToSingleIndex[64][13][64][13];
 
-int piecePairTable[64][13][64][13] = {0};
-double doublePiecePairTable[64][13][64][13] = {0};
+int piecePairTable[2][64][13][64][13] = {0};
+double doublePiecePairTable[2][64][13][64][13] = {0};
 
 int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
 
 void init(){
+  lookupTables::init();
   std::ifstream pptFile{evalFile, std::ios::binary};
   double token;
 
@@ -38,20 +39,23 @@ void init(){
     return;
   }
 
-  int singleIndex = 0;
-  for(int i=0; i<64; i++){
-    for(int j=0; j<13; j++){
-      for(int k=i+1; k<64; k++){
-        for(int l=0; l<13; l++){
-          pptFile >> token;
-          piecePairTable[i][j][k][l] = int(token*100000);
-          piecePairTable[k][l][i][j] = int(token*100000);
-          doublePiecePairTable[i][j][k][l] = token;
-          doublePiecePairTable[k][l][i][j] = token;
-
-          piecePairTableIndicesToSingleIndex[i][j][k][l] = singleIndex;
-          piecePairTableIndicesToSingleIndex[k][l][i][j] = singleIndex;
-          singleIndex++;
+  int singleIndex = 6;
+  for(int a=0; a<2; a++){
+    singleIndex = 6;
+    for(int i=0; i<64; i++){
+      for(int j=0; j<13; j++){
+        for(int k=i+1; k<64; k++){
+          for(int l=0; l<13; l++){
+            pptFile >> token;
+            piecePairTable[a][i][j][k][l] = int(token*100000);
+            piecePairTable[a][k][l][i][j] = int(token*100000);
+            doublePiecePairTable[a][i][j][k][l] = token;
+            doublePiecePairTable[a][k][l][i][j] = token;
+            
+            piecePairTableIndicesToSingleIndex[i][j][k][l] = singleIndex;
+            piecePairTableIndicesToSingleIndex[k][l][i][j] = singleIndex;
+            singleIndex++;
+          }
         }
       }
     }
@@ -61,12 +65,14 @@ void init(){
 }
 
 struct Eval{
-  int whiteToMove;
-  int blackToMove;
+  int whiteToMoveMg;
+  int whiteToMoveEg;
+  int blackToMoveMg;
+  int blackToMoveEg;
 
-  Eval() : whiteToMove(0), blackToMove(0) {}
+  Eval() : whiteToMoveMg(0), whiteToMoveEg(0), blackToMoveMg(0), blackToMoveEg(0) {}
 
-  Eval(int white, int black) : whiteToMove(white), blackToMove(black) {}
+  Eval(int whiteMg, int whiteEg, int blackMg, int blackEg) : whiteToMoveMg(whiteMg), whiteToMoveEg(whiteEg), blackToMoveMg(blackMg), blackToMoveEg(blackEg) {}
 };
 
 void evaluate(const std::array<int8_t, 64>& board, std::vector<int>& coefficients){
@@ -143,14 +149,18 @@ Eval updateEvalOnSquare(Eval prevEval, chess::Board& board, uint8_t square, ches
   for(int i=0; i<square; i++){
     currPiece = board.mailbox[0][i];
     
-    prevEval.whiteToMove -= piecePairTable[square][changingPiece][i][currPiece];
-    prevEval.whiteToMove += piecePairTable[square][newPiece][i][currPiece];
+    prevEval.whiteToMoveMg -= piecePairTable[0][square][changingPiece][i][currPiece];
+    prevEval.whiteToMoveMg += piecePairTable[0][square][newPiece][i][currPiece];
+    prevEval.whiteToMoveEg -= piecePairTable[1][square][changingPiece][i][currPiece];
+    prevEval.whiteToMoveEg += piecePairTable[1][square][newPiece][i][currPiece];
   }
   for(int i=square+1; i<64; i++){
     currPiece = board.mailbox[0][i];
     
-    prevEval.whiteToMove -= piecePairTable[square][changingPiece][i][currPiece];
-    prevEval.whiteToMove += piecePairTable[square][newPiece][i][currPiece];
+    prevEval.whiteToMoveMg -= piecePairTable[0][square][changingPiece][i][currPiece];
+    prevEval.whiteToMoveMg += piecePairTable[0][square][newPiece][i][currPiece];
+    prevEval.whiteToMoveEg -= piecePairTable[1][square][changingPiece][i][currPiece];
+    prevEval.whiteToMoveEg += piecePairTable[1][square][newPiece][i][currPiece];
   }
 
   changingPiece = switchPieceColor[changingPiece];
@@ -162,14 +172,18 @@ Eval updateEvalOnSquare(Eval prevEval, chess::Board& board, uint8_t square, ches
   for(int i=0; i<square; i++){
     currPiece = board.mailbox[1][i];
     
-    prevEval.blackToMove -= piecePairTable[square][changingPiece][i][currPiece];
-    prevEval.blackToMove += piecePairTable[square][newPiece][i][currPiece];
+    prevEval.blackToMoveMg -= piecePairTable[0][square][changingPiece][i][currPiece];
+    prevEval.blackToMoveMg += piecePairTable[0][square][newPiece][i][currPiece];
+    prevEval.blackToMoveEg -= piecePairTable[1][square][changingPiece][i][currPiece];
+    prevEval.blackToMoveEg += piecePairTable[1][square][newPiece][i][currPiece];
   }
   for(int i=square+1; i<64; i++){
     currPiece = board.mailbox[1][i];
     
-    prevEval.blackToMove -= piecePairTable[square][changingPiece][i][currPiece];
-    prevEval.blackToMove += piecePairTable[square][newPiece][i][currPiece];
+    prevEval.blackToMoveMg -= piecePairTable[0][square][changingPiece][i][currPiece];
+    prevEval.blackToMoveMg += piecePairTable[0][square][newPiece][i][currPiece];
+    prevEval.blackToMoveEg -= piecePairTable[1][square][changingPiece][i][currPiece];
+    prevEval.blackToMoveEg += piecePairTable[1][square][newPiece][i][currPiece];
   }
 
   return prevEval;
@@ -297,5 +311,123 @@ Eval updateEvalOnMove(Eval prevEval, chess::Board& board, chess::Move move){
   }
 
   return prevEval;
+}
+
+int mg_value[6] = {42, 184, 207, 261, 642, 10000};
+int eg_value[6] = {71, 242, 265, 538, 1067, 10000};
+
+std::array<int8_t, 6> materialCoefficientSubtraction(std::array<int8_t, 6> a, std::array<int8_t, 6> b){
+  std::array<int8_t, 6> result;
+  //std::cout << "hi";
+  for(int i=0; i<6; i++){
+    //std::cout << i;
+    result[i] = a[i] - b[i];
+  }
+  return result;
+  //std::cout << "exit";
+}
+
+//Static Exchange Evaluation
+//Returns the value in cp from the current board's sideToMove's perspective on how good capturing an enemy piece on targetSquare is
+//Returns 0 if the capture is not good for the current board's sideToMove or if there is no capture
+//Threshold is the highest SEE value we have already found (see the part in evaluate() which runs SEE())
+std::pair<std::array<int8_t, 6>, int> coefficientSEE(chess::Board& board, uint8_t targetSquare, int threshold = 0, std::array<int8_t, 6> coefficientsThreshold = {0, 0, 0, 0, 0, 0}){
+  int gamePhase = 24;
+  int values[32];
+  std::array<int8_t, 6> coefficientValues[32] = {{0, 0, 0, 0, 0, 0}};
+  int i=0;
+
+  chess::Pieces currPiece = board.findPiece(targetSquare); //The original target piece; piece of the opponent of the current sideToMove
+  values[i] = (mg_value[currPiece-1] * gamePhase + eg_value[currPiece-1] * (24-gamePhase));
+  coefficientValues[i][currPiece-1] = 1;
+  /*values[i] = (
+    (mg_value[currPiece-1] + mg_table[currPiece-1][board.sideToMove ? targetSquare^56 : targetSquare]) * gamePhase
+   +(eg_value[currPiece-1] + eg_table[currPiece-1][board.sideToMove ? targetSquare^56 : targetSquare]) * (24-gamePhase));*/
+
+  chess::Colors us = board.sideToMove;
+  U64 white = board.white;
+  U64 black = board.black;
+
+  board.sideToMove = chess::Colors(!board.sideToMove);
+  bool isOurSideToMove = false;
+
+  uint8_t piecePos = board.squareUnderAttack(targetSquare);
+
+  //See https://www.chessprogramming.org/Alpha-Beta#Negamax_Framework for the recursive implementation this implementation is based on
+  int alpha = -999999;
+  int beta = -(threshold*24);
+  std::array<int8_t, 6> coefficientsAlpha = {-99, -99, -99, -99, -99, -99};
+  std::array<int8_t, 6> coefficientsBeta = materialCoefficientSubtraction({0, 0, 0, 0, 0, 0}, coefficientsThreshold);
+
+  while(piecePos<=63){
+    i++;
+
+    //Alpha Beta pruning does not affect the result of the SEE
+    if(-values[i-1] >= beta){break;}
+    if(-values[i-1] > alpha){alpha = -values[i-1]; coefficientsAlpha = materialCoefficientSubtraction({0, 0, 0, 0, 0, 0}, coefficientValues[i-1]);}
+    int placeholder = alpha; alpha = -beta; beta = -placeholder;
+    std::array<int8_t, 6> coefficientsPlaceholder = coefficientsAlpha;
+    coefficientsAlpha = materialCoefficientSubtraction({0, 0, 0, 0, 0, 0}, coefficientsBeta);
+    coefficientsBeta = materialCoefficientSubtraction({0, 0, 0, 0, 0, 0}, coefficientsPlaceholder);
+
+    chess::Pieces leastValuableAttacker = board.findPiece(piecePos);
+    //The value for the enemy of the side of the leastValuableAttacker if the leastValuableAttacker is captured
+    values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + eg_value[leastValuableAttacker-1] * (24-gamePhase)) - values[i-1];
+    coefficientValues[i] = materialCoefficientSubtraction({0, 0, 0, 0, 0, 0}, coefficientValues[i-1]);
+    coefficientValues[i][leastValuableAttacker-1]++;
+    /*uint8_t _piecePos = board.sideToMove ? piecePos^56 : piecePos; //for use in pieceSquareTable calculation below
+    values[i-1] += (-mg_table[leastValuableAttacker-1][_piecePos] + mg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare]) * gamePhase
+                  +(-eg_table[leastValuableAttacker-1][_piecePos] + eg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare]) * (24-gamePhase);
+    values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + eg_value[leastValuableAttacker-1] * (24-gamePhase)) - (values[i-1] - mg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare] * gamePhase - eg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare] * (24-gamePhase));*/
+
+
+    board.sideToMove = chess::Colors(!board.sideToMove); isOurSideToMove = !isOurSideToMove;
+    board.unsetColors(1ULL << piecePos, chess::Colors(isOurSideToMove ? us : !us));
+
+    piecePos = board.squareUnderAttack(targetSquare);
+  }
+
+  board.sideToMove = us;
+  board.white = white;
+  board.black = black;
+
+  return (isOurSideToMove ? std::pair(coefficientsBeta, beta/24) : std::pair(materialCoefficientSubtraction({0, 0, 0, 0, 0, 0}, coefficientsBeta), -beta/24));
+}
+
+std::vector<int> fullboardSEE(chess::Board& board){
+  //Static Exchange Eval
+  std::pair<std::array<int8_t, 6>, int> maxSEE = std::pair(std::array<int8_t, 6>({0, 0, 0, 0, 0, 0}), 0);
+  U64 theirPieces = board.getTheirPieces(chess::QUEEN);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
+    maxSEE = coefficientSEE(board, i, maxSEE.second, maxSEE.first);
+  }
+  theirPieces = board.getTheirPieces(chess::ROOK);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
+    maxSEE = coefficientSEE(board, i, maxSEE.second, maxSEE.first);
+  }
+  theirPieces = board.getTheirPieces(chess::BISHOP);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
+    maxSEE = coefficientSEE(board, i, maxSEE.second, maxSEE.first);
+  }
+  theirPieces = board.getTheirPieces(chess::KNIGHT);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
+    maxSEE = coefficientSEE(board, i, maxSEE.second, maxSEE.first);
+  }
+  theirPieces = board.getTheirPieces(chess::PAWN);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
+    maxSEE = coefficientSEE(board, i, maxSEE.second, maxSEE.first);
+  }
+  //std::cout << "maxSEEValue:" << maxSEE.second << " ";
+
+  std::vector<int> coefficients;
+  for(int i=0; i<6; i++){
+    coefficients.push_back(maxSEE.first[i]);
+  }
+  return coefficients;
 }
 }

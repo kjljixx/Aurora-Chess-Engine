@@ -69,7 +69,7 @@ struct Eval{
 int gamePhase = 24;
 int gamephaseInc[6] = {0, 1, 1, 2, 4, 0};
 
-void calcGamePhase(chess::Board& board){
+int calcGamePhase(chess::Board& board){
   gamePhase = 0;
 
   /* evaluate each piece */
@@ -79,6 +79,7 @@ void calcGamePhase(chess::Board& board){
   }
 
   if (gamePhase > 24){gamePhase = 24;} /* in case of early promotion */
+  return gamePhase;
 }
 
 int mg_value[6] = {42, 184, 207, 261, 642, 10000};

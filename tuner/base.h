@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <vector>
 
-#define TAPERED 0
+#define TAPERED 1
 
 using tune_t = double;
 
