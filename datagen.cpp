@@ -2,8 +2,8 @@
 #include <fstream>
 
 int main() {
-  #if DATAGEN = 0
-    std::cout << "Preprocessor Variable DATAGEN must be set to 1 to Generate Data";
+  #if DATAGEN == 0
+    std::cout << "Preprocessor Variable DATAGEN must be set to 1 or 2 to Generate Data";
     getchar();
     return 0;
   #endif
