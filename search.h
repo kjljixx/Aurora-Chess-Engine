@@ -6,11 +6,11 @@
 #include <memory>
 #include <chrono>
 
-//Set to 1 if you want to build a version of Aurora which generates data, 0 for the normal version.
+//Set to 1 if you want to build a version of Aurora which generates data, 2 for generating data while playing (cutechess), 0 for the normal version.
 #define DATAGEN 0
-#if DATAGEN == 1
+#if DATAGEN >= 1
   #include <windows.h>
-  LPCSTR dataFilePath;
+  LPCSTR dataFilePath = "C:/Users/kjlji/OneDrive/Documents/VSCode/C++/AuroraChessEngine-main/data/version0.10.1-50000npm.auroradata";
 #endif
 
 namespace search{
@@ -151,7 +151,7 @@ float playout(chess::Board& board, Node* currNode){
   return eval;
 }
 
-Node* findBestMove(Node* parent){
+Node* findBestChild(Node* parent){
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
   Node* currBestMove;
 
@@ -195,7 +195,7 @@ void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point star
     std::cout << currNode->edge.toStringRep() << ": Q:" << -currNode->value << " N:" << currNode->displayVisits << " SP:" << currNode->sPriority <<  " PV:";
     Node* pvNode = currNode;
     while(pvNode->firstChild != nullptr){
-      pvNode = findBestMove(pvNode);
+      pvNode = findBestChild(pvNode);
       std::cout << pvNode->edge.toStringRep() << " ";
     }
     std::cout << "\n";
@@ -214,7 +214,7 @@ void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point star
       " pv ";
     currNode = root;
     while(currNode->firstChild != nullptr){
-      currNode = findBestMove(currNode);
+      currNode = findBestChild(currNode);
       std::cout << currNode->edge.toStringRep() << " ";
     }
 
@@ -348,16 +348,20 @@ void search(const chess::Board& rootBoard, timeManagement tm){
     }
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
-    if(elapsed.count() >= lastNodeCheck*2){
-      lastNodeCheck++;
-      printSearchInfo(root, start, false);
-    }
+    #if DATAGEN != 1
+      if(elapsed.count() >= lastNodeCheck*2){
+        lastNodeCheck++;
+        printSearchInfo(root, start, false);
+      }
+    #endif
   }
   //Output the final result of the search
-  printSearchInfo(root, start, true);
-  std::cout << "\nbestmove " << findBestMove(root)->edge.toStringRep() << "\n";
+  #if DATAGEN != 1
+    printSearchInfo(root, start, true);
+    std::cout << "\nbestmove " << findBestChild(root)->edge.toStringRep() << "\n";
+  #endif
 
-  #if DATAGEN == 1
+  #if DATAGEN >= 1
     //Data Generation code
     HANDLE dataFile = CreateFileA(dataFilePath, FILE_APPEND_DATA, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 

@@ -97,6 +97,9 @@ struct Board{
     std::istringstream fenStream(fenString);
     std::string token;
 
+    for(int i=0; i<64; i++){mailbox[0][i] = 0; mailbox[1][i] = 0;}
+    hashed = false;
+
     pawns=0ULL;
     knights=0ULL;
     bishops=0ULL;

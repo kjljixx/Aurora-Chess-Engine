@@ -192,12 +192,12 @@ void setOption(std::istringstream input){
     }
   }
   #if DATAGEN == 1
-    if(token == "datafile"){
-      input >> token; //input the "value" token
-      float value;
-      input >> value;
-      dataFilePath = value;
-    }
+    // if(token == "datafile"){
+    //   input >> token; //input the "value" token
+    //   LPCSTR value;
+    //   input >> value;
+    //   dataFilePath = value;
+    // }
   #endif
 }
 //Custom commands
