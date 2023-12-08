@@ -8,15 +8,17 @@
 
 namespace evaluation{
 
-const int EVAL_VERSION = 1;
+const int EVAL_VERSION = 2;
 
-const int evalSharpeningFactor = 100000; //Generally, the higher this parameter is, the more accurate the eval (Unless integer overflow occurs)
+const int evalSharpeningFactor = 10000; //Generally, the higher this parameter is, the more accurate the eval (Unless integer overflow occurs)
 
 //Included EvalFile trained on 500k fens using Texel Tuner
 //[7840s] Epoch 5900 (0.754214 eps), error 0.00398793, LR 0.0111653
 std::string evalFile = "eval.auroraeval";
 
-int piecePairTable[64][13][64][13];
+int piecePairTable[2][64][13][64][13];
+
+int materialValues[2][6];
 
 int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
 
@@ -39,16 +41,25 @@ void init(){
     return;
   }
 
-  int iter = 0;
-  for(int i=0; i<64; i++){
-    for(int j=0; j<13; j++){
-      for(int k=i+1; k<64; k++){
-        for(int l=0; l<13; l++){
-          pptFile >> token;
-          piecePairTable[i][j][k][l] = int(token*100000);
-          piecePairTable[k][l][i][j] = int(token*100000);
+  for(int a=0; a<2; a++){
+    for(int i=0; i<6; i++){
+      pptFile >> token;
+      materialValues[a][i] = int(token*evalSharpeningFactor);
+    }
+  }
 
-          iter++;
+  int iter = 0;
+  for(int a=0; a<2; a++){
+    for(int i=0; i<64; i++){
+      for(int j=0; j<13; j++){
+        for(int k=i+1; k<64; k++){
+          for(int l=0; l<13; l++){
+            pptFile >> token;
+            piecePairTable[a][i][j][k][l] = int(token*evalSharpeningFactor);
+            piecePairTable[a][k][l][i][j] = int(token*evalSharpeningFactor);
+
+            iter++;
+          }
         }
       }
     }
@@ -58,12 +69,12 @@ void init(){
 }
 
 struct Eval{
-  int whiteToMove;
-  int blackToMove;
+  int whiteToMoveMg;
+  int whiteToMoveEg;
+  int blackToMoveMg;
+  int blackToMoveEg;
 
-  Eval() : whiteToMove(0), blackToMove(0) {}
-
-  Eval(int white, int black) : whiteToMove(white), blackToMove(black) {}
+  Eval() : whiteToMoveMg(0), whiteToMoveEg(0), blackToMoveMg(0), blackToMoveEg(0) {}
 };
 
 int gamePhase = 24;
@@ -82,8 +93,6 @@ int calcGamePhase(chess::Board& board){
   return gamePhase;
 }
 
-int mg_value[6] = {42, 184, 207, 261, 642, 10000};
-int eg_value[6] = {71, 242, 265, 538, 1067, 10000};
 //Static Exchange Evaluation
 //Returns the value in cp from the current board's sideToMove's perspective on how good capturing an enemy piece on targetSquare is
 //Returns 0 if the capture is not good for the current board's sideToMove or if there is no capture
@@ -93,7 +102,7 @@ int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0){
   int i=0;
 
   chess::Pieces currPiece = board.findPiece(targetSquare); //The original target piece; piece of the opponent of the current sideToMove
-  values[i] = (mg_value[currPiece-1] * gamePhase + eg_value[currPiece-1] * (24-gamePhase));
+  values[i] = (materialValues[0][currPiece-1] * gamePhase + materialValues[1][currPiece-1] * (24-gamePhase));
   /*values[i] = (
     (mg_value[currPiece-1] + mg_table[currPiece-1][board.sideToMove ? targetSquare^56 : targetSquare]) * gamePhase
    +(eg_value[currPiece-1] + eg_table[currPiece-1][board.sideToMove ? targetSquare^56 : targetSquare]) * (24-gamePhase));*/
@@ -108,8 +117,8 @@ int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0){
   uint8_t piecePos = board.squareUnderAttack(targetSquare);
 
   //See https://www.chessprogramming.org/Alpha-Beta#Negamax_Framework for the recursive implementation this implementation is based on
-  int alpha = -999999;
-  int beta = -(threshold*24);
+  int alpha = -999999999;
+  int beta = -(threshold);
 
   while(piecePos<=63){
     i++;
@@ -121,7 +130,7 @@ int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0){
 
     chess::Pieces leastValuableAttacker = board.findPiece(piecePos);
     //The value for the enemy of the side of the leastValuableAttacker if the leastValuableAttacker is captured
-    values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + eg_value[leastValuableAttacker-1] * (24-gamePhase)) - values[i-1];
+    values[i] = (materialValues[0][leastValuableAttacker-1] * gamePhase + materialValues[1][leastValuableAttacker-1] * (24-gamePhase)) - values[i-1];
     /*uint8_t _piecePos = board.sideToMove ? piecePos^56 : piecePos; //for use in pieceSquareTable calculation below
     values[i-1] += (-mg_table[leastValuableAttacker-1][_piecePos] + mg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare]) * gamePhase
                   +(-eg_table[leastValuableAttacker-1][_piecePos] + eg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare]) * (24-gamePhase);
@@ -138,49 +147,40 @@ int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0){
   board.white = white;
   board.black = black;
 
-  return (isOurSideToMove ? beta : -beta)/24;
+  return (isOurSideToMove ? beta : -beta);
 }
 
-int mg_passedPawnBonus[8] = {0, 2, 3, 6, 14, 8, 71, 0};
-int eg_passedPawnBonus[8] = {0, 24, 16, 32, 59, 72, 187, 0};
-int* passedPawnBonuses[2] = {mg_passedPawnBonus, eg_passedPawnBonus};
+int fullboardSEE(chess::Board& board){
+  //Static Exchange Eval
+  int maxSEE = 0;
+  U64 theirPieces = board.getTheirPieces(chess::QUEEN);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
+    maxSEE = SEE(board, i, maxSEE);
+  }
+  theirPieces = board.getTheirPieces(chess::ROOK);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
+    maxSEE = SEE(board, i, maxSEE);
+  }
+  theirPieces = board.getTheirPieces(chess::BISHOP);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
+    maxSEE = SEE(board, i, maxSEE);
+  }
+  theirPieces = board.getTheirPieces(chess::KNIGHT);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
+    maxSEE = SEE(board, i, maxSEE);
+  }
+  theirPieces = board.getTheirPieces(chess::PAWN);
+  while(theirPieces){
+    int i = _popLsb(theirPieces);
+    maxSEE = SEE(board, i, maxSEE);
+  }
+  //std::cout << "maxSEEValue:" << maxSEE.second << " ";
 
-int passedPawns(chess::Board& board){
-  int mg_score = 0;
-  int eg_score = 0;
-  U64 pieceBitboard = board.getOurPieces(chess::PAWN);
-  U64 theirPawns = board.getTheirPieces(chess::PAWN);
-  while(pieceBitboard){
-    uint8_t piecePos = _popLsb(pieceBitboard);
-    if((lookupTables::passedPawnTable[board.sideToMove][piecePos] & theirPawns) == 0ULL){
-      uint8_t pawnRank = squareIndexToRank(piecePos);
-      if(board.sideToMove == chess::WHITE){
-        mg_score += passedPawnBonuses[0][pawnRank];
-        eg_score += passedPawnBonuses[1][pawnRank];
-      }
-      else{
-        mg_score += passedPawnBonuses[0][7-pawnRank];
-        eg_score += passedPawnBonuses[1][7-pawnRank];
-      }
-    }
-  }
-  pieceBitboard = board.getTheirPieces(chess::PAWN);
-  theirPawns = board.getOurPieces(chess::PAWN);
-  while(pieceBitboard){
-    uint8_t piecePos = _popLsb(pieceBitboard);
-    if((lookupTables::passedPawnTable[!board.sideToMove][piecePos] & theirPawns) == 0ULL){
-      uint8_t pawnRank = squareIndexToRank(piecePos);
-      if((!board.sideToMove) == chess::WHITE){
-        mg_score -= passedPawnBonuses[0][pawnRank];
-        eg_score -= passedPawnBonuses[1][pawnRank];
-      }
-      else{
-        mg_score -= passedPawnBonuses[0][7-pawnRank];
-        eg_score -= passedPawnBonuses[1][7-pawnRank];
-      }
-    }
-  }
-  return (gamePhase*mg_score+(24-gamePhase)*eg_score)/24;
+  return maxSEE;
 }
 
 Eval evaluate(chess::Board& board){
@@ -197,13 +197,16 @@ Eval evaluate(chess::Board& board){
       if(blackPieces & (1ULL << j)){pieceJ = board.findPiece(j) + 6;}
       else{pieceJ = board.findPiece(j);}
 
-      evaluation.whiteToMove += piecePairTable[i][pieceI][j][pieceJ];
+      evaluation.whiteToMoveMg += piecePairTable[0][i][pieceI][j][pieceJ];
+      evaluation.whiteToMoveEg += piecePairTable[1][i][pieceI][j][pieceJ];
 
       if(pieceI >= 7){pieceI -= 6;}
       else if(pieceI >= 1){pieceI += 6;}
       if(pieceJ >= 7){pieceJ -= 6;}
       else if(pieceJ >= 1){pieceJ += 6;}
-      evaluation.blackToMove += piecePairTable[i^56][pieceI][j^56][pieceJ];
+
+      evaluation.blackToMoveMg += piecePairTable[0][i^56][pieceI][j^56][pieceJ];
+      evaluation.blackToMoveEg += piecePairTable[1][i^56][pieceI][j^56][pieceJ];
     }
   }
 
@@ -220,14 +223,18 @@ Eval updateEvalOnSquare(Eval prevEval, chess::Board& board, uint8_t square, ches
   for(int i=0; i<square; i++){
     currPiece = board.mailbox[0][i];
     
-    prevEval.whiteToMove -= piecePairTable[square][changingPiece][i][currPiece];
-    prevEval.whiteToMove += piecePairTable[square][newPiece][i][currPiece];
+    prevEval.whiteToMoveMg -= piecePairTable[0][square][changingPiece][i][currPiece];
+    prevEval.whiteToMoveEg -= piecePairTable[1][square][changingPiece][i][currPiece];
+    prevEval.whiteToMoveMg += piecePairTable[0][square][newPiece][i][currPiece];
+    prevEval.whiteToMoveEg += piecePairTable[1][square][newPiece][i][currPiece];
   }
   for(int i=square+1; i<64; i++){
     currPiece = board.mailbox[0][i];
     
-    prevEval.whiteToMove -= piecePairTable[square][changingPiece][i][currPiece];
-    prevEval.whiteToMove += piecePairTable[square][newPiece][i][currPiece];
+    prevEval.whiteToMoveMg -= piecePairTable[0][square][changingPiece][i][currPiece];
+    prevEval.whiteToMoveEg -= piecePairTable[1][square][changingPiece][i][currPiece];
+    prevEval.whiteToMoveMg += piecePairTable[0][square][newPiece][i][currPiece];
+    prevEval.whiteToMoveEg += piecePairTable[1][square][newPiece][i][currPiece];
   }
 
   changingPiece = switchPieceColor[changingPiece];
@@ -239,14 +246,18 @@ Eval updateEvalOnSquare(Eval prevEval, chess::Board& board, uint8_t square, ches
   for(int i=0; i<square; i++){
     currPiece = board.mailbox[1][i];
     
-    prevEval.blackToMove -= piecePairTable[square][changingPiece][i][currPiece];
-    prevEval.blackToMove += piecePairTable[square][newPiece][i][currPiece];
+    prevEval.blackToMoveMg -= piecePairTable[0][square][changingPiece][i][currPiece];
+    prevEval.blackToMoveEg -= piecePairTable[1][square][changingPiece][i][currPiece];
+    prevEval.blackToMoveMg += piecePairTable[0][square][newPiece][i][currPiece];
+    prevEval.blackToMoveEg += piecePairTable[1][square][newPiece][i][currPiece];
   }
   for(int i=square+1; i<64; i++){
     currPiece = board.mailbox[1][i];
     
-    prevEval.blackToMove -= piecePairTable[square][changingPiece][i][currPiece];
-    prevEval.blackToMove += piecePairTable[square][newPiece][i][currPiece];
+    prevEval.blackToMoveMg -= piecePairTable[0][square][changingPiece][i][currPiece];
+    prevEval.blackToMoveEg -= piecePairTable[1][square][changingPiece][i][currPiece];
+    prevEval.blackToMoveMg += piecePairTable[0][square][newPiece][i][currPiece];
+    prevEval.blackToMoveEg += piecePairTable[1][square][newPiece][i][currPiece];
   }
 
   return prevEval;

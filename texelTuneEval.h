@@ -15,6 +15,7 @@ std::string evalFile = "eval.auroraeval";
 int piecePairTableIndicesToSingleIndex[64][13][64][13];
 
 int piecePairTable[2][64][13][64][13] = {0};
+double materialValues[2][6];
 double doublePiecePairTable[2][64][13][64][13] = {0};
 
 int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
@@ -39,6 +40,12 @@ void init(){
     return;
   }
 
+  for(int a=0; a<2; a++){
+    for(int i=0; i<6; i++){
+      pptFile >> token;
+      materialValues[a][i] = token;
+    }
+  }
   int singleIndex = 6;
   for(int a=0; a<2; a++){
     singleIndex = 6;

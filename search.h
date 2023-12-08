@@ -16,7 +16,7 @@ float outputLevel = 2; //outputLevel:
                        //3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 
 float explorationFactor = 0.43758939032521665;
-float evalScaleFactor = 2.1 / (400 * 100000);
+float evalScaleFactor = 2.1 / 400;
 
 uint8_t seldepth = 0;
 
@@ -40,17 +40,16 @@ struct Node{
   uint8_t depth;
   float sPriority;
   bool updatePriority;
-  evaluation::Eval mgStaticEval;
-  evaluation::Eval egStaticEval;
+  evaluation::Eval staticEval;
 
   Node(Node* parent, uint8_t index, chess::Move edge, uint8_t depth, evaluation::Eval eval) :
   parent(parent), index(index),
   firstChild(nullptr), nextSibling(nullptr),
   visits(0), value(-2), edge(edge), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true),
-  mgStaticEval(eval) {}
+  staticEval(eval) {}
 
   Node(evaluation::Eval eval) : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(-2), edge(chess::Move()), isTerminal(false), depth(0), sPriority(-1), updatePriority(true),
-  mgStaticEval(eval) {}
+  staticEval(eval) {}
 
   Node* getChildByIndex(uint8_t index){
     Node* currNode = firstChild;
@@ -141,9 +140,10 @@ float playout(chess::Board& board, Node* currNode){
   }
   
   int gamePhase = evaluation::calcGamePhase(board);
-  int cpEval = board.sideToMove ? currNode->mgStaticEval.blackToMove * gamePhase + currNode->egStaticEval.blackToMove * (24-gamePhase) :
-                                  currNode->mgStaticEval.whiteToMove * gamePhase + currNode->egStaticEval.whiteToMove * (24-gamePhase);
-
+  int cpEval = board.sideToMove ? (currNode->staticEval.blackToMoveMg * gamePhase + currNode->staticEval.blackToMoveEg * (24-gamePhase)) :
+                                  (currNode->staticEval.whiteToMoveMg * gamePhase + currNode->staticEval.whiteToMoveEg * (24-gamePhase));
+  cpEval += evaluation::fullboardSEE(board);
+  cpEval /= 24;
   // evaluation::calcGamePhase(board);
 
   // //Static Exchange Eval
@@ -177,7 +177,7 @@ float playout(chess::Board& board, Node* currNode){
 
   // cpEval += evaluation::passedPawns(board)*100000;
 
-  float eval = fmaxf(fminf(2 / (1 + exp(-(cpEval)*evalScaleFactor)) - 1, 1),-1)*0.999999;
+  float eval = fmaxf(fminf(2 / (1 + exp(-(cpEval/evaluation::evalSharpeningFactor)*evalScaleFactor)) - 1, 1),-1)*0.999999;
   assert(-1<=eval && 1>=eval);
   return eval;
 }
@@ -355,12 +355,12 @@ void search(chess::Board& rootBoard, timeManagement tm){
       expand(currNode, moves);
       //Simulate for all new nodes
       Node* parentNode = currNode; //This will be the root of the backpropagatio
-      evaluation::Eval parentEval = parentNode->mgStaticEval;
+      evaluation::Eval parentEval = parentNode->staticEval;
       currNode = currNode->firstChild;
       float currBestValue = 2; //Find and only backpropagate the best value
       while(currNode != nullptr){
         chess::Board movedBoard = board;
-        currNode->mgStaticEval = evaluation::updateEvalOnMove(parentEval, movedBoard, currNode->edge);
+        currNode->staticEval = evaluation::updateEvalOnMove(parentEval, movedBoard, currNode->edge);
 
         float result = playout(movedBoard, currNode);
         assert(-1<=result && 1>=result);

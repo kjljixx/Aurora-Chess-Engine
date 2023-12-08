@@ -26,7 +26,7 @@ namespace texelTuner{
 
     for(int i=0; i<6; i++){
       //int pair = texelTuneEval::mg_value[i];
-      pair_t pair = {texelTuneEval::mg_value[i], texelTuneEval::eg_value[i]};
+      pair_t pair = {texelTuneEval::materialValues[0][i], texelTuneEval::materialValues[1][i]};
       parameters.push_back(pair);
     }
     for(int i=0; i<64; i++){

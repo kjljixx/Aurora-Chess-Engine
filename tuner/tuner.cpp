@@ -790,7 +790,7 @@ static void compute_gradient(ThreadPool& thread_pool, parameters_t& gradient, co
             coefficients_t coefficients(2016);
             for (int i = start; i < end; i++)
             {
-              if(rand() % 1000 == 0){
+              if(rand() % 3000 == 0){
                 const auto& entry = entries[i];
                 TuneEval::get_custom_board_representation_eval_result(entry.boardPos, coefficients);
                 update_single_gradient(gradient, entry, params, K, coefficients);
@@ -910,7 +910,7 @@ void Tuner::run(const std::vector<DataSource>& sources)
 #if TAPERED
             for(int phase_stage = 0; phase_stage < 2; phase_stage++)
             {
-                const tune_t grad = -K / static_cast<tune_t>(400) * gradient[parameter_index][phase_stage] / (static_cast<tune_t>(entries.size()) / 1000);
+                const tune_t grad = -K / static_cast<tune_t>(400) * gradient[parameter_index][phase_stage] / (static_cast<tune_t>(entries.size()) / 3000);
                 momentum[parameter_index][phase_stage] = beta1 * momentum[parameter_index][phase_stage] + (1 - beta1) * grad;
                 velocity[parameter_index][phase_stage] = beta2 * velocity[parameter_index][phase_stage] + (1 - beta2) * pow(grad, 2);
                 parameters[parameter_index][phase_stage] -= learning_rate * momentum[parameter_index][phase_stage] / (static_cast<tune_t>(1e-8) + sqrt(velocity[parameter_index][phase_stage]));
