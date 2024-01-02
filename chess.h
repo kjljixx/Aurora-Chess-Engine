@@ -10,6 +10,8 @@
 
 namespace chess{
 
+const std::string startPosFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 struct KingMasks{
   U64 checkmask;
   U64 rookPinmask;
@@ -83,7 +85,7 @@ struct Board{
 
   Board(){
     for(int i=0; i<64; i++){mailbox[0][i] = 0; mailbox[1][i] = 0;}
-    setToFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    setToFen(startPosFen);
     hashed = false;
   }
 
@@ -484,6 +486,7 @@ struct Board{
     return chess::Pieces(pieces);
   }
 
+  //DON'T USE THIS; USE chess::makeMove() or search::makeMove() instead
   void makeMove(Move move){
     halfmoveClock++;
     const uint8_t startSquare = move.getStartSquare();
@@ -819,11 +822,10 @@ bool isLegalMoves(Board& board){
       uint8_t startSquare = _popLsb(enPassantMovesBitboard);
       board.unsetColors(1ULL << startSquare, board.sideToMove);
       //check if king is under attack
-      if(!(board.squareUnderAttack(_bitscanForward(ourPieces & board.kings)<=63))){
+      if(!(board.squareUnderAttack(_bitscanForward(ourPieces & board.kings))<=63)){
         if(board.sideToMove == WHITE){board.setColors(board.enPassant >> 8, Colors(!board.sideToMove));} else{board.setColors(board.enPassant << 8, Colors(!board.sideToMove));}
         board.setColors(1ULL << startSquare, board.sideToMove);
         board.unsetColors(board.enPassant, board.sideToMove);
-
         return true;
       }
       board.setColors(1ULL << startSquare, board.sideToMove);
