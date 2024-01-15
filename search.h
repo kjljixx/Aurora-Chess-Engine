@@ -68,9 +68,6 @@ struct Node{
   }
 };
 
-Node* root = nullptr;
-chess::Board searchRootBoard;
-
 void destroyTree(Node* node){
   if(node){
     destroyTree(node->firstChild);
@@ -88,11 +85,11 @@ void destroySubtree(Node* node){
   }
 }
 //the node argument passed in moveRootToChild should be the first child of the root
-void moveRootToChild(Node* node, Node* newRoot){
+void moveRootToChild(Node* node, Node* newRoot, Node* currRoot){
   if(node){
-    moveRootToChild(node->nextSibling, newRoot);
+    moveRootToChild(node->nextSibling, newRoot, currRoot);
     
-    if(node!=newRoot && node!=root){destroySubtree(node);}
+    if(node!=newRoot && node!=currRoot){destroySubtree(node);}
   }
 }
 
@@ -286,14 +283,12 @@ struct timeManagement{
 };
 //The main search function
 
-void search(const chess::Board& rootBoard, timeManagement tm){
+void search(chess::Board& rootBoard, timeManagement tm, Node* root){
   auto start = std::chrono::steady_clock::now();
 
   if(!root){root = new Node();}
 
   seldepth = 0;
-
-  searchRootBoard = rootBoard; //this is the non-const version of rootBoard, although it still should not be changed (I know this is terrible code but I'm too lazy to make it better)
 
   chess::Colors ourSide = rootBoard.sideToMove;
 
@@ -304,7 +299,7 @@ void search(const chess::Board& rootBoard, timeManagement tm){
   previousVisits = root->visits;
   previousElapsed = 0;
 
-  if(chess::getGameStatus(searchRootBoard, chess::isLegalMoves(searchRootBoard)) != chess::ONGOING){
+  if(chess::getGameStatus(rootBoard, chess::isLegalMoves(rootBoard)) != chess::ONGOING){
     #if DATAGEN != 1
       std::cout << "bestmove a1a1\n";
     #endif
@@ -368,7 +363,7 @@ void search(const chess::Board& rootBoard, timeManagement tm){
     //Data Generation code
     HANDLE dataFile = CreateFileA(dataFilePath, FILE_APPEND_DATA, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
-    const std::string data = searchRootBoard.getFen() + " " + std::to_string(fminf(((searchRootBoard.sideToMove ? -root->value : root->value)+1)/2, 0.999999)) + "\n";
+    const std::string data = rootBoard.getFen() + " " + std::to_string(fminf(((rootBoard.sideToMove ? -root->value : root->value)+1)/2, 0.999999)) + "\n";
     DWORD dwBytesToWrite = (DWORD)strlen(data.c_str());
     DWORD dwBytesWritten = 0;
     WriteFile(dataFile, data.c_str(), dwBytesToWrite, &dwBytesWritten, NULL);
@@ -376,10 +371,12 @@ void search(const chess::Board& rootBoard, timeManagement tm){
   #endif
 }
 //Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
-void makeMove(chess::Board& board, chess::Move move){
-  if(root == nullptr || zobrist::getHash(board) != zobrist::getHash(searchRootBoard)){chess::makeMove(board, move); return;}
-
+//Parameter "board" is the one that will make the move; rootBoard will not.
+void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Node* root){
   chess::makeMove(board, move);
+
+  if(root == nullptr || zobrist::getHash(board) != zobrist::getHash(rootBoard)){return;}
+
 
   Node* newRoot = root->firstChild;
   while(newRoot != nullptr){
@@ -389,10 +386,10 @@ void makeMove(chess::Board& board, chess::Move move){
 
   if(newRoot == nullptr){root = nullptr; return;}
 
-  moveRootToChild(root->firstChild, newRoot);
+  moveRootToChild(root->firstChild, newRoot, root);
   newRoot->parent = nullptr; newRoot->nextSibling = nullptr; newRoot->index = 0; newRoot->edge = chess::Move(); newRoot->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
 
-  chess::makeMove(searchRootBoard, move);
+  chess::makeMove(rootBoard, move);
 
   root = newRoot;
 }
