@@ -164,12 +164,9 @@ void init(){
 
 int gamephaseInc[6] = {0, 1, 1, 2, 4, 0};
 
-int gamePhase = 24;
-
-int currentPieceSquareTableEval = 0;
-
-int pieceSquareTable(chess::Board& board){
-  gamePhase = 0;
+std::pair<int, int> pieceSquareTable(chess::Board& board){
+  int currentPieceSquareTableEval = 0;
+  int gamePhase = 0;
 
   int mgScore = 0;
   int egScore = 0;
@@ -205,15 +202,14 @@ int pieceSquareTable(chess::Board& board){
   if (gamePhase > 24){gamePhase = 24;} /* in case of early promotion */
 
   currentPieceSquareTableEval = (mgScore * gamePhase + egScore * (24-gamePhase))/24;
-  return currentPieceSquareTableEval;
+  return {currentPieceSquareTableEval, gamePhase};
 }
 
-int seeiterations = 0;
 //Static Exchange Evaluation
 //Returns the value in cp from the current board's sideToMove's perspective on how good capturing an enemy piece on targetSquare is
 //Returns 0 if the capture is not good for the current board's sideToMove or if there is no capture
 //Threshold is the highest SEE value we have already found (see the part in evaluate() which runs SEE())
-int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0){
+int SEE(chess::Board& board, uint8_t targetSquare, int gamePhase, int threshold = 0){
   int values[32];
   int i=0;
 
@@ -237,7 +233,6 @@ int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0){
   int beta = -(threshold*24);
 
   while(piecePos<=63){
-    seeiterations++;
     i++;
 
     //Alpha Beta pruning does not affect the result of the SEE
@@ -267,7 +262,7 @@ int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0){
   return (isOurSideToMove ? beta : -beta)/24;
 }
 
-int passedPawns(chess::Board& board){
+int passedPawns(chess::Board& board, int gamePhase){
   int mg_score = 0;
   int eg_score = 0;
   U64 pieceBitboard = board.getOurPieces(chess::PAWN);
@@ -306,42 +301,46 @@ int passedPawns(chess::Board& board){
 }
 
 int evaluate(chess::Board& board){
-  int cpEvaluation = 0;
+  int cpEvaluation;
+  int gamePhase;
 
   //Piece Square Table Eval
-  cpEvaluation += pieceSquareTable(board);
+  std::pair<int, int> pSTResult = pieceSquareTable(board);
+
+  cpEvaluation = pSTResult.first;
+  gamePhase = pSTResult.second;
 
   //Static Exchange Eval
   int maxSEE = 0;
   U64 theirPieces = board.getTheirPieces(chess::QUEEN);
   while(theirPieces){
     int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, maxSEE);
+    maxSEE = SEE(board, i, gamePhase, maxSEE);
   }
   theirPieces = board.getTheirPieces(chess::ROOK);
   while(theirPieces){
     int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, maxSEE);
+    maxSEE = SEE(board, i, gamePhase, maxSEE);
   }
   theirPieces = board.getTheirPieces(chess::BISHOP);
   while(theirPieces){
     int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, maxSEE);
+    maxSEE = SEE(board, i, gamePhase, maxSEE);
   }
   theirPieces = board.getTheirPieces(chess::KNIGHT);
   while(theirPieces){
     int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, maxSEE);
+    maxSEE = SEE(board, i, gamePhase, maxSEE);
   }
   theirPieces = board.getTheirPieces(chess::PAWN);
   while(theirPieces){
     int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, maxSEE);
+    maxSEE = SEE(board, i, gamePhase, maxSEE);
   }
 
   cpEvaluation += maxSEE;
 
-  cpEvaluation += passedPawns(board);
+  cpEvaluation += passedPawns(board, gamePhase);
 
   cpEvaluation += evalStabilityConstant; //bias the eval to stabilize when searching
 

@@ -10,7 +10,7 @@
 #define DATAGEN 0
 #if DATAGEN >= 1
   #include <windows.h>
-  std::string dataFolderPath = "C:/Users/kjlji/OneDrive/Documents/VSCode/C++/AuroraChessEngine-main/data/version1.0.0-dev-10000npm.auroradata";
+  std::string dataFolderPath = "C:/Users/kjlji/OneDrive/Documents/VSCode/C++/AuroraChessEngine-main/data";
 #endif
 
 namespace search{
@@ -373,7 +373,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
 }
 //Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
 //Parameter "board" is the one that will make the move; rootBoard will not.
-void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Node* root){
+void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Node*& root){
   chess::makeMove(board, move);
 
   if(root == nullptr || zobrist::getHash(board) != zobrist::getHash(rootBoard)){return;}
@@ -389,8 +389,6 @@ void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, No
 
   moveRootToChild(root->firstChild, newRoot, root);
   newRoot->parent = nullptr; newRoot->nextSibling = nullptr; newRoot->index = 0; newRoot->edge = chess::Move(); newRoot->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
-
-  chess::makeMove(rootBoard, move);
 
   root = newRoot;
 }

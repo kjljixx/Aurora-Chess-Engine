@@ -31,7 +31,7 @@ int main(){
 
       std::vector<std::string> gameData;
 
-      search::timeManagement tm(search::NODES, 1000);
+      search::timeManagement tm(search::NODES, 500);
 
       chess::Board board;
 
