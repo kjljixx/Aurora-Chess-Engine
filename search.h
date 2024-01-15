@@ -7,10 +7,10 @@
 #include <chrono>
 
 //Set to 1 if you want to build a version of Aurora which generates data, 2 for generating data while playing (cutechess), 0 for the normal version.
-#define DATAGEN 1
+#define DATAGEN 0
 #if DATAGEN >= 1
   #include <windows.h>
-  LPCSTR dataFilePath = "C:/Users/kjlji/OneDrive/Documents/VSCode/C++/AuroraChessEngine-main/data/version1.0.0-dev-10000npm.auroradata";
+  std::string dataFolderPath = "C:/Users/kjlji/OneDrive/Documents/VSCode/C++/AuroraChessEngine-main/data/version1.0.0-dev-10000npm.auroradata";
 #endif
 
 namespace search{
@@ -281,9 +281,9 @@ struct timeManagement{
   timeManagement(timeManagementType _tmType, uint32_t _limit = 0): tmType(_tmType), limit(_limit) {}
   timeManagement(): tmType(FOREVER), limit(0){}
 };
-//The main search function
 
-void search(chess::Board& rootBoard, timeManagement tm, Node* root){
+//The main search function
+Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
   auto start = std::chrono::steady_clock::now();
 
   if(!root){root = new Node();}
@@ -303,7 +303,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Node* root){
     #if DATAGEN != 1
       std::cout << "bestmove a1a1\n";
     #endif
-    return;
+    return root;
   }
 
   while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (root->visits<tm.limit && tm.tmType == NODES)){
@@ -361,7 +361,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Node* root){
 
   #if DATAGEN >= 1
     //Data Generation code
-    HANDLE dataFile = CreateFileA(dataFilePath, FILE_APPEND_DATA, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE dataFile = CreateFileA(dataFolderPath.c_str(), FILE_APPEND_DATA, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
     const std::string data = rootBoard.getFen() + " " + std::to_string(fminf(((rootBoard.sideToMove ? -root->value : root->value)+1)/2, 0.999999)) + "\n";
     DWORD dwBytesToWrite = (DWORD)strlen(data.c_str());
@@ -369,6 +369,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Node* root){
     WriteFile(dataFile, data.c_str(), dwBytesToWrite, &dwBytesWritten, NULL);
     CloseHandle(dataFile);
   #endif
+  return root;
 }
 //Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
 //Parameter "board" is the one that will make the move; rootBoard will not.
