@@ -5,7 +5,7 @@
 
 int openingLength = 8;
 
-int infoPrintInterval = 10;
+int infoPrintInterval = 25;
 
 int numberOfThreads = 8;
 
@@ -56,6 +56,9 @@ int main(){
       int gameIter = 0;
       int fenIter = 0;
 
+      int previousFenIter = 0;
+      int previousElapsed = 0;
+
       auto start = std::chrono::steady_clock::now();
 
       search::Node* root = nullptr;
@@ -72,14 +75,18 @@ int main(){
     
         search::makeMove(board, search::findBestChild(root)->edge, board, root);
 
-        if(root->isTerminal){
+        if(root->isTerminal || std::abs(root->value)>0.9999){
           gameIter++;
           if(gameIter % infoPrintInterval == 0){
             std::cout << "Thread: " << threadId << "\n";
             std::cout << "Games: " << gameIter << "\n";
             std::cout << "FENs: " << fenIter << "\n";
             std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
-            std::cout << "FENs/second: " << fenIter / elapsed.count() << "\n";
+            std::cout << "Overall FENs/second: " << fenIter / elapsed.count() << "\n";
+            std::cout << "Recent FENs/second: " << (fenIter - previousFenIter) / (elapsed.count() - previousElapsed) << "\n";
+
+            previousElapsed = elapsed.count();
+            previousFenIter = fenIter;
           }
 
           std::stringstream stream;
