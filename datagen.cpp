@@ -34,6 +34,7 @@ int main(){
       search::timeManagement tm(search::NODES, 500);
 
       chess::Board board;
+      chess::Board rootBoard; //Only exists to make the search::makeMove function happy
 
       bool validOpening = false;
       while(validOpening == false){
@@ -52,6 +53,7 @@ int main(){
           validOpening = true;
         }
       }
+      rootBoard = board;
 
       int gameIter = 0;
       int fenIter = 0;
@@ -73,7 +75,7 @@ int main(){
           fenIter++;
         }
     
-        search::makeMove(board, search::findBestChild(root)->edge, board, root);
+        search::makeMove(board, search::findBestChild(root)->edge, rootBoard, root);
 
         if(root->isTerminal || std::abs(root->value)>0.9999){
           gameIter++;
@@ -124,6 +126,7 @@ int main(){
             }
             else{}
           }
+          rootBoard = board;
         }
       }
     });

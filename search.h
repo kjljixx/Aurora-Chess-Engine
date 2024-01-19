@@ -359,20 +359,10 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
     std::cout << "\nbestmove " << findBestChild(root)->edge.toStringRep() << "\n";
   #endif
 
-  #if DATAGEN >= 1
-    //Data Generation code
-    HANDLE dataFile = CreateFileA(dataFolderPath.c_str(), FILE_APPEND_DATA, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-
-    const std::string data = rootBoard.getFen() + " " + std::to_string(fminf(((rootBoard.sideToMove ? -root->value : root->value)+1)/2, 0.999999)) + "\n";
-    DWORD dwBytesToWrite = (DWORD)strlen(data.c_str());
-    DWORD dwBytesWritten = 0;
-    WriteFile(dataFile, data.c_str(), dwBytesToWrite, &dwBytesWritten, NULL);
-    CloseHandle(dataFile);
-  #endif
   return root;
 }
 //Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
-//Parameter "board" is the one that will make the move; rootBoard will not.
+//Parameter "board" must be different than parameter "rootBoard"
 void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Node*& root){
   if(root == nullptr || zobrist::getHash(board) != zobrist::getHash(rootBoard)){chess::makeMove(board, move); return;}
 
@@ -388,6 +378,8 @@ void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, No
 
   moveRootToChild(root->firstChild, newRoot, root);
   newRoot->parent = nullptr; newRoot->nextSibling = nullptr; newRoot->index = 0; newRoot->edge = chess::Move(); newRoot->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
+
+  chess::makeMove(rootBoard, move);
 
   root = newRoot;
 }
