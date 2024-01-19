@@ -123,6 +123,7 @@ void go(std::istringstream input, chess::Board board){
     }
     root = search::search(board, tm, root);
   }
+  rootBoard = board;
 }
 void respondUci(){
   std::cout <<  "id name Aurora\n"
