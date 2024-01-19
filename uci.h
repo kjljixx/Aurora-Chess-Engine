@@ -98,12 +98,12 @@ void go(std::istringstream input, chess::Board board){
 
   input >> token;
   if(token == "infinite"){
-    search::search(board, search::timeManagement(search::FOREVER), root);
+    root = search::search(board, search::timeManagement(search::FOREVER), root);
   }
   else if(token == "nodes"){
     int maxNodes;
     input >> maxNodes;
-    search::search(board, search::timeManagement(search::NODES, maxNodes), root);
+    root = search::search(board, search::timeManagement(search::NODES, maxNodes), root);
   }
   else{
     search::timeManagement tm(search::TIME);
@@ -120,7 +120,7 @@ void go(std::istringstream input, chess::Board board){
       else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += 0/20000.0;}}
       else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += 0/20000.0;}}
     }
-    search::search(board, tm, root);
+    root = search::search(board, tm, root);
   }
 }
 void respondUci(){

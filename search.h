@@ -374,10 +374,9 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
 //Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
 //Parameter "board" is the one that will make the move; rootBoard will not.
 void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Node*& root){
+  if(root == nullptr || zobrist::getHash(board) != zobrist::getHash(rootBoard)){chess::makeMove(board, move); return;}
+
   chess::makeMove(board, move);
-
-  if(root == nullptr || zobrist::getHash(board) != zobrist::getHash(rootBoard)){return;}
-
 
   Node* newRoot = root->firstChild;
   while(newRoot != nullptr){
