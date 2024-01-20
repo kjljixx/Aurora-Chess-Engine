@@ -3,11 +3,12 @@
 #include <math.h>
 #include <algorithm>
 #include <random>
+#include <array>
+#include "external/incbin.h"
 
 namespace evaluation{
 //Evaluation Parameters
-int evalStabilityConstant = 1;
-//int evalStabilityConstant[2] = {3, -1};
+float seeWeight = 3;
 
 int mg_value[6] = {42, 184, 207, 261, 642, 10000};
 int eg_value[6] = {71, 242, 265, 538, 1067, 10000};
@@ -158,15 +159,215 @@ int* eg_table[6] =
     eg_king_table
 };
 
+//A simple 768->N*2->1 NNUE
+#define NNUEhiddenNeurons 128
+
+int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
+
+struct NNUEparameters{
+    alignas(32) std::array<std::array<int16_t, NNUEhiddenNeurons>, 768> hiddenLayerWeights;
+    alignas(32) std::array<int16_t, NNUEhiddenNeurons> hiddenLayerBiases;
+    alignas(32) std::array<int16_t, 2*NNUEhiddenNeurons> outputLayerWeights;
+    int16_t outputLayerBias;
+};
+
+extern "C" {
+  INCBIN(networkData, "../AuroraChessEngine-main/vesta-1.nnue");
+}
+const NNUEparameters* _NNUEparameters = reinterpret_cast<const NNUEparameters *>(gnetworkDataData);
+
+struct NNUE{
+  std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> accumulator = {{0}};
+
+  int evaluate(chess::Colors sideToMove){
+    int result = _NNUEparameters->outputLayerBias;
+
+    bool currSide = sideToMove;
+    for(int a=0; a<2; a++){
+      for(int i=0; i<NNUEhiddenNeurons; i++){
+        result += std::max(std::min(int(accumulator[currSide][i]), 255), 0) * _NNUEparameters->outputLayerWeights[a*NNUEhiddenNeurons+i];
+      }
+      currSide = !currSide;
+    }
+    
+    result = result * 400 / (255*64);
+
+    return result;
+  }
+
+  void refreshAccumulator(chess::Board& board){
+    for(int i=0; i<NNUEhiddenNeurons; i++){
+      accumulator[0][i] = _NNUEparameters->hiddenLayerBiases[i];
+      accumulator[1][i] = _NNUEparameters->hiddenLayerBiases[i];
+    }
+
+    for(int square=0; square<64; square++){
+      if(board.mailbox[0][square]!=0){
+        int currFeatureIndex[2] = {64*(board.mailbox[0][square]-1)+square, 64*(switchPieceColor[board.mailbox[0][square]]-1)+(square^56)};
+        for(int i=0; i<NNUEhiddenNeurons; i++){
+          accumulator[0][i] += _NNUEparameters->hiddenLayerWeights[currFeatureIndex[0]][i];
+          accumulator[1][i] += _NNUEparameters->hiddenLayerWeights[currFeatureIndex[1]][i];
+        }
+      }
+    }
+  }
+
+  void updateSingleFeature(chess::Board& board, uint8_t square, chess::Pieces newPieceType, chess::Colors newPieceColor = chess::WHITE){
+    uint8_t squareFromBlackPerspective = square^56;
+
+    int newPiece = (newPieceColor == chess::WHITE) || (newPieceType == chess::null) ? newPieceType : newPieceType+6;
+
+    int currFeatureIndex[2] = {64*(board.mailbox[0][square]-1)+square, 64*(board.mailbox[1][squareFromBlackPerspective]-1)+squareFromBlackPerspective};
+    int newFeatureIndex[2] = {64*(newPiece-1)+square, 64*(switchPieceColor[newPiece]-1)+squareFromBlackPerspective};
+
+    for(int i=0; i<NNUEhiddenNeurons; i++){
+      if(board.mailbox[0][square] != 0){
+        accumulator[0][i] -= _NNUEparameters->hiddenLayerWeights[currFeatureIndex[0]][i];
+        accumulator[1][i] -= _NNUEparameters->hiddenLayerWeights[currFeatureIndex[1]][i];
+      }
+      if(newPieceType != chess::null){
+        accumulator[0][i] += _NNUEparameters->hiddenLayerWeights[newFeatureIndex[0]][i];
+        accumulator[1][i] += _NNUEparameters->hiddenLayerWeights[newFeatureIndex[1]][i];
+      }
+    }
+  }
+
+  void updateAccumulator(chess::Board& board, chess::Move move){
+    U64 newHash;
+    if(board.hashed){
+      newHash = zobrist::updateHash(board, move);
+    }
+
+    board.halfmoveClock++;
+    const uint8_t startSquare = move.getStartSquare();
+    const uint8_t endSquare = move.getEndSquare();
+    const chess::Pieces movingPiece = board.findPiece(startSquare);
+    const chess::MoveFlags moveFlags = move.getMoveFlags();
+
+    updateSingleFeature(board, startSquare, chess::null);
+    board.mailbox[0][startSquare] = 0; board.mailbox[1][startSquare^56] = 0;
+    board.unsetColors((1ULL << startSquare), board.sideToMove);
+    board.unsetPieces(movingPiece, (1ULL << startSquare));
+
+    if(moveFlags == chess::ENPASSANT){
+      U64 theirPawnSquare;
+      if(board.sideToMove == chess::WHITE){theirPawnSquare = (1ULL << endSquare) >> 8;}
+      else{theirPawnSquare = (1ULL << endSquare) << 8;}
+
+      uint8_t theirPawnSq = _bitscanForward(theirPawnSquare);
+
+      updateSingleFeature(board, theirPawnSq, chess::null);
+      board.mailbox[0][theirPawnSq] = 0; board.mailbox[1][theirPawnSq^56] = 0;
+      board.unsetColors(theirPawnSquare, chess::Colors(!board.sideToMove));
+      board.unsetPieces(chess::PAWN, theirPawnSquare);
+    }
+    else{
+      if(board.getTheirPieces() & (1ULL << endSquare)){
+        board.halfmoveClock = 0;
+        board.startHistoryIndex = 0;
+
+        updateSingleFeature(board, endSquare, chess::null);
+        board.mailbox[0][endSquare] = 0; board.mailbox[1][endSquare^56] = 0;
+        board.unsetColors((1ULL << endSquare), chess::Colors(!board.sideToMove));
+        board.unsetPieces(chess::UNKNOWN, (1ULL << endSquare));
+      }
+    }
+
+    if(moveFlags == chess::CASTLE){
+      uint8_t rookStartSquare;
+      uint8_t rookEndSquare;
+      //Queenside Castling
+      if(squareIndexToFile(endSquare) == 2){
+        rookStartSquare = board.sideToMove*56;
+        rookEndSquare = 3+board.sideToMove*56;
+      }
+      //Kingside Castling
+      else{
+        rookStartSquare = 7+board.sideToMove*56;
+        rookEndSquare = 5+board.sideToMove*56;
+      }
+
+      updateSingleFeature(board, rookStartSquare, chess::null);
+      board.mailbox[0][rookStartSquare] = 0; board.mailbox[1][rookStartSquare^56] = 0;
+      board.unsetColors(rookStartSquare, board.sideToMove);
+      board.unsetPieces(chess::ROOK, rookStartSquare);
+
+      updateSingleFeature(board, rookEndSquare, chess::ROOK, board.sideToMove);
+      board.mailbox[0][rookEndSquare] = board.sideToMove ? 10 : 4; board.mailbox[1][rookEndSquare^56] = board.sideToMove ? 4 : 10;
+      board.setColors(rookEndSquare, board.sideToMove);
+      board.setPieces(chess::ROOK, rookEndSquare);
+    }
+
+    if(moveFlags == chess::PROMOTION){
+      updateSingleFeature(board, endSquare, move.getPromotionPiece(), board.sideToMove);
+      board.mailbox[0][endSquare] = board.sideToMove ? move.getPromotionPiece()+6 : move.getPromotionPiece();
+      board.mailbox[1][endSquare^56] = board.sideToMove ? move.getPromotionPiece() : move.getPromotionPiece()+6;
+      board.setPieces(move.getPromotionPiece(), (1ULL << endSquare));
+    }
+    else{
+      updateSingleFeature(board, endSquare, movingPiece, board.sideToMove);
+      board.mailbox[0][endSquare] = board.sideToMove ? movingPiece+6 : movingPiece;
+      board.mailbox[1][endSquare] = board.sideToMove ? movingPiece : movingPiece+6;
+      board.setPieces(movingPiece, (1ULL << endSquare));
+    }
+    board.setColors((1ULL << endSquare), board.sideToMove);
+
+    board.enPassant = 0ULL;
+    if(movingPiece == chess::PAWN){
+      board.halfmoveClock = 0;
+      board.startHistoryIndex = 0;
+      board.enPassant = 0ULL;
+
+      //double pawn push by white
+      if((1ULL << endSquare) == (1ULL << startSquare) << 16){
+        board.enPassant = (1ULL << startSquare) << 8;
+      }
+      //double pawn push by black
+      else if((1ULL << endSquare) == (1ULL << startSquare) >> 16){
+        board.enPassant = (1ULL << startSquare) >> 8;
+      }
+    }
+    //Remove castling rights if king moved
+    if(movingPiece == chess::KING){
+      if(board.sideToMove == chess::WHITE){
+        board.castlingRights &= ~(0x1 | 0x2);
+      }
+      else{
+        board.castlingRights &= ~(0x4 | 0x8);
+      }
+    }
+    //Remove castling rights if rook moved from starting square or if rook was captured
+    if((startSquare == 0 && movingPiece == chess::ROOK) || endSquare == 0){board.castlingRights &= ~0x2;}
+    if((startSquare == 7 && movingPiece == chess::ROOK) || endSquare == 7){board.castlingRights &= ~0x1;}
+    if((startSquare == 56 && movingPiece == chess::ROOK) || endSquare == 56){board.castlingRights &= ~0x8;}
+    if((startSquare == 63 && movingPiece == chess::ROOK) || endSquare == 63){board.castlingRights &= ~0x4;}
+    
+    board.occupied = board.white | board.black;
+    board.sideToMove = chess::Colors(!board.sideToMove);
+
+    if(board.hashed){
+      board.history[board.halfmoveClock] = newHash;
+    }
+    else{
+      board.history[board.halfmoveClock] = zobrist::getHash(board);
+    }
+  }
+};
+
+NNUE nnue;
+
 void init(){
   lookupTables::init();
 }
 
 int gamephaseInc[6] = {0, 1, 1, 2, 4, 0};
 
-std::pair<int, int> pieceSquareTable(chess::Board& board){
-  int currentPieceSquareTableEval = 0;
-  int gamePhase = 0;
+int gamePhase = 24;
+
+int currentPieceSquareTableEval = 0;
+
+int pieceSquareTable(chess::Board& board){
+  gamePhase = 0;
 
   int mgScore = 0;
   int egScore = 0;
@@ -202,14 +403,15 @@ std::pair<int, int> pieceSquareTable(chess::Board& board){
   if (gamePhase > 24){gamePhase = 24;} /* in case of early promotion */
 
   currentPieceSquareTableEval = (mgScore * gamePhase + egScore * (24-gamePhase))/24;
-  return {currentPieceSquareTableEval, gamePhase};
+  return currentPieceSquareTableEval;
 }
 
+int seeiterations = 0;
 //Static Exchange Evaluation
 //Returns the value in cp from the current board's sideToMove's perspective on how good capturing an enemy piece on targetSquare is
 //Returns 0 if the capture is not good for the current board's sideToMove or if there is no capture
 //Threshold is the highest SEE value we have already found (see the part in evaluate() which runs SEE())
-int SEE(chess::Board& board, uint8_t targetSquare, int gamePhase, int threshold = 0){
+int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0){
   int values[32];
   int i=0;
 
@@ -233,6 +435,7 @@ int SEE(chess::Board& board, uint8_t targetSquare, int gamePhase, int threshold 
   int beta = -(threshold*24);
 
   while(piecePos<=63){
+    seeiterations++;
     i++;
 
     //Alpha Beta pruning does not affect the result of the SEE
@@ -262,7 +465,7 @@ int SEE(chess::Board& board, uint8_t targetSquare, int gamePhase, int threshold 
   return (isOurSideToMove ? beta : -beta)/24;
 }
 
-int passedPawns(chess::Board& board, int gamePhase){
+int passedPawns(chess::Board& board){
   int mg_score = 0;
   int eg_score = 0;
   U64 pieceBitboard = board.getOurPieces(chess::PAWN);
@@ -301,48 +504,36 @@ int passedPawns(chess::Board& board, int gamePhase){
 }
 
 int evaluate(chess::Board& board){
-  int cpEvaluation;
-  int gamePhase;
-
-  //Piece Square Table Eval
-  std::pair<int, int> pSTResult = pieceSquareTable(board);
-
-  cpEvaluation = pSTResult.first;
-  gamePhase = pSTResult.second;
+  int cpEvaluation = nnue.evaluate(board.sideToMove);
 
   //Static Exchange Eval
   int maxSEE = 0;
   U64 theirPieces = board.getTheirPieces(chess::QUEEN);
   while(theirPieces){
     int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, gamePhase, maxSEE);
+    maxSEE = SEE(board, i, maxSEE);
   }
   theirPieces = board.getTheirPieces(chess::ROOK);
   while(theirPieces){
     int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, gamePhase, maxSEE);
+    maxSEE = SEE(board, i, maxSEE);
   }
   theirPieces = board.getTheirPieces(chess::BISHOP);
   while(theirPieces){
     int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, gamePhase, maxSEE);
+    maxSEE = SEE(board, i, maxSEE);
   }
   theirPieces = board.getTheirPieces(chess::KNIGHT);
   while(theirPieces){
     int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, gamePhase, maxSEE);
+    maxSEE = SEE(board, i, maxSEE);
   }
   theirPieces = board.getTheirPieces(chess::PAWN);
   while(theirPieces){
     int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, gamePhase, maxSEE);
+    maxSEE = SEE(board, i, maxSEE);
   }
-
-  cpEvaluation += maxSEE;
-
-  cpEvaluation += passedPawns(board, gamePhase);
-
-  cpEvaluation += evalStabilityConstant; //bias the eval to stabilize when searching
+  cpEvaluation += seeWeight*maxSEE;
 
   return cpEvaluation;
 }

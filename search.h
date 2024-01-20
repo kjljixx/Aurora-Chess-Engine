@@ -326,11 +326,14 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
       //Simulate for all new nodes
       Node* parentNode = currNode; //This will be the root of the backpropagation
       currNode = currNode->firstChild;
-      float currBestValue = 2; //Find and only backpropagate the best value
+      float currBestValue = 2; //Find and only backpropagate the best value we end up finding
+      evaluation::nnue.refreshAccumulator(board);
+      std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> currAccumulator = evaluation::nnue.accumulator;
       while(currNode != nullptr){
         chess::Board movedBoard = board;
+        evaluation::nnue.accumulator = currAccumulator;
 
-        chess::makeMove(movedBoard, currNode->edge);
+        evaluation::nnue.updateAccumulator(movedBoard, currNode->edge);
         float result = playout(movedBoard, currNode);
         assert(-1<=result && 1>=result);
         currNode->value = result;

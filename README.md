@@ -20,7 +20,7 @@ g++ aurora.cpp -o aurora -O3
 You should now have a file named ```aurora.exe```, which is the engine. Now go to your GUI and find instructions for adding engines. When the GUI prompts you to choose a file/engine, choose ```aurora.exe```.
 
 # Technical Details
-Aurora uses a UCT (Upper Confidence Bounds applied to Trees) search with a HCE (Hand Crafted Evaluation)
+Aurora uses a UCT (Upper Confidence Bounds applied to Trees) search with a NNUE (Efficiently Updatable Neural Network)
 
 ## Search
 Here are some details about the search:
@@ -29,8 +29,12 @@ Here are some details about the search:
 * Values backpropagated up the tree are done so with minimax
 
 ## Evaluation
-Here are all the current evaluation terms in the HCE:
-* Material Values
-* Piece Square Tables
-* Static Exchange Evaluation (While normally used for pruning in an alpha-beta engine, Aurora uses SEE for static board evaluation)
-* Passed Pawn Bonuses
+A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options:
+Arch:  (768->128)x2->1
+Scale: 400
+Epochs: 30
+WDL scheduler: constant 0.75
+LR scheduler: start 0.001 gamma 0.1 drop every 15 epochs
+Device: NVIDIA GeForce MX550
+Threads: 8
+Positions: 188918391

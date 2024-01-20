@@ -15,7 +15,7 @@ int main(){
     getchar();
     return 0;
   #else
-  std::string version = "0.10.2-threadSafeSearch";
+  std::string version = "0.11.0-nnue";
   version += "-datagen";
   search::init();
   //tb_init("C:\\Users\\kjlji\\OneDrive\\Documents\\VSCode\\C++\\AuroraChessEngine-main\\3-4-5");
@@ -74,7 +74,7 @@ int main(){
           gameData.push_back(board.getFen() + " | " + std::to_string(int(round(tan((board.sideToMove ? search::findBestValue(root) : -search::findBestValue(root))*1.56375)*100))));
           fenIter++;
         }
-    
+
         search::makeMove(board, search::findBestChild(root)->edge, rootBoard, root);
 
         if(root->isTerminal || std::abs(root->value)>0.9999){
