@@ -172,7 +172,7 @@ struct NNUEparameters{
 };
 
 extern "C" {
-  INCBIN(networkData, "../AuroraChessEngine-main/vesta-1.nnue");
+  INCBIN(networkData, "../AuroraChessEngine-main/vesta-2.nnue");
 }
 const NNUEparameters* _NNUEparameters = reinterpret_cast<const NNUEparameters *>(gnetworkDataData);
 

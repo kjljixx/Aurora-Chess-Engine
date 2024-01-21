@@ -29,7 +29,7 @@ Here are some details about the search:
 * Values backpropagated up the tree are done so with minimax
 
 ## Evaluation
-A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options:
+A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```vesta-2.nnue```):
 * Arch:  (768->128)x2->1
 * Scale: 400
 * Epochs: 30
@@ -37,4 +37,4 @@ A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options:
 * LR scheduler: start 0.001 gamma 0.1 drop every 15 epochs
 * Device: NVIDIA GeForce MX550
 * Threads: 8
-* Positions: 188918391
+* Positions: 251104488
