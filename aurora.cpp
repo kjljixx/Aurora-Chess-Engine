@@ -1,7 +1,7 @@
 #include "uci.h"
 
 int main() {
-  std::string version = "0.11.0-nnue";
+  std::string version = "0.11.1-nnue-vesta-2";
   #if DATAGEN > 0
     std::cout << "Preprocessor Variable DATAGEN must be set to 0 for normal use";
     getchar();
