@@ -354,8 +354,6 @@ struct NNUE{
   }
 };
 
-NNUE nnue;
-
 void init(){
   lookupTables::init();
 }
@@ -503,7 +501,7 @@ int passedPawns(chess::Board& board){
   return (gamePhase*mg_score+(24-gamePhase)*eg_score)/24;
 }
 
-int evaluate(chess::Board& board){
+int evaluate(chess::Board& board, NNUE& nnue){
   int cpEvaluation = nnue.evaluate(board.sideToMove);
 
   //Static Exchange Eval

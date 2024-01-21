@@ -134,7 +134,7 @@ void expand(Node* parent, chess::MoveList& moves){
   if(parent->depth+1>seldepth){seldepth = parent->depth+1;}
 }
 
-float playout(chess::Board& board, Node* currNode){
+float playout(chess::Board& board, Node* currNode, evaluation::NNUE& nnue){
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){
@@ -142,7 +142,7 @@ float playout(chess::Board& board, Node* currNode){
     return _gameStatus;
   }
 
-  float eval = fmaxf(fminf(atan(evaluation::evaluate(board)*evalScaleFactor/100.0)/1.56375, 1),-1)*0.999999;
+  float eval = fmaxf(fminf(atan(evaluation::evaluate(board, nnue)*evalScaleFactor/100.0)/1.56375, 1),-1)*0.999999;
   assert(-1<=eval && 1>=eval);
   return eval;
 }
@@ -290,6 +290,8 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
 
   seldepth = 0;
 
+  evaluation::NNUE nnue;
+
   chess::Colors ourSide = rootBoard.sideToMove;
 
   Node* currNode = root;
@@ -327,14 +329,14 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
       Node* parentNode = currNode; //This will be the root of the backpropagation
       currNode = currNode->firstChild;
       float currBestValue = 2; //Find and only backpropagate the best value we end up finding
-      evaluation::nnue.refreshAccumulator(board);
-      std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> currAccumulator = evaluation::nnue.accumulator;
+      nnue.refreshAccumulator(board);
+      std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> currAccumulator = nnue.accumulator;
       while(currNode != nullptr){
         chess::Board movedBoard = board;
-        evaluation::nnue.accumulator = currAccumulator;
+        nnue.accumulator = currAccumulator;
 
-        evaluation::nnue.updateAccumulator(movedBoard, currNode->edge);
-        float result = playout(movedBoard, currNode);
+        nnue.updateAccumulator(movedBoard, currNode->edge);
+        float result = playout(movedBoard, currNode, nnue);
         assert(-1<=result && 1>=result);
         currNode->value = result;
         currNode->visits = 1;

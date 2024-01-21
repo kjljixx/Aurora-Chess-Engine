@@ -5,7 +5,7 @@
 
 int openingLength = 8;
 
-int infoPrintInterval = 25;
+int infoPrintInterval = 10;
 
 int numberOfThreads = 8;
 
@@ -31,7 +31,7 @@ int main(){
 
       std::vector<std::string> gameData;
 
-      search::timeManagement tm(search::NODES, 500);
+      search::timeManagement tm(search::NODES, 250);
 
       chess::Board board;
       chess::Board rootBoard; //Only exists to make the search::makeMove function happy
