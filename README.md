@@ -30,11 +30,11 @@ Here are some details about the search:
 
 ## Evaluation
 A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options:
-Arch:  (768->128)x2->1
-Scale: 400
-Epochs: 30
-WDL scheduler: constant 0.75
-LR scheduler: start 0.001 gamma 0.1 drop every 15 epochs
-Device: NVIDIA GeForce MX550
-Threads: 8
-Positions: 188918391
+* Arch:  (768->128)x2->1
+* Scale: 400
+* Epochs: 30
+* WDL scheduler: constant 0.75
+* LR scheduler: start 0.001 gamma 0.1 drop every 15 epochs
+* Device: NVIDIA GeForce MX550
+* Threads: 8
+* Positions: 188918391
