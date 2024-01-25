@@ -25,8 +25,8 @@ float outputLevel = 2; //outputLevel:
                        //3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 
 //Tuned with Weather Factory with 28256 iterations(games) at 5+0.05
-float explorationFactor = 0.18672279654288734;
-float evalScaleFactor = 1;
+float explorationFactor = 0.0761345675114146;
+float evalScaleFactor = 0.21705656821108335;
 
 uint8_t seldepth = 0;
 
