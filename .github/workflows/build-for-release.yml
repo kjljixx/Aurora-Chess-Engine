@@ -16,6 +16,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
       - run: "g++ aurora.cpp -o aurora-${{github.ref_name}}-${{matrix.os}} -O3"
         env:
           TARGET_CPU: ${{ matrix.cpu }}
