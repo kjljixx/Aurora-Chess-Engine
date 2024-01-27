@@ -15,7 +15,7 @@ int main(){
     getchar();
     return 0;
   #else
-  std::string version = "0.11.4-tuneOptions";
+  std::string version = "v1.0.0";
   version += "-datagen";
   search::init();
   //tb_init("C:\\Users\\kjlji\\OneDrive\\Documents\\VSCode\\C++\\AuroraChessEngine-main\\3-4-5");
