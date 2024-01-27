@@ -29,7 +29,7 @@ constexpr inline uint8_t _popLsb(U64 &board) {
 }
 
 inline U64 _flipBoard(U64 &board){
-  return _byteswap_uint64(board);
+  return __builtin_bswap64(board);
 }
 
 //functions for transferring back and forth between notation(ex. a8) and index(ex. 56)
