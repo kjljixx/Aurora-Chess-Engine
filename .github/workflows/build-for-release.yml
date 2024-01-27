@@ -1,5 +1,4 @@
 name: build-for-release
-#Build Linux and Windows binaries for releases and attach them as assets to the release
 
 on:
   release:
@@ -13,10 +12,9 @@ jobs:
         os: ["ubuntu-22.04", "windows-2022"]
         cpu: ["x86-64-v3"]
 
-    runs-on: "${{matrix.os}}"
+    runs-on: "${{ matrix.os }}"
 
     steps:
-      - name: Build
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
         with:
