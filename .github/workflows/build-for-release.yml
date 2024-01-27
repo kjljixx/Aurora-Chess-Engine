@@ -1,0 +1,32 @@
+#Build Linux and Windows binaries for releases and attach them as assets to the release
+name: build-for-release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    permissions: write-all
+    strategy:
+      matrix:
+        os: ["ubuntu-22.04", "windows-2022"]
+        cpu: ["x86-64-v3"]
+
+    runs-on: "${{matrix.os}}"
+
+    steps:
+      - name: Build
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: "g++ aurora.cpp -o aurora-${{github.ref_name}}-${{matrix.os}} -O3"
+        env:
+          TARGET_CPU: ${{ matrix.cpu }}
+      - name: Upload Assets to Release
+        uses: alexellis/upload-assets@0.4.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          asset_paths: '["aurora-${{github.ref_name}}-${{matrix.os}}****"]'
