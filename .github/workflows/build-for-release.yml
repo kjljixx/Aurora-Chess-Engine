@@ -1,5 +1,5 @@
-#Build Linux and Windows binaries for releases and attach them as assets to the release
 name: build-for-release
+#Build Linux and Windows binaries for releases and attach them as assets to the release
 
 on:
   release:
