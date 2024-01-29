@@ -172,7 +172,7 @@ struct NNUEparameters{
 };
 
 extern "C" {
-  INCBIN(networkData, "vesta-4.nnue");
+  INCBIN(networkData, "vesta-5.nnue");
 }
 const NNUEparameters* _NNUEparameters = reinterpret_cast<const NNUEparameters *>(gnetworkDataData);
 
@@ -180,17 +180,20 @@ struct NNUE{
   std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> accumulator = {{0}};
 
   int evaluate(chess::Colors sideToMove){
-    int result = _NNUEparameters->outputLayerBias;
+    int result = 0;
 
     bool currSide = sideToMove;
     for(int a=0; a<2; a++){
       for(int i=0; i<NNUEhiddenNeurons; i++){
-        result += std::max(std::min(int(accumulator[currSide][i]), 255), 0) * _NNUEparameters->outputLayerWeights[a*NNUEhiddenNeurons+i];
+        int v = std::max(std::min(int(accumulator[currSide][i]), 255), 0);
+        v *= v;
+        result += v * _NNUEparameters->outputLayerWeights[a*NNUEhiddenNeurons+i];
       }
       currSide = !currSide;
     }
+    result /= 255;
     
-    result = result * 400 / (255*64);
+    result = (result + _NNUEparameters->outputLayerBias) * 400 / (255*64);
 
     return result;
   }

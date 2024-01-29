@@ -29,7 +29,7 @@ Here are some details about the search:
 * Values backpropagated up the tree are done so with minimax
 
 ## Evaluation
-A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```vesta-4.nnue```):
+A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```vesta-5.nnue```):
 * Arch:  (768->128)x2->1
 * Scale: 400
 * Epochs: 30
