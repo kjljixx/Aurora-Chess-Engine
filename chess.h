@@ -7,6 +7,7 @@
 #include <sstream>
 #include <vector>
 #include <algorithm>
+#include <array>
 
 namespace chess{
 
@@ -48,7 +49,7 @@ struct Board{
   bool hashed; //if there is a zobrist hash of the position in history, this is true
   uint8_t startHistoryIndex; //When a fen is entered, we want getGameStatus to ignore all items of history before the halfmoveClock of the fen
 
-  uint8_t mailbox[2][64] = {0}; //mailbox representation of the board, one for each side
+  std::array<std::array<uint8_t, 64>, 2> mailbox; //mailbox representation of the board, one for each side
 
   //constructor
   Board(
