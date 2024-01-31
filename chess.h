@@ -94,6 +94,20 @@ struct Board{
     hashed = false;
   }
 
+  //Detects if all pieces are in the same position between two boards. THIS ONLY ACCOUNTS FOR PIECES BEING IN SPECIFIC SQUARES AND SIDE TO MOVE, NOTHING ELSE.
+  bool operator==(const Board& board){
+    return (
+      pawns == board.pawns &&
+      knights == board.knights &&
+      bishops == board.bishops &&
+      rooks == board.rooks &&
+      queens == board.queens &&
+      kings == board.kings &&
+      mailbox == board.mailbox &&
+      sideToMove == board.sideToMove
+    );
+  }
+
   void setToFen(std::string fenString) {
     std::istringstream fenStream(fenString);
     std::string token;
