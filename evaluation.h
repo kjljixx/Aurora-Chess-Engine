@@ -502,37 +502,38 @@ int passedPawns(chess::Board& board){
   return (gamePhase*mg_score+(24-gamePhase)*eg_score)/24;
 }
 
-int evaluate(chess::Board& board, NNUE& nnue){
-  int cpEvaluation = nnue.evaluate(board.sideToMove);
+int qSearch(chess::Board& board, NNUE& nnue, int alpha, int beta){
+  int eval = nnue.evaluate(board.sideToMove);
+  int bestEval = eval;
 
-  //Static Exchange Eval
-  int maxSEE = 0;
-  U64 theirPieces = board.getTheirPieces(chess::QUEEN);
-  while(theirPieces){
-    int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, maxSEE);
+  if(eval >= beta){return eval;}
+
+  if(eval > alpha){alpha = eval;}
+
+  chess::MoveList moves(board);
+
+  std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> currAccumulator = nnue.accumulator;
+
+  for(auto move : moves){
+    if(board.mailbox[0][move.getEndSquare()] == 0) continue;
+    if(SEE(board, move.getEndSquare(), 0) == 0) continue;
+
+    chess::Board movedBoard = board;
+    nnue.accumulator = currAccumulator;
+    nnue.updateAccumulator(movedBoard, move);
+
+    eval = -qSearch(movedBoard, nnue, -beta, -alpha);
+    
+    if(eval > bestEval) bestEval = eval;
+    if(eval > alpha) alpha = eval;
+    if(eval >= beta) break;
   }
-  theirPieces = board.getTheirPieces(chess::ROOK);
-  while(theirPieces){
-    int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, maxSEE);
-  }
-  theirPieces = board.getTheirPieces(chess::BISHOP);
-  while(theirPieces){
-    int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, maxSEE);
-  }
-  theirPieces = board.getTheirPieces(chess::KNIGHT);
-  while(theirPieces){
-    int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, maxSEE);
-  }
-  theirPieces = board.getTheirPieces(chess::PAWN);
-  while(theirPieces){
-    int i = _popLsb(theirPieces);
-    maxSEE = SEE(board, i, maxSEE);
-  }
-  cpEvaluation += seeWeight*maxSEE;
+
+  return bestEval;
+}
+
+int evaluate(chess::Board& board, NNUE& nnue){
+  int cpEvaluation = qSearch(board, nnue, -999999, 999999);
 
   return cpEvaluation;
 }
