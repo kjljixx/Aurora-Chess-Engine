@@ -15,7 +15,7 @@ int main(){
     getchar();
     return 0;
   #else
-  std::string version = "v1.0.1-SCReLU";
+  std::string version = "v1.1.0-qSearch";
   version += "-datagen";
   search::init();
   //tb_init("C:\\Users\\kjlji\\OneDrive\\Documents\\VSCode\\C++\\AuroraChessEngine-main\\3-4-5");

@@ -1,7 +1,7 @@
 #include "uci.h"
 
 int main() {
-  std::string version = "v1.0.1-SCReLU";
+  std::string version = "v1.1.0-qSearch";
   #if DATAGEN > 0
     std::cout << "Preprocessor Variable DATAGEN must be set to 0 for normal use";
     getchar();
