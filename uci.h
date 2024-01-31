@@ -250,7 +250,7 @@ void loop(chess::Board board){
     if(token == "bpinmask"){bitboards::printBoard(board.generateKingMasks().bishopPinmask); std::cout << "\n";}
     if(token == "bpinned"){bitboards::printBoard(board.generateKingMasks().bishopPinnedPieces); std::cout << "\n";}
     if(token == "staticeval"){evaluation::NNUE nnue; nnue.refreshAccumulator(board); std::cout << evaluation::evaluate(board, nnue) << "\n";}
-    if(token == "see"){std::cin >> token; uint8_t square = squareNotationToIndex(token); std::cout << evaluation::SEE(board, square, 24) << "\n";}
+    if(token == "see"){std::cin >> token; uint8_t square = squareNotationToIndex(token); std::cout << evaluation::SEE(board, square, 0) << "\n";}
     if(token == "zobrist"){std::cout << zobrist::getHash(board) << "\n";}
   }
 }
