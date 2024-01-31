@@ -335,8 +335,6 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
         chess::Board movedBoard = board;
         nnue.accumulator = currAccumulator;
 
-        std::cout << "\nMOVE:" << currNode->edge.toStringRep();
-
         nnue.updateAccumulator(movedBoard, currNode->edge);
         float result = playout(movedBoard, currNode, nnue);
         //std::cout << "\nRESULT: " << result;
