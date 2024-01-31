@@ -151,7 +151,7 @@ float playout(chess::Board& board, Node* currNode, evaluation::NNUE& nnue){
 
 Node* findBestChild(Node* parent){
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
-  Node* currBestMove;
+  Node* currBestMove = parent->firstChild;
 
   Node* currNode = parent->firstChild;
   while(currNode != nullptr){
