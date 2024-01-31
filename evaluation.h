@@ -407,7 +407,6 @@ int pieceSquareTable(chess::Board& board){
   return currentPieceSquareTableEval;
 }
 
-int seeiterations = 0;
 //Static Exchange Evaluation
 //Returns the value in cp from the current board's sideToMove's perspective on how good capturing an enemy piece on targetSquare is
 //Returns 0 if the capture is not good for the current board's sideToMove or if there is no capture
@@ -436,7 +435,6 @@ int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0){
   int beta = -(threshold*24);
 
   while(piecePos<=63){
-    seeiterations++;
     i++;
 
     //Alpha Beta pruning does not affect the result of the SEE
