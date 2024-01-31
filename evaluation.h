@@ -310,7 +310,7 @@ struct NNUE{
     else{
       updateSingleFeature(board, endSquare, movingPiece, board.sideToMove);
       board.mailbox[0][endSquare] = board.sideToMove ? movingPiece+6 : movingPiece;
-      board.mailbox[1][endSquare] = board.sideToMove ? movingPiece : movingPiece+6;
+      board.mailbox[1][endSquare^56] = board.sideToMove ? movingPiece : movingPiece+6;
       board.setPieces(movingPiece, (1ULL << endSquare));
     }
     board.setColors((1ULL << endSquare), board.sideToMove);
