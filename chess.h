@@ -34,14 +34,12 @@ struct Board{
   U64 rooks;
   U64 queens;
   U64 kings;
-  Colors sideToMove = WHITE; unsigned char castlingRights; U64 enPassant; int halfmoveClock;
-
   //bitboards for all Pieces of each color
   U64 white;
   U64 black;
-
   //bitboard for all Pieces on the board
   U64 occupied;
+  Colors sideToMove = WHITE; unsigned char castlingRights; U64 enPassant; int halfmoveClock;
 
   unsigned char canCurrentlyCastle;
 
@@ -189,7 +187,7 @@ struct Board{
       std::cout << "\n" << i << " ";
       for(int j=0; j<8; j++){
         mask = 0;
-        mask |= (1ULL << (i-1)*8+j);
+        mask |= (1ULL << ((i-1)*8+j));
         if(pawns & mask){std::cout << char('P'+((mask & black) != 0)*32) << " ";}
         else if(knights & mask){std::cout << char('N'+((mask & black) != 0)*32) << " ";}
         else if(bishops & mask){std::cout << char('B'+((mask & black) != 0)*32) << " ";}
@@ -213,7 +211,7 @@ struct Board{
       int noPieceCounter = 0;
       for(int j=0; j<8; j++){
         mask = 0;
-        mask |= (1ULL << (i-1)*8+j);
+        mask |= (1ULL << ((i-1)*8+j));
 
         if(occupied & mask){
           if(noPieceCounter){fen += std::to_string(noPieceCounter); noPieceCounter = 0;}
@@ -283,6 +281,7 @@ struct Board{
       case ROOK: return rooks & _pieces; break;
       case QUEEN: return queens & _pieces; break;
       case KING: return kings & _pieces; break;
+      default: assert(0);
     }
     return 0ULL;
   }
@@ -300,6 +299,7 @@ struct Board{
       case ROOK: return rooks & _ourPieces; break;
       case QUEEN: return queens & _ourPieces; break;
       case KING: return kings & _ourPieces; break;
+      default: assert(0);
     }
     return 0ULL;
   }
@@ -317,6 +317,7 @@ struct Board{
       case ROOK: return rooks & _theirPieces; break;
       case QUEEN: return queens & _theirPieces; break;
       case KING: return kings & _theirPieces; break;
+      default: assert(0);
     }
     return 0ULL;
   }
@@ -346,6 +347,7 @@ struct Board{
       case ROOK: rooks |= 1ULL << bit; break;
       case QUEEN: queens |= 1ULL << bit; break;
       case KING: kings |= 1ULL << bit; break;
+      default: assert(0);
     }
   }
   void unsetPieces(Pieces piece, uint8_t bit){
@@ -356,7 +358,8 @@ struct Board{
       case ROOK: rooks &= ~(1ULL << bit); break;
       case QUEEN: queens &= ~(1ULL << bit); break;
       case KING: kings &= ~(1ULL << bit); break;
-      case UNKNOWN: U64 unsetBitboard = ~(1ULL << bit); pawns &= unsetBitboard; knights &= unsetBitboard; bishops &= unsetBitboard; rooks &= unsetBitboard; queens &= unsetBitboard; kings &= unsetBitboard; break;
+      case UNKNOWN:{U64 unsetBitboard = ~(1ULL << bit); pawns &= unsetBitboard; knights &= unsetBitboard; bishops &= unsetBitboard; rooks &= unsetBitboard; queens &= unsetBitboard; kings &= unsetBitboard; break;}
+      default: assert(0);
     }
   }
   void setPieces(Pieces piece, U64 bit){
@@ -367,6 +370,7 @@ struct Board{
       case ROOK: rooks |= bit; break;
       case QUEEN: queens |= bit; break;
       case KING: kings |= bit; break;
+      default: assert(0);
     }
   }
   void unsetPieces(Pieces piece, U64 bit){
@@ -377,7 +381,8 @@ struct Board{
       case ROOK: rooks &= ~bit; break;
       case QUEEN: queens &= ~bit; break;
       case KING: kings &= ~bit; break;
-      case UNKNOWN: U64 unsetBitboard = ~bit; pawns &= unsetBitboard; knights &= unsetBitboard; bishops &= unsetBitboard; rooks &= unsetBitboard; queens &= unsetBitboard; kings &= unsetBitboard; break;
+      case UNKNOWN:{U64 unsetBitboard = ~bit; pawns &= unsetBitboard; knights &= unsetBitboard; bishops &= unsetBitboard; rooks &= unsetBitboard; queens &= unsetBitboard; kings &= unsetBitboard; break;}
+      default: assert(0);
     }
   }
 
@@ -471,8 +476,8 @@ struct Board{
   bool kingUnderAttack(uint8_t square){
     bool result = squareUnderAttack(square) <= 63;
 
-    if((square == sideToMove*56+3) && !result && (castlingRights & sideToMove*6+2) && (1ULL << square & ~occupied)){canCurrentlyCastle |= 2;}
-    else if((square == sideToMove*56+5) && !result && (castlingRights & sideToMove*3+1) && (1ULL << square & ~occupied)){canCurrentlyCastle |= 1;}
+    if((square == sideToMove*56+3) && !result && (castlingRights & (sideToMove*6+2)) && (1ULL << square & ~occupied)){canCurrentlyCastle |= 2;}
+    else if((square == sideToMove*56+5) && !result && (castlingRights & (sideToMove*3+1)) && (1ULL << square & ~occupied)){canCurrentlyCastle |= 1;}
     
     return result;
   }
@@ -624,11 +629,11 @@ Move* generateLegalMoves(Board &board, Move* legalMoves){
   //castling
   if(_kingMasks.checkmask == 0xFFFFFFFFFFFFFFFFULL){ //make sure king is not in check
     //Queenside castling
-    if((board.canCurrentlyCastle & 0x2) && (1ULL << board.sideToMove*56+2 & ~board.occupied) && (1ULL << board.sideToMove*56+1 & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+2)<=63)){
+    if((board.canCurrentlyCastle & 0x2) && (1ULL << (board.sideToMove*56+2) & ~board.occupied) && (1ULL << (board.sideToMove*56+1) & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+2)<=63)){
       *legalMovesPtr++ = Move(piecePos, board.sideToMove*56+2, CASTLE);
     }
     //Kingside castling
-    if((board.canCurrentlyCastle & 0x1) && (1ULL << board.sideToMove*56+6 & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+6)<=63)){
+    if((board.canCurrentlyCastle & 0x1) && (1ULL << (board.sideToMove*56+6) & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+6)<=63)){
       *legalMovesPtr++ = Move(piecePos, board.sideToMove*56+6, CASTLE);
     }
   }
@@ -773,11 +778,11 @@ bool isLegalMoves(Board& board){
   //castling
   if(_kingMasks.checkmask == 0xFFFFFFFFFFFFFFFFULL){ //make sure king is not in check
     //Queenside castling
-    if((board.canCurrentlyCastle & 0x2) && (1ULL << board.sideToMove*56+2 & ~board.occupied) && (1ULL << board.sideToMove*56+1 & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+2)<=63)){
+    if((board.canCurrentlyCastle & 0x2) && (1ULL << (board.sideToMove*56+2) & ~board.occupied) && (1ULL << (board.sideToMove*56+1) & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+2)<=63)){
       return true;
     }
     //Kingside castling
-    if((board.canCurrentlyCastle & 0x1) && (1ULL << board.sideToMove*56+6 & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+6)<=63)){
+    if((board.canCurrentlyCastle & 0x1) && (1ULL << (board.sideToMove*56+6) & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+6)<=63)){
       return true;
     }
   }

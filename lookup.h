@@ -31,6 +31,7 @@ char PieceToLetter(Pieces piece){ //mainly for PGN move notation
     case ROOK: return 'R';
     case QUEEN: return 'Q';
     case KING: return 'K';
+    default: assert(0);
   }
   return ' ';
 }
@@ -72,6 +73,7 @@ struct Move{
         case BISHOP: return stringRep+"b"; break;
         case ROOK: return stringRep+"r"; break;
         case QUEEN: return stringRep+"q"; break;
+        default: assert(0);
       }
     }
     return stringRep;
@@ -255,7 +257,7 @@ void initRookTable() {
   // For all squares
   for (int square = 0; square < 64; square++) {
   // For all possible blockers for this square
-  for (int blockerIndex = 0; blockerIndex < (1ULL << rookIndexBits[square]); blockerIndex++) {
+  for (uint32_t blockerIndex = 0; blockerIndex < (1ULL << rookIndexBits[square]); blockerIndex++) {
     U64 blockers = getBlockersFromIndex(blockerIndex, rookMasks[square]);
 
     rookTable[square][(blockers * rookMagics[square]) >> (64 - rookIndexBits[square])] =
@@ -273,7 +275,7 @@ void initBishopTable() {
   // For all squares
   for (int square = 0; square < 64; square++) {
   // For all possible blockers for this square
-  for (int blockerIndex = 0; blockerIndex < (1ULL << bishopIndexBits[square]); blockerIndex++) {
+  for (uint32_t blockerIndex = 0; blockerIndex < (1ULL << bishopIndexBits[square]); blockerIndex++) {
     U64 blockers = getBlockersFromIndex(blockerIndex, bishopMasks[square]);
 
     bishopTable[square][(blockers * bishopMagics[square]) >> (64 - bishopIndexBits[square])] =

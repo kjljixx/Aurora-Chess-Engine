@@ -77,7 +77,7 @@ void printBoard(U64 board){
     std::cout << "\n" << i << " ";
     for(int j=0; j<8; j++){
       mask = 0;
-      mask |= (1ULL << (i-1)*8+j);
+      mask |= (1ULL << ((i-1)*8+j));
       if(mask & board){std::cout << "1 ";}
       else{std::cout << "0 ";}
     }

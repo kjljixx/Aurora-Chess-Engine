@@ -42,9 +42,9 @@ struct Node{
   uint8_t index;
   Node* firstChild;
   Node* nextSibling;
-  chess::Move edge;
   uint32_t visits;
   float value;
+  chess::Move edge;
   bool isTerminal;
   uint8_t depth;
   float sPriority;
@@ -126,7 +126,7 @@ void expand(Node* parent, chess::MoveList& moves){
   parent->firstChild = new Node(parent, 0, moves[0], parent->depth+1);
   Node* currNode = parent->firstChild;
 
-  for(int i=1; i<moves.size(); i++){
+  for(uint16_t i=1; i<moves.size(); i++){
     currNode->nextSibling = new Node(parent, i, moves[i], parent->depth+1);
     currNode = currNode->nextSibling;
   }
@@ -141,6 +141,8 @@ float playout(chess::Board& board, Node* currNode, evaluation::NNUE& nnue){
     if(_gameStatus == chess::LOSS){return _gameStatus+0.00000001*currNode->depth;}
     return _gameStatus;
   }
+
+  //std::cout << evaluation::evaluate(board, nnue) << " ";
 
   float eval = fmaxf(fminf(atan(evaluation::evaluate(board, nnue)*evalScaleFactor/100.0)/1.56375, 1),-1)*0.999999;
   assert(-1<=eval && 1>=eval);
@@ -199,7 +201,7 @@ void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point star
     }
   }
 
-  if(outputLevel >= 2 || finalResult && outputLevel >= 1){
+  if(outputLevel >= 2 || (finalResult && outputLevel >= 1)){
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
     std::cout << "\ninfo depth " << seldepth-root->depth <<
@@ -292,8 +294,6 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
 
   evaluation::NNUE nnue;
 
-  chess::Colors ourSide = rootBoard.sideToMove;
-
   Node* currNode = root;
   
   int lastNodeCheck = 1;
@@ -335,8 +335,11 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
         chess::Board movedBoard = board;
         nnue.accumulator = currAccumulator;
 
+        std::cout << "\nMOVE:" << currNode->edge.toStringRep();
+
         nnue.updateAccumulator(movedBoard, currNode->edge);
         float result = playout(movedBoard, currNode, nnue);
+        //std::cout << "\nRESULT: " << result;
         assert(-1<=result && 1>=result);
         currNode->value = result;
         currNode->visits = 1;
