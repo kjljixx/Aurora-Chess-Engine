@@ -510,12 +510,11 @@ int qSearch(chess::Board& board, NNUE& nnue, int alpha, int beta){
 
   if(eval > alpha){alpha = eval;}
 
-  chess::MoveList moves(board);
+  chess::MoveList moves(board, true);
 
   std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> currAccumulator = nnue.accumulator;
 
   for(auto move : moves){
-    if(board.mailbox[0][move.getEndSquare()] == 0) continue;
     if(SEE(board, move.getEndSquare(), 0) == 0) continue;
 
     chess::Board movedBoard = board;

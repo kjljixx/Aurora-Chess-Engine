@@ -607,7 +607,6 @@ struct Board{
   }
 };
 
-
 Move* generateLegalMoves(Board &board, Move* legalMoves){
   //Extremely useful source on how pointers/arrays work: https://cplusplus.com/doc/tutorial/pointers/
   Move* legalMovesPtr = legalMoves; //A pointer to the spot in memory where the next move will go
@@ -751,6 +750,137 @@ Move* generateLegalMoves(Board &board, Move* legalMoves){
     }
     else{
       legalMovesPtr = MoveListFromBitboard(lookupTables::getBishopAttacks(piecePos, board.occupied) & notOurPieces & _kingMasks.checkmask, piecePos, false, legalMovesPtr); 
+    }
+  }
+
+  return legalMovesPtr;
+}
+
+Move* generateLegalCaptures(Board &board, Move* legalMoves){
+  //Extremely useful source on how pointers/arrays work: https://cplusplus.com/doc/tutorial/pointers/
+  Move* legalMovesPtr = legalMoves; //A pointer to the spot in memory where the next move will go
+  uint8_t piecePos;
+
+  KingMasks _kingMasks = board.generateKingMasks();
+
+  U64 ourPieces = board.getOurPieces();
+  U64 theirPieces = board.getTheirPieces();
+  
+  //Knight cannot move if it is pinned
+  U64 pieceBitboard = (ourPieces & board.knights) & ~(_kingMasks.bishopPinnedPieces | _kingMasks.rookPinnedPieces);
+  while(pieceBitboard){
+    piecePos = _popLsb(pieceBitboard);
+
+    legalMovesPtr = MoveListFromBitboard(lookupTables::knightTable[piecePos] & theirPieces & _kingMasks.checkmask, piecePos, false, legalMovesPtr);
+  }
+
+  pieceBitboard = (ourPieces & board.kings);
+  assert(pieceBitboard);
+  piecePos = _bitscanForward(pieceBitboard);
+  board.canCurrentlyCastle = 0;
+
+  U64 kingMovesBitboard = lookupTables::kingTable[piecePos] & theirPieces;
+  uint8_t endSquare;
+  board.unsetColors(pieceBitboard, board.sideToMove); //when we check if the new position of king is under attack, we don't want the current king position to block the check
+  while (kingMovesBitboard){
+    endSquare = _popLsb(kingMovesBitboard);
+    //check if new position of king is under attack
+    if(!board.kingUnderAttack(endSquare)){*legalMovesPtr++ = Move(piecePos, endSquare);}
+  }
+  board.setColors(pieceBitboard, board.sideToMove); //revert the unsetColors call earlier
+  //dont consider castling, since it is not a capture
+
+  pieceBitboard = (ourPieces & board.pawns);
+  while(pieceBitboard){
+    piecePos = _popLsb(pieceBitboard);
+
+    if(1ULL << piecePos & (_kingMasks.bishopPinnedPieces | _kingMasks.rookPinnedPieces)){
+      //if pawn is pinned, you cannot push it unless it is a vertical rook pin. 
+      //Also, it is not possible to have squares directly in front of the pawn be part of a pinmask if the pawn is pinned unless it is a vertical rook pin
+      //So just using the rook mask suffices
+      //skip generating pawn pushes since they are not captures
+
+      //Using similar logic, using just the bishop mask suffices
+      if(!(1ULL << piecePos & _kingMasks.rookPinnedPieces)){
+        legalMovesPtr = MoveListFromBitboard(lookupTables::pawnAttackTable[board.sideToMove][piecePos] & theirPieces & _kingMasks.checkmask & _kingMasks.bishopPinmask, piecePos, true, legalMovesPtr);
+      }
+    }
+    else{
+      //skip generating pawn pushes since they are not captures
+      legalMovesPtr = MoveListFromBitboard(lookupTables::pawnAttackTable[board.sideToMove][piecePos] & theirPieces & _kingMasks.checkmask, piecePos, true, legalMovesPtr);
+    }
+
+  }
+  //With en passant, we can just test the move
+  if(board.enPassant){
+    uint8_t enPassantSquare = _bitscanForward(board.enPassant);
+    U64 enPassantMovesBitboard = lookupTables::pawnAttackTable[!board.sideToMove][enPassantSquare] & (ourPieces & board.pawns);
+
+    if(board.sideToMove == WHITE){board.unsetColors(board.enPassant >> 8, Colors(!board.sideToMove));}
+    else{board.unsetColors(board.enPassant << 8, Colors(!board.sideToMove));}
+    board.setColors(board.enPassant, board.sideToMove);
+    while (enPassantMovesBitboard){
+      uint8_t startSquare = _popLsb(enPassantMovesBitboard);
+      board.unsetColors(1ULL << startSquare, board.sideToMove);
+      //check if king is under attack
+      if(!(board.squareUnderAttack(_bitscanForward(ourPieces & board.kings))<=63)){*legalMovesPtr++ = Move(startSquare, enPassantSquare, ENPASSANT);}
+
+      board.setColors(1ULL << startSquare, board.sideToMove);
+    }
+    if(board.sideToMove == WHITE){board.setColors(board.enPassant >> 8, Colors(!board.sideToMove));} else{board.setColors(board.enPassant << 8, Colors(!board.sideToMove));}
+    board.unsetColors(board.enPassant, board.sideToMove);
+  }
+
+  pieceBitboard = (ourPieces & board.rooks);
+  while(pieceBitboard){
+    piecePos = _popLsb(pieceBitboard);
+    //if rook is pinned by a bishop it cannot move, so we only check for if it is pinned by a rook
+    if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){continue;}
+    if(1ULL << piecePos & _kingMasks.rookPinnedPieces){
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getRookAttacks(piecePos, board.occupied) & theirPieces & _kingMasks.checkmask & _kingMasks.rookPinmask, piecePos, false, legalMovesPtr);  
+    }
+    else{
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getRookAttacks(piecePos, board.occupied) & theirPieces & _kingMasks.checkmask, piecePos, false, legalMovesPtr);     
+    }
+  }
+
+  pieceBitboard = (ourPieces & board.bishops);
+  while(pieceBitboard){
+    piecePos = _popLsb(pieceBitboard);
+
+    //if bishop is pinned by a rook it cannot move, so we only check for if it is pinned by a bishop
+    if(1ULL << piecePos & _kingMasks.rookPinnedPieces){continue;}
+    if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getBishopAttacks(piecePos, board.occupied) & theirPieces & _kingMasks.checkmask & _kingMasks.bishopPinmask, piecePos, false, legalMovesPtr);    
+    }
+    else{
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getBishopAttacks(piecePos, board.occupied) & theirPieces & _kingMasks.checkmask, piecePos, false, legalMovesPtr);   
+    }
+  }
+
+  pieceBitboard = (ourPieces & board.queens);
+  while(pieceBitboard){
+    //for queen just treat it as a rook, then treat it as a bishop
+    //as a rook:
+    piecePos = _popLsb(pieceBitboard);
+
+    //if rook is pinned by a bishop it cannot move, so we only check for if it is pinned by a rook
+    if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){}
+    else if(1ULL << piecePos & _kingMasks.rookPinnedPieces){
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getRookAttacks(piecePos, board.occupied) & theirPieces & _kingMasks.checkmask & _kingMasks.rookPinmask, piecePos, false, legalMovesPtr); 
+    }
+    else{
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getRookAttacks(piecePos, board.occupied) & theirPieces & _kingMasks.checkmask, piecePos, false, legalMovesPtr);   
+    }
+
+    //as a bishop:
+    //if bishop is pinned by a rook it cannot move, so we only check for if it is pinned by a bishop
+    if(1ULL << piecePos & _kingMasks.rookPinnedPieces){}
+    else if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getBishopAttacks(piecePos, board.occupied) & theirPieces & _kingMasks.checkmask & _kingMasks.bishopPinmask, piecePos, false, legalMovesPtr);   
+    }
+    else{
+      legalMovesPtr = MoveListFromBitboard(lookupTables::getBishopAttacks(piecePos, board.occupied) & theirPieces & _kingMasks.checkmask, piecePos, false, legalMovesPtr); 
     }
   }
 
@@ -914,7 +1044,7 @@ struct MoveList{
   Move moveList[256]; //We assume that 256 is the maximum amount of moves in a position (it is what stockfish uses)
   Move* lastMove; //pointer to the last move in the moveList array
 
-  MoveList(Board& board): lastMove(generateLegalMoves(board, moveList)){}
+  MoveList(Board& board, bool onlyCaptures = false): lastMove(onlyCaptures ? generateLegalCaptures(board, moveList) : generateLegalMoves(board, moveList)){}
 
   MoveList(const MoveList& moves){
     std::copy(std::begin(moves.moveList), std::end(moves.moveList), std::begin(moveList));
