@@ -15,12 +15,11 @@ int main(){
     getchar();
     return 0;
   #else
-  std::string version = "v1.1.0-qSearch";
   version += "-datagen";
   search::init();
   //tb_init("C:\\Users\\kjlji\\OneDrive\\Documents\\VSCode\\C++\\AuroraChessEngine-main\\3-4-5");
 
-  std::cout << "Aurora " << version << ", a chess engine by kjljixx\n";
+  std::cout << "Aurora " << VERSION << ", a chess engine by kjljixx\n";
 
   std::vector<std::thread> threads;
   threads.reserve(numberOfThreads);

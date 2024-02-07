@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <iostream>
 #include <cassert>
+#include "aurora.h"
 
 using U64 = unsigned long long;
 

@@ -6,8 +6,6 @@
 #include <memory>
 #include <chrono>
 
-//Set to 1 if you want to build a version of Aurora which generates data, 2 for generating data while playing (cutechess), 0 for the normal version.
-#define DATAGEN 0
 #if DATAGEN >= 1
   #include <windows.h>
   std::string dataFolderPath = "C:/Users/kjlji/OneDrive/Documents/VSCode/C++/AuroraChessEngine-main/data";

@@ -1,7 +1,6 @@
 #include "uci.h"
 
 int main() {
-  std::string version = "v1.1.0-qSearch";
   #if DATAGEN > 0
     std::cout << "Preprocessor Variable DATAGEN must be set to 0 for normal use";
     getchar();
@@ -11,7 +10,7 @@ int main() {
   //tb_init("C:\\Users\\kjlji\\OneDrive\\Documents\\VSCode\\C++\\AuroraChessEngine-main\\3-4-5");
 
   chess::Board board;
-  std::cout << "Aurora " << version << ", a chess engine by kjljixx\n";
+  std::cout << "Aurora " << VERSION << ", a chess engine by kjljixx\n";
   uci::loop(board);
   return 1;
 }
