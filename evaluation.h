@@ -502,6 +502,12 @@ int passedPawns(chess::Board& board){
   return (gamePhase*mg_score+(24-gamePhase)*eg_score)/24;
 }
 
+std::array<uint8_t, 13> sidedPieceToPiece = {0, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6};
+
+int mvvLva(chess::Board& board, chess::Move move){
+  return 30*mg_value[sidedPieceToPiece[board.mailbox[0][move.getEndSquare()]]-1] - mg_value[sidedPieceToPiece[board.mailbox[0][move.getStartSquare()]]-1];
+}
+
 int qSearch(chess::Board& board, NNUE& nnue, int alpha, int beta){
   int eval = nnue.evaluate(board.sideToMove);
   int bestEval = eval;
@@ -512,14 +518,26 @@ int qSearch(chess::Board& board, NNUE& nnue, int alpha, int beta){
 
   chess::MoveList moves(board, true);
 
+  std::array<int, 256> orderValue;
+  int i=0;
+  for(auto move : moves){orderValue[i] = mvvLva(board, move); i++;}
+
   std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> currAccumulator = nnue.accumulator;
 
-  for(auto move : moves){
-    if(SEE(board, move.getEndSquare(), 0) == 0) continue;
+  for(uint32_t i=0; i<moves.size(); i++){
+    //std::cout << "\n";
+    for(uint32_t j=i+1; j<moves.size(); j++) {
+      if(orderValue[j] > orderValue[i]) {
+          //std::cout << orderValue[j] << ":" << int(sidedPieceToPiece[board.mailbox[0][moves[j].getEndSquare()]]) << ":" << int(sidedPieceToPiece[board.mailbox[0][moves[j].getStartSquare()]]) << " ";
+          std::swap(orderValue[j], orderValue[i]);
+          std::swap(moves.moveList[j], moves.moveList[i]);
+      }
+    }
+    if(SEE(board, moves[i].getEndSquare(), 0) == 0) continue;
 
     chess::Board movedBoard = board;
     nnue.accumulator = currAccumulator;
-    nnue.updateAccumulator(movedBoard, move);
+    nnue.updateAccumulator(movedBoard, moves[i]);
 
     eval = -qSearch(movedBoard, nnue, -beta, -alpha);
     
