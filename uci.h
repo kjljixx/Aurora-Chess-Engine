@@ -189,7 +189,6 @@ void respondUci(){
                 "option name outputLevel type spin default " << search::outputLevel << " min 0 max 3\n"
                 "option name explorationFactor type string default " << search::explorationFactor << "\n"
                 "option name evalScaleFactor type string default " << search::evalScaleFactor << "\n"
-                "option name seeWeight type string default " << evaluation::seeWeight << " min -1024 max 1024\n"
                 "option name searchTimePortion type string default " << searchTimeFactor << "\n"
                 "\n"
                 "uciok\n";
@@ -209,12 +208,6 @@ void setOption(std::istringstream input){
     float value;
     input >> value;
     search::explorationFactor = value;
-  }
-  if(token == "seeWeight"){
-    input >> token; //input the "value" token
-    int value;
-    input >> value;
-    evaluation::seeWeight = value;
   }
   if(token == "evalScaleFactor"){
     input >> token; //input the "value" token

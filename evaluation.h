@@ -7,8 +7,6 @@
 #include "external/incbin.h"
 
 namespace evaluation{
-//Evaluation Parameters
-float seeWeight = 3.4372933045699865;
 
 int mg_value[6] = {42, 184, 207, 261, 642, 10000};
 int eg_value[6] = {71, 242, 265, 538, 1067, 10000};
