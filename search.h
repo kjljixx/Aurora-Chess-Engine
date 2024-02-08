@@ -24,6 +24,7 @@ float outputLevel = 2; //outputLevel:
 
 //Tuned with Weather Factory with 28256 iterations(games) at 5+0.05
 float explorationFactor = 0.275924931;
+//float eP[12] = {1.6301532566281178, 0.3415019889631426, 1.462459315326555, 0.09830134955092976, 0.3670339438501686, 0.5028838849947221, 0.28917477475978387, 1.581231015213, 0.2747746463404976, 0.9214915071600298, 0.14796697203232123, 1.2260899419271722}; //exploration parameters
 float evalScaleFactor = 0.21705656821108335;
 
 uint8_t seldepth = 0;
@@ -96,11 +97,16 @@ Node* selectChild(Node* parent){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = explorationFactor*sqrtl(logl(parent->visits));
+  const float parentVisitsTerm = explorationFactor*std::sqrt(std::log(parent->visits));
 
+  //const float parentVisitsTerm = eP[5]*powl(eP[2]*logl(eP[0]*parent->visits+eP[1])+eP[3], eP[4])+eP[6];
+
+  // while(currNode != nullptr){
+  //   if(true){
+  //     currNode->sPriority = -currNode->value+parentVisitsTerm/(eP[11]*powl(eP[7]*currNode->visits+eP[8], eP[9])+eP[10]);
   while(currNode != nullptr){
     if(true){
-      currNode->sPriority = -currNode->value+parentVisitsTerm/sqrtl(currNode->visits);
+      currNode->sPriority = -currNode->value+parentVisitsTerm/std::sqrt(currNode->visits);
       currNode->updatePriority = false;
     }
     float currPriority = currNode->sPriority;
@@ -142,7 +148,7 @@ float playout(chess::Board& board, Node* currNode, evaluation::NNUE& nnue){
 
   //std::cout << evaluation::evaluate(board, nnue) << " ";
 
-  float eval = fmaxf(fminf(atan(evaluation::evaluate(board, nnue)*evalScaleFactor/100.0)/1.56375, 1),-1)*0.999999;
+  float eval = std::max(std::min(std::atan(evaluation::evaluate(board, nnue)*evalScaleFactor/100.0)/1.57079633, 1.0),-1.0)*0.999999;
   assert(-1<=eval && 1>=eval);
   return eval;
 }
@@ -170,7 +176,7 @@ float findBestValue(Node* parent){
   Node* currNode = parent->firstChild;
   while(currNode != nullptr){
     float currNodeValue = currNode->value;
-    if(currNodeValue>=-1){currBestValue = fminf(currBestValue, currNodeValue);}
+    if(currNodeValue>=-1){currBestValue = std::min(currBestValue, currNodeValue);}
 
     currNode = currNode->nextSibling;
   }
@@ -204,7 +210,7 @@ void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point star
 
     std::cout << "\ninfo depth " << seldepth-root->depth <<
       " nodes " << root->visits <<
-      " score cp " << round(tan(-findBestValue(root)*1.56375)*100) <<
+      " score cp " << round(tan(-findBestValue(root)*1.57079633)*100) <<
       " nps " << round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
       " time " << round(elapsed.count()*1000) <<
       " pv ";
