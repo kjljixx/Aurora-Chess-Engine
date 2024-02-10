@@ -190,6 +190,18 @@ void respondUci(){
                 "option name explorationFactor type string default " << search::explorationFactor << "\n"
                 "option name evalScaleFactor type string default " << search::evalScaleFactor << "\n"
                 "option name searchTimePortion type string default " << searchTimeFactor << "\n"
+                "option name ep0 type string default 0 \n"
+                "option name ep1 type string default 0 \n"
+                "option name ep2 type string default 0 \n"
+                "option name ep3 type string default 0 \n"
+                "option name ep4 type string default 0 \n"
+                "option name ep5 type string default 0 \n"
+                "option name ep6 type string default 0 \n"
+                "option name ep7 type string default 0 \n"
+                "option name ep8 type string default 0 \n"
+                "option name ep9 type string default 0 \n"
+                "option name ep10 type string default 0 \n"
+                "option name ep11 type string default 0 \n"
                 "\n"
                 "uciok\n";
 }
@@ -220,6 +232,14 @@ void setOption(std::istringstream input){
     float value;
     input >> value;
     searchTimeFactor = value;
+  }
+  for(int i=0; i<12; i++){
+    if(token == "ep"+std::to_string(i)){
+      input >> token; //input the "value" token
+      float value;
+      input >> value;
+      search::eP[i] = value;
+    }
   }
   #if DATAGEN == 1
     // if(token == "datafile"){

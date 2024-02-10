@@ -25,7 +25,7 @@ float outputLevel = 2; //outputLevel:
 //Tuned with Weather Factory with 13568 iterations(games) at 5+0.05
 float explorationFactor = 0.11334090578761254;
 float evalScaleFactor = 0.2674706057859798;
-//float eP[12] = {1.6301532566281178, 0.3415019889631426, 1.462459315326555, 0.09830134955092976, 0.3670339438501686, 0.5028838849947221, 0.28917477475978387, 1.581231015213, 0.2747746463404976, 0.9214915071600298, 0.14796697203232123, 1.2260899419271722}; //exploration parameters
+float eP[12] = {1.6271863084920195, 0.4185173901657063, 1.1384635182536016, 0.24256696490707136, 0.4605902486225977, 0.2383681409639174, 0.06577658889379297, 1.2811346981905332, 0.5308514461208675, 0.579761696659387, 0.4084227853978031, 1.4877760969926634}; //exploration parameters
 
 uint8_t seldepth = 0;
 
@@ -92,21 +92,32 @@ void moveRootToChild(Node* node, Node* newRoot, Node* currRoot){
   }
 }
 
+//NOTE: THIS IS UNDEFINED BEHAVIOR ACCORDING TO C++ STANDARD
+inline double fastPow(double a, double b) {
+  union {
+    double d;
+    int x[2];
+  } u = { a };
+  u.x[1] = (int)(b * (u.x[1] - 1072632447) + 1072632447);
+  u.x[0] = 0;
+  return u.d;
+}
+
 Node* selectChild(Node* parent){
   Node* currNode = parent->firstChild;
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = explorationFactor*std::sqrt(std::log(parent->visits));
+  //const float parentVisitsTerm = explorationFactor*std::sqrt(std::log(parent->visits));
 
-  //const float parentVisitsTerm = eP[5]*powl(eP[2]*logl(eP[0]*parent->visits+eP[1])+eP[3], eP[4])+eP[6];
+  const float parentVisitsTerm = eP[5]*fastPow(eP[2]*std::log(eP[0]*parent->visits+eP[1])+eP[3], eP[4])+eP[6];
 
-  // while(currNode != nullptr){
-  //   if(true){
-  //     currNode->sPriority = -currNode->value+parentVisitsTerm/(eP[11]*powl(eP[7]*currNode->visits+eP[8], eP[9])+eP[10]);
   while(currNode != nullptr){
     if(true){
-      currNode->sPriority = -currNode->value+parentVisitsTerm/std::sqrt(currNode->visits);
+      currNode->sPriority = -currNode->value+parentVisitsTerm/(eP[11]*fastPow(eP[7]*currNode->visits+eP[8], eP[9])+eP[10]);
+  // while(currNode != nullptr){
+  //   if(true){
+  //     currNode->sPriority = -currNode->value+parentVisitsTerm/std::sqrt(currNode->visits);
       currNode->updatePriority = false;
     }
     float currPriority = currNode->sPriority;
@@ -148,8 +159,7 @@ float playout(chess::Board& board, Node* currNode, evaluation::NNUE& nnue){
 
   //std::cout << evaluation::evaluate(board, nnue) << " ";
 
-  float eval = std::max(std::min(std::atan(evaluation::evaluate(board, nnue)*evalScaleFactor/100.0)/1.57079633, 1.0),-1.0)*0.999999;
-  assert(-1<=eval && 1>=eval);
+  float eval = std::max(std::min(2.0/(1+std::exp(-evaluation::evaluate(board, nnue)*evalScaleFactor/100.0))-1, 1.0),-1.0)*0.999999;  assert(-1<=eval && 1>=eval);
   return eval;
 }
 

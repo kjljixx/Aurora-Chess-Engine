@@ -1,0 +1,2 @@
+cutechess-cli -sprt elo0=0 elo1=10 alpha=0.05 beta=0.05 -concurrency 8 -ratinginterval 8 -rounds 5000 -pgnout test.pgn -repeat -games 2 -draw movenumber=40 movecount=8 score=10 -openings file=C:\Users\kjlji\Downloads\UHO_4060_v3.epd\UHO_4060_v3.epd format=epd order=random -engine name=aurora cmd=aurora -engine name=princhess cmd=testing/princhess -each option.outputLevel=1 proto=uci tc=120+1
+pause
