@@ -3,4 +3,4 @@
 //Set to 1 if you want to build a version of Aurora which generates data, 2 for generating data while playing (cutechess), 0 for the normal version.
 #define DATAGEN 0
 
-#define VERSION "v1.1.3-searchTune"
+#define VERSION "v1.2.0-vesta-6"

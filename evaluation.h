@@ -170,7 +170,7 @@ struct NNUEparameters{
 };
 
 extern "C" {
-  INCBIN(networkData, "vesta-5.nnue");
+  INCBIN(networkData, "vesta-6.nnue");
 }
 const NNUEparameters* _NNUEparameters = reinterpret_cast<const NNUEparameters *>(gnetworkDataData);
 
