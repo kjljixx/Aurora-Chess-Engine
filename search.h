@@ -27,7 +27,9 @@ float explorationFactor = 0.11334090578761254;
 float evalScaleFactor = 0.2674706057859798;
 //float eP[12] = {1.6301532566281178, 0.3415019889631426, 1.462459315326555, 0.09830134955092976, 0.3670339438501686, 0.5028838849947221, 0.28917477475978387, 1.581231015213, 0.2747746463404976, 0.9214915071600298, 0.14796697203232123, 1.2260899419271722}; //exploration parameters
 
+#if DATAGEN == 0
 uint8_t seldepth = 0;
+#endif
 
 void init(){
   evaluation::init();
@@ -135,13 +137,17 @@ void expand(Node* parent, chess::MoveList& moves){
     currNode = currNode->nextSibling;
   }
 
+  #if DATAGEN == 0
   if(parent->depth+1>seldepth){seldepth = parent->depth+1;}
+  #endif
 }
 
 float playout(chess::Board& board, Node* currNode, evaluation::NNUE& nnue){
+
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){
+    currNode->isTerminal = true;
     if(_gameStatus == chess::LOSS){return _gameStatus+0.00000001*currNode->depth;}
     return _gameStatus;
   }
@@ -191,7 +197,10 @@ void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point star
   Node* currNode = root;
 
   if(outputLevel==3){
-    std::cout << "\nNODES: " << root->visits << " SELDEPTH: " << seldepth-root->depth <<"\n";
+    std::cout << "\nNODES: " << root->visits;
+    #if DATAGEN == 0
+    std::cout << " SELDEPTH: " << seldepth-root->depth <<"\n";
+    #endif
     currNode = currNode->firstChild;
     while(currNode != nullptr){
     std::cout << currNode->edge.toStringRep() << ": Q:" << -currNode->value << " N:" << currNode->visits << " SP:" << currNode->sPriority <<  " PV:";
@@ -208,8 +217,11 @@ void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point star
   if(outputLevel >= 2 || (finalResult && outputLevel >= 1)){
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
-    std::cout << "\ninfo depth " << seldepth-root->depth <<
-      " nodes " << root->visits <<
+    std::cout << "\ninfo ";
+      #if DATAGEN == 0
+      std::cout << "depth " << seldepth-root->depth;
+      #endif
+      std::cout << " nodes " << root->visits <<
       " score cp " << round(tan(-findBestValue(root)*1.57079633)*100) <<
       " nps " << round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
       " time " << round(elapsed.count()*1000) <<
@@ -291,10 +303,11 @@ struct timeManagement{
 //The main search function
 Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
   auto start = std::chrono::steady_clock::now();
-
   if(!root){root = new Node();}
 
+  #if DATAGEN == 0
   seldepth = 0;
+  #endif
 
   evaluation::NNUE nnue;
 

@@ -15,11 +15,14 @@ int main(){
     getchar();
     return 0;
   #else
+
+  std::string version = VERSION;
   version += "-datagen";
+
   search::init();
   //tb_init("C:\\Users\\kjlji\\OneDrive\\Documents\\VSCode\\C++\\AuroraChessEngine-main\\3-4-5");
 
-  std::cout << "Aurora " << VERSION << ", a chess engine by kjljixx\n";
+  std::cout << "Aurora " << version << ", a chess engine by kjljixx\n";
 
   std::vector<std::thread> threads;
   threads.reserve(numberOfThreads);
@@ -30,7 +33,7 @@ int main(){
 
       std::vector<std::string> gameData;
 
-      search::timeManagement tm(search::NODES, 250);
+      search::timeManagement tm(search::NODES, 150);
 
       chess::Board board;
       chess::Board rootBoard; //Only exists to make the search::makeMove function happy
@@ -65,7 +68,15 @@ int main(){
       search::Node* root = nullptr;
 
       while(true){
-        assert(chess::getGameStatus(board, chess::isLegalMoves(board)) == chess::ONGOING);
+        if(chess::getGameStatus(board, chess::isLegalMoves(board)) != chess::ONGOING){
+          for(std::string currData : gameData){
+            std::cout << "\n" << currData;
+          }
+          std::cout << "\n";
+          board.printBoard();
+          std::cout << "\n" << chess::getGameStatus(board, chess::isLegalMoves(board)) << " " << root->isTerminal;
+          assert(0);
+        }
 
         root = search::search(board, tm, root);
 
