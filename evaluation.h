@@ -520,8 +520,6 @@ int qSearch(chess::Board& board, NNUE& nnue, int alpha, int beta){
   int i=0;
   for(auto move : moves){orderValue[i] = mvvLva(board, move); i++;}
 
-  std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> currAccumulator = nnue.accumulator;
-
   for(uint32_t i=0; i<moves.size(); i++){
     //std::cout << "\n";
     for(uint32_t j=i+1; j<moves.size(); j++) {
@@ -534,8 +532,9 @@ int qSearch(chess::Board& board, NNUE& nnue, int alpha, int beta){
     if(SEE(board, moves[i].getEndSquare(), 0) == 0) continue;
 
     chess::Board movedBoard = board;
-    nnue.accumulator = currAccumulator;
-    nnue.updateAccumulator(movedBoard, moves[i]);
+    
+    chess::makeMove(movedBoard, moves[i]);
+    nnue.refreshAccumulator(movedBoard);
 
     eval = -qSearch(movedBoard, nnue, -beta, -alpha);
     
