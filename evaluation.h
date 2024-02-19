@@ -221,12 +221,14 @@ struct NNUE{
     int currFeatureIndex[2] = {64*(board.mailbox[0][square]-1)+square, 64*(board.mailbox[1][squareFromBlackPerspective]-1)+squareFromBlackPerspective};
     int newFeatureIndex[2] = {64*(newPiece-1)+square, 64*(switchPieceColor[newPiece]-1)+squareFromBlackPerspective};
 
-    for(int i=0; i<NNUEhiddenNeurons; i++){
-      if(board.mailbox[0][square] != 0){
+    if(board.mailbox[0][square] != 0){
+      for(int i=0; i<NNUEhiddenNeurons; i++){
         accumulator[0][i] -= _NNUEparameters->hiddenLayerWeights[currFeatureIndex[0]][i];
         accumulator[1][i] -= _NNUEparameters->hiddenLayerWeights[currFeatureIndex[1]][i];
       }
-      if(newPieceType != chess::null){
+    }
+    if(newPieceType != chess::null){
+      for(int i=0; i<NNUEhiddenNeurons; i++){
         accumulator[0][i] += _NNUEparameters->hiddenLayerWeights[newFeatureIndex[0]][i];
         accumulator[1][i] += _NNUEparameters->hiddenLayerWeights[newFeatureIndex[1]][i];
       }
