@@ -29,12 +29,12 @@ Here are some details about the search:
 * Values backpropagated up the tree are done so with minimax
 
 ## Evaluation
-A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```vesta-6.nnue```):
+A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```vesta-7.nnue```):
 * Arch:  (768->128)x2->1
 * Scale: 400
 * Epochs: 60
-* WDL scheduler: constant 0.75
+* WDL scheduler: constant 0.0
 * LR scheduler: start 0.001 gamma 0.1 drop every 30 epochs
 * Device: NVIDIA GeForce MX550
 * Threads: 8
-* Positions: 211118643
+* Positions: 186643800
