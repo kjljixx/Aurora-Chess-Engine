@@ -23,7 +23,8 @@ float outputLevel = 2; //outputLevel:
                        //3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 
 //Tuned with Weather Factory with 13568 iterations(games) at 5+0.05
-float explorationFactor = 0.11334090578761254;
+float explorationFactor = 0.13170624986905002;
+float rootExplorationFactor = 0.2654005671036296;
 float evalScaleFactor = 1;
 //float eP[12] = {1.6301532566281178, 0.3415019889631426, 1.462459315326555, 0.09830134955092976, 0.3670339438501686, 0.5028838849947221, 0.28917477475978387, 1.581231015213, 0.2747746463404976, 0.9214915071600298, 0.14796697203232123, 1.2260899419271722}; //exploration parameters
 
@@ -94,12 +95,12 @@ void moveRootToChild(Node* node, Node* newRoot, Node* currRoot){
   }
 }
 
-Node* selectChild(Node* parent){
+Node* selectChild(Node* parent, bool isRoot){
   Node* currNode = parent->firstChild;
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = explorationFactor*std::sqrt(std::log(parent->visits));
+  const float parentVisitsTerm = (isRoot ? rootExplorationFactor : explorationFactor)*std::sqrt(std::log(parent->visits));
 
   //const float parentVisitsTerm = eP[5]*powl(eP[2]*logl(eP[0]*parent->visits+eP[1])+eP[3], eP[4])+eP[6];
 
@@ -330,7 +331,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
     chess::Board board = rootBoard;
     //Traverse the search tree
     while(currNode->firstChild != nullptr){
-      currNode = selectChild(currNode);
+      currNode = selectChild(currNode, currNode == root);
       chess::makeMove(board, currNode->edge);
     }
     //Expand & Backpropagate new values

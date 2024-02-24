@@ -190,6 +190,7 @@ void respondUci(){
                 "option name explorationFactor type string default " << search::explorationFactor << "\n"
                 "option name evalScaleFactor type string default " << search::evalScaleFactor << "\n"
                 "option name searchTimePortion type string default " << searchTimeFactor << "\n"
+                "option name rootExplorationFactor type string default " << search::rootExplorationFactor << "\n"
                 "\n"
                 "uciok\n";
 }
@@ -208,6 +209,12 @@ void setOption(std::istringstream input){
     float value;
     input >> value;
     search::explorationFactor = value;
+  }
+  if(token == "rootExplorationFactor"){
+    input >> token; //input the "value" token
+    float value;
+    input >> value;
+    search::rootExplorationFactor = value;
   }
   if(token == "evalScaleFactor"){
     input >> token; //input the "value" token
