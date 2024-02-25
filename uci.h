@@ -164,14 +164,14 @@ void go(std::istringstream input, chess::Board board){
     search::timeManagement tm(search::TIME);
     int time;
 
-    if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += std::max(Aurora::options["searchTimeFactor"].value*time/1000.0, 0.005);}}
-    else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += std::max(Aurora::options["searchTimeFactor"].value*time/1000.0, 0.005);}}
+    if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += std::max(Aurora::options["searchTimePortion"].value*time/1000.0, 0.005);}}
+    else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += std::max(Aurora::options["searchTimePortion"].value*time/1000.0, 0.005);}}
     else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += 0/20000.0;}}
     else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += 0/20000.0;}}
 
     while(input >> token){
-      if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += std::max(Aurora::options["searchTimeFactor"].value*time/1000.0, 0.005);}}
-      else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += std::max(Aurora::options["searchTimeFactor"].value*time/1000.0, 0.005);}}
+      if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += std::max(Aurora::options["searchTimePortion"].value*time/1000.0, 0.005);}}
+      else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += std::max(Aurora::options["searchTimePortion"].value*time/1000.0, 0.005);}}
       else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += 0/20000.0;}}
       else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += 0/20000.0;}}
     }
