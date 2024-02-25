@@ -16,16 +16,7 @@ namespace search{
 //parameters for search
 enum backpropagationStrategy{AVERAGE, MINIMAX};
 backpropagationStrategy backpropStrat = MINIMAX;
-float outputLevel = 2; //outputLevel:
-                       //0: only output bestmove at end of search
-                       //1: ouput bestmove and info at end of search
-                       //2: output bestmove and info at end of search and output info every 2 seconds
-                       //3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 
-//Tuned with Weather Factory with 13568 iterations(games) at 5+0.05
-float explorationFactor = 0.13170624986905002;
-float rootExplorationFactor = 0.2654005671036296;
-float evalScaleFactor = 1;
 //float eP[12] = {1.6301532566281178, 0.3415019889631426, 1.462459315326555, 0.09830134955092976, 0.3670339438501686, 0.5028838849947221, 0.28917477475978387, 1.581231015213, 0.2747746463404976, 0.9214915071600298, 0.14796697203232123, 1.2260899419271722}; //exploration parameters
 
 #if DATAGEN == 0
@@ -33,6 +24,7 @@ uint8_t seldepth = 0;
 #endif
 
 void init(){
+  Aurora::initOptions();
   evaluation::init();
   zobrist::init();
   srand(time(NULL));
@@ -100,7 +92,7 @@ Node* selectChild(Node* parent, bool isRoot){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = (isRoot ? rootExplorationFactor : explorationFactor)*std::sqrt(std::log(parent->visits));
+  const float parentVisitsTerm = (isRoot ? Aurora::options["rootExplorationFactor"].value : Aurora::options["explorationFactor"].value)*std::sqrt(std::log(parent->visits));
 
   //const float parentVisitsTerm = eP[5]*powl(eP[2]*logl(eP[0]*parent->visits+eP[1])+eP[3], eP[4])+eP[6];
 
@@ -155,7 +147,7 @@ float playout(chess::Board& board, Node* currNode, evaluation::NNUE& nnue){
 
   //std::cout << evaluation::evaluate(board, nnue) << " ";
 
-  float eval = std::max(std::min(std::atan(evaluation::evaluate(board, nnue)*evalScaleFactor/100.0)/1.57079633, 1.0),-1.0)*0.999999;
+  float eval = std::max(std::min(std::atan(evaluation::evaluate(board, nnue)*Aurora::options["evalScaleFactor"].value/100.0)/1.57079633, 1.0),-1.0)*0.999999;
   assert(-1<=eval && 1>=eval);
   return eval;
 }
@@ -197,7 +189,7 @@ int previousElapsed = 0;
 void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point start, bool finalResult){
   Node* currNode = root;
 
-  if(outputLevel==3){
+  if(Aurora::options["outputLevel"].value==3){
     std::cout << "\nNODES: " << root->visits;
     #if DATAGEN == 0
     std::cout << " SELDEPTH: " << seldepth-root->depth <<"\n";
@@ -215,7 +207,7 @@ void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point star
     }
   }
 
-  if(outputLevel >= 2 || (finalResult && outputLevel >= 1)){
+  if(Aurora::options["outputLevel"].value >= 2 || (finalResult && Aurora::options["outputLevel"].value >= 1)){
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
     std::cout << "\ninfo ";

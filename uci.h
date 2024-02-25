@@ -6,9 +6,6 @@
 //See https://backscattering.de/chess/uci/ for information on the Universal Chess Interface, which this file implements
 namespace uci{
 
-//Some Parameters
-float searchTimeFactor = 0.05;
-
 search::Node* root;
 chess::Board rootBoard;
 
@@ -167,14 +164,14 @@ void go(std::istringstream input, chess::Board board){
     search::timeManagement tm(search::TIME);
     int time;
 
-    if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += std::max(searchTimeFactor*time/1000.0, 0.005);}}
-    else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += std::max(searchTimeFactor*time/1000.0, 0.005);}}
+    if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += std::max(Aurora::options["searchTimeFactor"].value*time/1000.0, 0.005);}}
+    else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += std::max(Aurora::options["searchTimeFactor"].value*time/1000.0, 0.005);}}
     else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += 0/20000.0;}}
     else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += 0/20000.0;}}
 
     while(input >> token){
-      if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += std::max(searchTimeFactor*time/1000.0, 0.005);}}
-      else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += std::max(searchTimeFactor*time/1000.0, 0.005);}}
+      if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += std::max(Aurora::options["searchTimeFactor"].value*time/1000.0, 0.005);}}
+      else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += std::max(Aurora::options["searchTimeFactor"].value*time/1000.0, 0.005);}}
       else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += 0/20000.0;}}
       else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += 0/20000.0;}}
     }
@@ -183,59 +180,38 @@ void go(std::istringstream input, chess::Board board){
   rootBoard = board;
 }
 void respondUci(){
-  std::cout <<  "id name Aurora\n"
+  std::cout <<  "id name Aurora-" << VERSION << "\n"
                 "id author kjljixx\n"
-                "\n"
-                "option name outputLevel type spin default " << search::outputLevel << " min 0 max 3\n"
-                "option name explorationFactor type string default " << search::explorationFactor << "\n"
-                "option name evalScaleFactor type string default " << search::evalScaleFactor << "\n"
-                "option name searchTimePortion type string default " << searchTimeFactor << "\n"
-                "option name rootExplorationFactor type string default " << search::rootExplorationFactor << "\n"
-                "\n"
-                "uciok\n";
+                "\n";
+                for(auto option : Aurora::options){
+                  std::cout << "option name " << option.first << " "
+                                      "type " << (option.second.type == 0 ? "string" : "spin") << " "
+                                      "default " << option.second.defaultValue << " "
+                                      "min " << option.second.minValue << " "
+                                      "max " << option.second.maxValue << "\n";
+                }
+                std::cout << "\nuciok\n";
 }
 void setOption(std::istringstream input){
   std::string token;
+
   input >> token; //input the "name" token
-  input >> token;
-  if(token == "outputLevel"){
-    input >> token; //input the "value" token
-    int value;
-    input >> value;
-    search::outputLevel = value;
+
+  std::string optionName;
+  input >> optionName;
+
+  if(Aurora::options.find(optionName) == Aurora::options.end()){
+    std::cout << "info string could not find option " << optionName << "\n";
+    return;
   }
-  if(token == "explorationFactor"){
-    input >> token; //input the "value" token
-    float value;
-    input >> value;
-    search::explorationFactor = value;
-  }
-  if(token == "rootExplorationFactor"){
-    input >> token; //input the "value" token
-    float value;
-    input >> value;
-    search::rootExplorationFactor = value;
-  }
-  if(token == "evalScaleFactor"){
-    input >> token; //input the "value" token
-    float value;
-    input >> value;
-    search::evalScaleFactor = value;
-  }
-  if(token == "searchTimePortion"){
-    input >> token; //input the "value" token
-    float value;
-    input >> value;
-    searchTimeFactor = value;
-  }
-  #if DATAGEN == 1
-    // if(token == "datafile"){
-    //   input >> token; //input the "value" token
-    //   LPCSTR value;
-    //   input >> value;
-    //   dataFilePath = value;
-    // }
-  #endif
+
+  input >> token; //input the "value" token
+
+  float optionValue;
+  input >> optionValue;
+  Aurora::options[optionName].value = optionValue;
+
+  std::cout << "info string option " << optionName << " set to " << optionValue << "\n";
 }
 //Custom commands
 chess::Board makeMoves(chess::Board &board, std::istringstream input){
@@ -313,8 +289,8 @@ void loop(chess::Board board){
       int i = 0;
       int nodes = 0;
 
-      int currOutputLevel = search::outputLevel;
-      search::outputLevel = 0;
+      int currOutputLevel = Aurora::options["outputLevel"].value;
+      Aurora::options["outputLevel"].value = 0;
 
       for(std::string fen : benchFens){
         i++;
@@ -329,7 +305,7 @@ void loop(chess::Board board){
       }
       std::cout << "\nnps: " << double(nodes)/(SECONDS_PER_POSITION*i);
 
-      search::outputLevel = currOutputLevel;
+      Aurora::options["outputLevel"].value = currOutputLevel;
     }
   }
 }
