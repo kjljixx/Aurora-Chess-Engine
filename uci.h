@@ -180,7 +180,7 @@ void go(std::istringstream input, chess::Board board){
   rootBoard = board;
 }
 void respondUci(){
-  std::cout <<  "id name Aurora-" << VERSION << "\n"
+  std::cout <<  "id name Aurora " << VERSION << "\n"
                 "id author kjljixx\n"
                 "\n";
                 for(auto option : Aurora::options){
