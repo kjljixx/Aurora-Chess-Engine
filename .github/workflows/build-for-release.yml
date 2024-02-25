@@ -19,7 +19,7 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-      - run: "g++ aurora.cpp -o aurora-${{github.ref_name}}-${{matrix.os}} -O3"
+      - run: "g++ aurora.cpp -o aurora-${{github.ref_name}}-${{matrix.os}} -O3 -march=x86-64-v3"
         env:
           TARGET_CPU: ${{ matrix.cpu }}
       - name: Upload Assets to Release

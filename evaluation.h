@@ -1,4 +1,5 @@
 #pragma once
+#include "simd.h"
 #include "zobrist.h"
 #include <math.h>
 #include <algorithm>
@@ -160,6 +161,8 @@ int* eg_table[6] =
 //A simple 768->N*2->1 NNUE
 #define NNUEhiddenNeurons 128
 
+const int WeightsPerVec = sizeof(SIMD::Vec) / sizeof(int16_t);
+
 int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
 
 struct NNUEparameters{
@@ -178,22 +181,36 @@ struct NNUE{
   std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> accumulator = {{0}};
 
   int evaluate(chess::Colors sideToMove){
-    int result = 0;
+    //Adapted from Obsidian https://github.com/gab8192/Obsidian/blob/main/Obsidian/nnue.cpp
+    SIMD::Vec stmAcc;
+    SIMD::Vec oppAcc;
 
-    bool currSide = sideToMove;
-    for(int a=0; a<2; a++){
-      for(int i=0; i<NNUEhiddenNeurons; i++){
-        int v = std::max(std::min(int(accumulator[currSide][i]), 255), 0);
-        v *= v;
-        result += v * _NNUEparameters->outputLayerWeights[a*NNUEhiddenNeurons+i];
-      }
-      currSide = !currSide;
+    const SIMD::Vec vecZero = SIMD::vecSetZero();
+    const SIMD::Vec vecQA = SIMD::vecSet1Epi16(255);
+
+    SIMD::Vec sum = SIMD::vecSetZero();
+    SIMD::Vec v0; SIMD::Vec v1;
+
+    for (int i = 0; i < NNUEhiddenNeurons / WeightsPerVec; ++i) {
+      // Side to move
+      stmAcc = SIMD::load(reinterpret_cast<const SIMD::Vec *>(&accumulator[sideToMove][i * WeightsPerVec]));
+      v0 = SIMD::maxEpi16(stmAcc, vecZero); // clip
+      v0 = SIMD::minEpi16(v0, vecQA); // clip
+      v1 = SIMD::mulloEpi16(v0, SIMD::load(reinterpret_cast<const SIMD::Vec *>(&_NNUEparameters->outputLayerWeights[i * WeightsPerVec]))); // multiply with output layer weights
+      v1 = SIMD::maddEpi16(v0, v1); // square
+      sum = SIMD::addEpi32(sum, v1); // collect the result
+
+      // Non side to move
+      oppAcc = SIMD::load(reinterpret_cast<const SIMD::Vec *>(&accumulator[!sideToMove][i * WeightsPerVec]));
+      v0 = SIMD::maxEpi16(oppAcc, vecZero);
+      v0 = SIMD::minEpi16(v0, vecQA);
+      v1 = SIMD::mulloEpi16(v0, SIMD::load(reinterpret_cast<const SIMD::Vec *>(&_NNUEparameters->outputLayerWeights[NNUEhiddenNeurons + i * WeightsPerVec])));
+      v1 = SIMD::maddEpi16(v0, v1);
+      sum = SIMD::addEpi32(sum, v1);
     }
-    result /= 255;
-    
-    result = (result + _NNUEparameters->outputLayerBias) * 400 / (255*64);
+    int unsquared = SIMD::vecHaddEpi32(sum) / 255 + _NNUEparameters->outputLayerBias;
 
-    return result;
+    return (unsquared * 400) / (255 * 64);
   }
 
   void refreshAccumulator(chess::Board& board){
