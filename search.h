@@ -39,7 +39,7 @@ struct Node{
   uint32_t visits;
   float value;
   chess::Move edge;
-  chess::gameStatus gameStatus;
+  bool isTerminal;
   uint8_t depth;
   float sPriority;
   bool updatePriority;
@@ -47,9 +47,9 @@ struct Node{
   Node(Node* parent, uint8_t index, chess::Move edge, uint8_t depth) :
   parent(parent), index(index),
   firstChild(nullptr), nextSibling(nullptr),
-  visits(0), value(-2), edge(edge), gameStatus(chess::ONGOING), depth(depth), sPriority(-1), updatePriority(true) {}
+  visits(0), value(-2), edge(edge), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true) {}
 
-  Node() : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(-2), edge(chess::Move()), gameStatus(chess::ONGOING), depth(0), sPriority(-1), updatePriority(true) {}
+  Node() : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(-2), edge(chess::Move()), isTerminal(false), depth(0), sPriority(-1), updatePriority(true) {}
 
   Node* getChildByIndex(uint8_t index){
     Node* currNode = firstChild;
@@ -136,12 +136,12 @@ void expand(Node* parent, chess::MoveList& moves){
 }
 
 float playout(chess::Board& board, Node* currNode, evaluation::NNUE& nnue){
-  chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
 
+  chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
+  assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){
-    currNode->gameStatus = _gameStatus;
+    currNode->isTerminal = true;
     if(_gameStatus == chess::LOSS){return _gameStatus+0.00000001*currNode->depth;}
-    if(_gameStatus == chess::TWO_FOLD_REP){return 0;}
     return _gameStatus;
   }
 
@@ -311,8 +311,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
   previousVisits = root->visits;
   previousElapsed = 0;
 
-  chess::gameStatus currGameStatus = chess::getGameStatus(rootBoard, chess::isLegalMoves(rootBoard));
-  if(currGameStatus != chess::ONGOING && currGameStatus != chess::TWO_FOLD_REP){
+  if(chess::getGameStatus(rootBoard, chess::isLegalMoves(rootBoard)) != chess::ONGOING){
     #if DATAGEN != 1
       std::cout << "bestmove a1a1\n";
     #endif
@@ -328,13 +327,13 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
       chess::makeMove(board, currNode->edge);
     }
     //Expand & Backpropagate new values
-    if(currNode->gameStatus != chess::ONGOING && (currNode->gameStatus != chess::TWO_FOLD_REP || root != currNode)){
+    if(currNode->isTerminal){
       backpropagate(currNode->value, currNode, 1);
     }
     else{
       //Reached a leaf node
       chess::MoveList moves(board);
-      //if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currNode->value>=-1); currNode->gameStatus=; continue;}
+      if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currNode->value>=-1); currNode->isTerminal=true; continue;}
       expand(currNode, moves); //Create new child nodes
       //Simulate for all new nodes
       Node* parentNode = currNode; //This will be the root of the backpropagation

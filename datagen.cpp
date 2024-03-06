@@ -74,7 +74,7 @@ int main(){
           }
           std::cout << "\n";
           board.printBoard();
-          std::cout << "\n" << chess::getGameStatus(board, chess::isLegalMoves(board)) << " " << root->gameStatus;
+          std::cout << "\n" << chess::getGameStatus(board, chess::isLegalMoves(board)) << " " << root->isTerminal;
           assert(0);
         }
 
@@ -87,7 +87,7 @@ int main(){
 
         search::makeMove(board, search::findBestChild(root)->edge, rootBoard, root);
 
-        if(root->gameStatus != chess::ONGOING || std::abs(root->value)>0.9999){
+        if(root->isTerminal || std::abs(root->value)>0.9999){
           gameIter++;
           if(gameIter % infoPrintInterval == 0){
             std::cout << "Thread: " << threadId << "\n";

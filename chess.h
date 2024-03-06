@@ -1059,7 +1059,7 @@ struct MoveList{
   size_t size() const {return lastMove-moveList;}
 };
 
-enum gameStatus{WIN = 1, DRAW = 0, LOSS = -1, ONGOING = 2, TWO_FOLD_REP = 3};
+enum gameStatus{WIN = 1, DRAW = 0, LOSS = -1, ONGOING = 2};
 
 gameStatus getGameStatus(Board& board, bool isLegalMoves){
   /*if(_popCount(board.occupied)<=5){
@@ -1080,11 +1080,8 @@ gameStatus getGameStatus(Board& board, bool isLegalMoves){
   (_popCount(board.bishops | board.knights)<=1))
   {return DRAW;}
   //Threefold Repetition
-  int repCount = std::count(&board.history[board.startHistoryIndex], &board.history[board.halfmoveClock], board.history[board.halfmoveClock]);
-  if(repCount >= 2)
+  if(std::count(&board.history[board.startHistoryIndex], &board.history[board.halfmoveClock], board.history[board.halfmoveClock]) >= 2)
   {return DRAW;}
-  if(repCount >= 1)
-  {return TWO_FOLD_REP;}
 
   return ONGOING;
 }
