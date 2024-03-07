@@ -50,7 +50,6 @@ U64 getHash(chess::Board& board){
   
   hash ^= board.sideToMove ? sideToMoveKey : 0ULL;
 
-  board.hashed = true;
   return hash;
 }
 U64 updateHash(chess::Board& board, chess::Move move){
@@ -141,6 +140,7 @@ namespace chess{
     else{
       board.makeMove(move);
       board.history[board.halfmoveClock] = zobrist::getHash(board);
+      board.hashed = true;
     }
   }
 }
