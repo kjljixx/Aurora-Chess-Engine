@@ -196,26 +196,6 @@ struct Board{
     startHistoryIndex = halfmoveClock;
   }
 
-  void printBoard(){
-    U64 mask = 0;
-    for(int i=8; i>0; i--){
-      std::cout << "\n" << i << " ";
-      for(int j=0; j<8; j++){
-        mask = 0;
-        mask |= (1ULL << ((i-1)*8+j));
-        if(pawns & mask){std::cout << char('P'+((mask & black) != 0)*32) << " ";}
-        else if(knights & mask){std::cout << char('N'+((mask & black) != 0)*32) << " ";}
-        else if(bishops & mask){std::cout << char('B'+((mask & black) != 0)*32) << " ";}
-        else if(rooks & mask){std::cout << char('R'+((mask & black) != 0)*32) << " ";}
-        else if(queens & mask){std::cout << char('Q'+((mask & black) != 0)*32) << " ";}
-        else if(kings & mask){std::cout << char('K'+((mask & black) != 0)*32) << " ";}
-        else{std::cout << "- ";}
-      }
-    }
-    std::cout << "\n  A B C D E F G H";
-    std::cout << " HMC: " << halfmoveClock;
-    std::cout << " STM: " << sideToMove;
-  }
 
   std::string getFen(){
     std::string fen;
@@ -281,6 +261,28 @@ struct Board{
     fen += std::to_string(halfmoveClock);
 
     return fen;
+  }
+
+  void printBoard(){
+    U64 mask = 0;
+    for(int i=8; i>0; i--){
+      std::cout << "\n" << i << " ";
+      for(int j=0; j<8; j++){
+        mask = 0;
+        mask |= (1ULL << ((i-1)*8+j));
+        if(pawns & mask){std::cout << char('P'+((mask & black) != 0)*32) << " ";}
+        else if(knights & mask){std::cout << char('N'+((mask & black) != 0)*32) << " ";}
+        else if(bishops & mask){std::cout << char('B'+((mask & black) != 0)*32) << " ";}
+        else if(rooks & mask){std::cout << char('R'+((mask & black) != 0)*32) << " ";}
+        else if(queens & mask){std::cout << char('Q'+((mask & black) != 0)*32) << " ";}
+        else if(kings & mask){std::cout << char('K'+((mask & black) != 0)*32) << " ";}
+        else{std::cout << "- ";}
+      }
+    }
+    std::cout << "\n  A B C D E F G H";
+    std::cout << " HMC: " << halfmoveClock;
+    std::cout << " STM: " << sideToMove;
+    std::cout << " FEN: " << getFen();
   }
 
   U64 getPieces(Colors color){
