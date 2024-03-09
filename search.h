@@ -1,5 +1,6 @@
 #pragma once
 #include "evaluation.h"
+#include <deque>
 #include <fstream>
 #include <time.h>
 #include <math.h>
@@ -186,7 +187,7 @@ float findBestValue(Node* parent){
 int previousVisits = 0;
 int previousElapsed = 0;
 
-void printSearchInfo(Node* root, std::chrono::_V2::steady_clock::time_point start, bool finalResult){
+void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bool finalResult){
   Node* currNode = root;
 
   if(Aurora::options["outputLevel"].value==3){
