@@ -417,7 +417,7 @@ int pieceSquareTable(chess::Board& board){
     }
 
     pieceBitboard = board.getTheirPieces(chess::Pieces(piece));
-    if(!(board.sideToMove) == chess::WHITE){pieceBitboard = _flipBoard(pieceBitboard);}
+    if((!board.sideToMove) == chess::WHITE){pieceBitboard = _flipBoard(pieceBitboard);}
 
     while(pieceBitboard){
       uint8_t piecePos = _popLsb(pieceBitboard);
