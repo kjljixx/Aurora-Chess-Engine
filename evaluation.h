@@ -433,6 +433,8 @@ int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0){
   int i=0;
 
   chess::Pieces currPiece = board.findPiece(targetSquare); //The original target piece; piece of the opponent of the current sideToMove
+  if(currPiece == chess::null){currPiece = chess::PAWN;} //the move is en passant
+  
   values[i] = (mg_value[currPiece-1] * gamePhase + eg_value[currPiece-1] * (24-gamePhase));
   /*values[i] = (
     (mg_value[currPiece-1] + mg_table[currPiece-1][board.sideToMove ? targetSquare^56 : targetSquare]) * gamePhase
@@ -522,7 +524,7 @@ int passedPawns(chess::Board& board){
 std::array<uint8_t, 13> sidedPieceToPiece = {0, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6};
 
 int mvvLva(chess::Board& board, chess::Move move){
-  return 30*mg_value[sidedPieceToPiece[board.mailbox[0][move.getEndSquare()]]-1] - mg_value[sidedPieceToPiece[board.mailbox[0][move.getStartSquare()]]-1];
+  return 30*mg_value[sidedPieceToPiece[move.getMoveFlags() == chess::ENPASSANT ? 0 : board.mailbox[0][move.getEndSquare()]]-1] - mg_value[sidedPieceToPiece[board.mailbox[0][move.getStartSquare()]]-1];
 }
 
 int qSearch(chess::Board& board, NNUE& nnue, int alpha, int beta){
