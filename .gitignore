@@ -20,3 +20,5 @@ data
 auroradatagen.exe
 weather-factory/
 engine/EngineTests/
+errBase.txt
+errDev.txt
