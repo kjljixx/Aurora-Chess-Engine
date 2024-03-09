@@ -1,11 +1,11 @@
 #pragma once
 #include "evaluation.h"
-#include <deque>
 #include <fstream>
 #include <time.h>
 #include <math.h>
 #include <memory>
 #include <chrono>
+#include <deque>
 
 #if DATAGEN >= 1
   #include <windows.h>
@@ -45,6 +45,10 @@ struct Node{
   float sPriority;
   bool updatePriority;
 
+  //For Tree Reuse
+  Node* newAddress = nullptr;
+  bool mark = false;
+
   Node(Node* parent, uint8_t index, chess::Move edge, uint8_t depth) :
   parent(parent), index(index),
   firstChild(nullptr), nextSibling(nullptr),
@@ -63,29 +67,83 @@ struct Node{
   }
 };
 
-void destroyTree(Node* node){
-  if(node){
-    destroyTree(node->firstChild);
-    destroyTree(node->nextSibling);
+struct Tree{
+  std::deque<Node> tree;
+};
 
-    delete node;
-  }
+void destroyTree(Tree& tree){
+  tree.tree.clear();
 }
-//destroytree except we don't delete the siblings of the node
-void destroySubtree(Node* node){
-  if(node){
-    destroyTree(node->firstChild);
 
-    delete node;
+uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked = true){
+  uint64_t markedNodes = 0;
+
+  if(isSubtreeRoot){
+    unmarked = node->mark;
   }
-}
-//the node argument passed in moveRootToChild should be the first child of the root
-void moveRootToChild(Node* node, Node* newRoot, Node* currRoot){
   if(node){
-    moveRootToChild(node->nextSibling, newRoot, currRoot);
-    
-    if(node!=newRoot && node!=currRoot){destroySubtree(node);}
+    markedNodes += markSubtree(node->firstChild, false, unmarked);
+    assert((!node->firstChild) || (node->firstChild->mark == !unmarked));
+    if(!isSubtreeRoot){
+      markedNodes += markSubtree(node->nextSibling, false, unmarked);
+    }
+    node->mark = !unmarked;
+    markedNodes++;
   }
+  return markedNodes;
+}
+
+//Returns a pointer to the new root, which is different from the pointer given as a parameter because of the garbage collection
+Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
+  //LISP 2 Garbage Collection Algorithm (https://en.wikipedia.org/wiki/Mark%E2%80%93compact_algorithm#LISP_2_algorithm)
+  uint64_t markedNodes = markSubtree(newRoot);
+  bool marked = newRoot->mark;
+
+  //std::cout << "\n" << currRoot << ":" << currRoot->mark << " " << newRoot << ":" << newRoot->mark << " | ";
+
+  uint64_t freePointer = 0;
+
+  for(uint32_t i=0; i<tree.tree.size(); i++){
+    Node* livePointer = &tree.tree[i];
+    //std::cout << livePointer << ":" << livePointer->mark << " ";
+    if(livePointer->mark == marked){
+      livePointer->newAddress = &tree.tree[freePointer];
+      freePointer++;
+    }
+  }
+
+  Node* newRootNewAddress = newRoot->newAddress;
+  //std::cout << " | " << newRootNewAddress << " ";
+
+  for(Node& node : tree.tree){
+    if(node.mark == marked){
+      if(node.parent){
+        assert(&node == newRoot || node.parent->mark == marked);
+        node.parent = node.parent->newAddress;
+      }
+      if(node.firstChild){
+        assert(node.firstChild->mark == marked);
+        node.firstChild = node.firstChild->newAddress;
+      }
+      if(node.nextSibling){
+        assert(&node == newRoot || node.nextSibling->mark == marked);
+        node.nextSibling = node.nextSibling->newAddress;
+      }
+    }
+  }
+
+  for(uint32_t i=0; i<tree.tree.size(); i++){
+    Node* livePointer = &tree.tree[i];
+    if(livePointer->mark == marked){
+      *(livePointer->newAddress) = *livePointer;
+      assert(tree.tree[i].value == tree.tree[i].newAddress->value);
+    }
+    livePointer++;
+  }
+
+  tree.tree.resize(markedNodes);
+
+  return newRootNewAddress;
 }
 
 Node* selectChild(Node* parent, bool isRoot){
@@ -93,7 +151,7 @@ Node* selectChild(Node* parent, bool isRoot){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = (isRoot ? Aurora::options["rootExplorationFactor"].value : Aurora::options["explorationFactor"].value)*std::sqrt(std::log(parent->visits));
+  const float parentVisitsTerm = (isRoot ? Aurora::options["explorationFactor"].value : Aurora::options["explorationFactor"].value)*std::sqrt(std::log(parent->visits));
 
   //const float parentVisitsTerm = eP[5]*powl(eP[2]*logl(eP[0]*parent->visits+eP[1])+eP[3], eP[4])+eP[6];
 
@@ -120,14 +178,16 @@ Node* selectChild(Node* parent, bool isRoot){
   return parent->getChildByIndex(maxPriorityNodeIndex);
 }
 
-void expand(Node* parent, chess::MoveList& moves){
+void expand(Tree& tree, Node* parent, chess::MoveList& moves){
   if(moves.size()==0){return;}
 
-  parent->firstChild = new Node(parent, 0, moves[0], parent->depth+1);
+  tree.tree.push_back(Node(parent, 0, moves[0], parent->depth+1));
+  parent->firstChild = &tree.tree[tree.tree.size()-1];
   Node* currNode = parent->firstChild;
 
   for(uint16_t i=1; i<moves.size(); i++){
-    currNode->nextSibling = new Node(parent, i, moves[i], parent->depth+1);
+    tree.tree.push_back(Node(parent, i, moves[i], parent->depth+1));
+    currNode->nextSibling = &tree.tree[tree.tree.size()-1];
     currNode = currNode->nextSibling;
   }
 
@@ -137,7 +197,6 @@ void expand(Node* parent, chess::MoveList& moves){
 }
 
 float playout(chess::Board& board, Node* currNode, evaluation::NNUE& nnue){
-
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){
@@ -295,9 +354,10 @@ struct timeManagement{
 };
 
 //The main search function
-Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
+Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree){
   auto start = std::chrono::steady_clock::now();
-  if(!root){root = new Node();}
+
+  if(!root){tree.tree.push_back(Node()); root = &tree.tree[tree.tree.size()-1];}
 
   #if DATAGEN == 0
   seldepth = 0;
@@ -335,7 +395,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
       //Reached a leaf node
       chess::MoveList moves(board);
       if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currNode->value>=-1); currNode->isTerminal=true; continue;}
-      expand(currNode, moves); //Create new child nodes
+      expand(tree, currNode, moves); //Create new child nodes
       //Simulate for all new nodes
       Node* parentNode = currNode; //This will be the root of the backpropagation
       currNode = currNode->firstChild;
@@ -380,7 +440,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root){
 }
 //Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
 //Parameter "board" must be different than parameter "rootBoard"
-void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Node*& root){
+void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Node*& root, Tree& tree){
   if(root == nullptr || zobrist::getHash(board) != zobrist::getHash(rootBoard)){chess::makeMove(board, move); return;}
 
   chess::makeMove(board, move);
@@ -391,14 +451,13 @@ void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, No
     newRoot = newRoot->nextSibling;
   }
 
-  if(newRoot == nullptr){root = nullptr; return;}
+  if(newRoot == nullptr){root = nullptr; destroyTree(tree); return;}
 
-  moveRootToChild(root->firstChild, newRoot, root);
-  newRoot->parent = nullptr; newRoot->nextSibling = nullptr; newRoot->index = 0; newRoot->edge = chess::Move(); newRoot->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
+  root = moveRootToChild(tree, newRoot, root);
+
+  root->parent = nullptr; root->nextSibling = nullptr; root->index = 0; root->edge = chess::Move(); root->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
 
   chess::makeMove(rootBoard, move);
-
-  root = newRoot;
 }
 
 }//namespace search

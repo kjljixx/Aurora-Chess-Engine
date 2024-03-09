@@ -8,6 +8,7 @@ namespace uci{
 
 search::Node* root;
 chess::Board rootBoard;
+search::Tree tree;
 
 //bench stuff
 const int AMOUNT_OF_FENS = 50;
@@ -89,19 +90,19 @@ chess::Board position(std::istringstream input){
   while(input >> token){
     //En Passant
     if((1ULL << squareNotationToIndex(token.substr(2, 2))) & board.enPassant && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::PAWN){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::ENPASSANT), rootBoard, root);
+      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::ENPASSANT), rootBoard, root, tree);
     }
     //Castling
     else if((squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 2 || squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 6) && squareIndexToFile(squareNotationToIndex(token.substr(0, 2))) == 4 && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::KING){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::CASTLE), rootBoard, root);
+      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::CASTLE), rootBoard, root, tree);
     }
     //Promotion
     else if(token.size() == 5){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::PROMOTION, chess::letterToPiece(token[4])), rootBoard, root);
+      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::PROMOTION, chess::letterToPiece(token[4])), rootBoard, root, tree);
     }
     //Normal
     else{
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))), rootBoard, root);
+      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))), rootBoard, root, tree);
     }
   }
 
@@ -153,12 +154,12 @@ void go(std::istringstream input, chess::Board board){
 
   input >> token;
   if(token == "infinite"){
-    root = search::search(board, search::timeManagement(search::FOREVER), root);
+    root = search::search(board, search::timeManagement(search::FOREVER), root, tree);
   }
   else if(token == "nodes"){
     int maxNodes;
     input >> maxNodes;
-    root = search::search(board, search::timeManagement(search::NODES, maxNodes), root);
+    root = search::search(board, search::timeManagement(search::NODES, maxNodes), root, tree);
   }
   else{
     search::timeManagement tm(search::TIME);
@@ -175,7 +176,7 @@ void go(std::istringstream input, chess::Board board){
       else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += 0/20000.0;}}
       else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += 0/20000.0;}}
     }
-    root = search::search(board, tm, root);
+    root = search::search(board, tm, root, tree);
   }
   rootBoard = board;
 }
@@ -219,19 +220,19 @@ chess::Board makeMoves(chess::Board &board, std::istringstream input){
   while(input >> token){
     //En Passant
     if((1ULL << squareNotationToIndex(token.substr(2, 2))) & board.enPassant && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::PAWN){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::ENPASSANT), rootBoard, root);
+      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::ENPASSANT), rootBoard, root, tree);
     }
     //Castling
     else if((squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 2 || squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 6) && squareIndexToFile(squareNotationToIndex(token.substr(0, 2))) == 4 && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::KING){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::CASTLE), rootBoard, root);
+      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::CASTLE), rootBoard, root, tree);
     }
     //Promotion
     else if(token.size() == 5){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::PROMOTION, chess::letterToPiece(token[4])), rootBoard, root);
+      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::PROMOTION, chess::letterToPiece(token[4])), rootBoard, root, tree);
     }
     //Normal
     else{
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))), rootBoard, root);
+      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))), rootBoard, root, tree);
     }
   }
   return board;
@@ -272,7 +273,7 @@ void loop(chess::Board board){
     if(token == "position"){std::getline(std::cin, token); board = position(std::istringstream(token));}
     if(token == "go"){std::getline(std::cin, token); go(std::istringstream(token), board);}
     if(token == "quit"){break;}
-    if(token == "ucinewgame"){search::destroyTree(root); root = nullptr;}
+    if(token == "ucinewgame"){search::destroyTree(tree); root = nullptr;}
     //non-uci, custom commands
     if(token == "moves"){std::getline(std::cin, token); board = makeMoves(board, std::istringstream(token));}
     //bwlow are mostly for debugging purposes
@@ -296,11 +297,11 @@ void loop(chess::Board board){
         i++;
         chess::Board board(fen);
 
-        search::Node* root = search::search(board, search::timeManagement(search::TIME, SECONDS_PER_POSITION), nullptr);
+        search::Node* root = search::search(board, search::timeManagement(search::TIME, SECONDS_PER_POSITION), nullptr, tree);
 
         nodes += root->visits;
 
-        search::destroyTree(root); root = nullptr;
+        search::destroyTree(tree); root = nullptr;
         std::cout << "\nFINISHED POSITION #" << i << " OF 50";
       }
       std::cout << "\nnps: " << double(nodes)/(SECONDS_PER_POSITION*i);

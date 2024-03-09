@@ -22,3 +22,5 @@ weather-factory/
 engine/EngineTests/
 errBase.txt
 errDev.txt
+bdbg.bat
+auroradebug.exe
