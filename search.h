@@ -183,11 +183,13 @@ void expand(Tree& tree, Node* parent, chess::MoveList& moves){
 
   tree.tree.push_back(Node(parent, 0, moves[0], parent->depth+1));
   parent->firstChild = &tree.tree[tree.tree.size()-1];
+  parent->firstChild->mark = parent->mark;
   Node* currNode = parent->firstChild;
 
   for(uint16_t i=1; i<moves.size(); i++){
     tree.tree.push_back(Node(parent, i, moves[i], parent->depth+1));
     currNode->nextSibling = &tree.tree[tree.tree.size()-1];
+    currNode->nextSibling->mark = parent->mark;
     currNode = currNode->nextSibling;
   }
 
