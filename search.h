@@ -306,7 +306,7 @@ void backpropagate(float result, Node* currNode, uint8_t visits){
 
     runFindBestMove = currNode->value > oldCurrNodeValue;
     result = -result;
-    currNode->visits+=1;
+    currNode->visits+=visits;
     currNode->updatePriority = true;
     currNode = currNode->parent;
   }
@@ -336,7 +336,7 @@ void backpropagate(float result, Node* currNode, uint8_t visits){
       }
     }
 
-    currNode->visits+=1;
+    currNode->visits+=visits;
     currNode->updatePriority = true;
     currNode = currNode->parent;
   }

@@ -1053,6 +1053,11 @@ struct MoveList{
     lastMove = moveList + moves.size();
   }
 
+  void operator=(const MoveList& moves){
+    std::copy(std::begin(moves.moveList), std::end(moves.moveList), std::begin(moveList));
+    lastMove = moveList + moves.size(); 
+  }
+
   Move* begin() {return moveList;}
   Move* end() {return lastMove;}
 
