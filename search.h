@@ -421,7 +421,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
         currNode = currNode->nextSibling;
       }
       //Backpropagate best value
-      backpropagate(-currBestValue, parentNode, moves.size());
+      backpropagate(-currBestValue, parentNode, 1);
     }
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
