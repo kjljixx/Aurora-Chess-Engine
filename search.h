@@ -38,6 +38,7 @@ struct Node{
   Node* firstChild;
   Node* nextSibling;
   uint32_t visits;
+  float uncertainty;
   float value;
   chess::Move edge;
   bool isTerminal;
@@ -52,9 +53,9 @@ struct Node{
   Node(Node* parent, uint8_t index, chess::Move edge, uint8_t depth) :
   parent(parent), index(index),
   firstChild(nullptr), nextSibling(nullptr),
-  visits(0), value(-2), edge(edge), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true) {}
+  visits(0), uncertainty(1), value(-2), edge(edge), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true) {}
 
-  Node() : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), value(-2), edge(chess::Move()), isTerminal(false), depth(0), sPriority(-1), updatePriority(true) {}
+  Node() : parent(nullptr), index(0), firstChild(nullptr), nextSibling(nullptr), visits(0), uncertainty(1), value(-2), edge(chess::Move()), isTerminal(false), depth(0), sPriority(-1), updatePriority(true) {}
 
   Node* getChildByIndex(uint8_t index){
     Node* currNode = firstChild;
@@ -160,7 +161,7 @@ Node* selectChild(Node* parent, bool isRoot){
   //     currNode->sPriority = -currNode->value+parentVisitsTerm/(eP[11]*powl(eP[7]*currNode->visits+eP[8], eP[9])+eP[10]);
   while(currNode != nullptr){
     if(true){
-      currNode->sPriority = -currNode->value+parentVisitsTerm/std::sqrt(currNode->visits);
+      currNode->sPriority = -currNode->value+parentVisitsTerm*currNode->uncertainty/std::sqrt(currNode->visits);
       currNode->updatePriority = false;
     }
     float currPriority = currNode->sPriority;
@@ -413,6 +414,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
         //std::cout << "\nRESULT: " << result;
         assert(-1<=result && 1>=result);
         currNode->value = result;
+        currNode->uncertainty = movedBoard.squareUnderAttack(_bitscanForward(movedBoard.getOurPieces(chess::KING)) == 64 ? 1 : 1.5;
         currNode->visits = 1;
         currNode->updatePriority = true;
 
