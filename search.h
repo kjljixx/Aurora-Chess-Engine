@@ -8,7 +8,6 @@
 #include <deque>
 
 #if DATAGEN >= 1
-  #include <windows.h>
   std::string dataFolderPath = "C:/Users/kjlji/OneDrive/Documents/VSCode/C++/AuroraChessEngine-main/data";
 #endif
 

@@ -33,10 +33,11 @@ int main(){
 
       std::vector<std::string> gameData;
 
-      search::timeManagement tm(search::NODES, 150);
+      search::timeManagement tm(search::NODES, 360);
 
       chess::Board board;
       chess::Board rootBoard; //Only exists to make the search::makeMove function happy
+      search::Tree tree;
 
       bool validOpening = false;
       while(validOpening == false){
@@ -78,14 +79,14 @@ int main(){
           assert(0);
         }
 
-        root = search::search(board, tm, root);
+        root = search::search(board, tm, root, tree);
 
         if(board.squareUnderAttack(_bitscanForward(board.getOurPieces(chess::KING)))==64 && board.mailbox[0][search::findBestChild(root)->edge.getEndSquare()]==0 && std::abs(root->value)<0.9999){
           gameData.push_back(board.getFen() + " | " + std::to_string(int(round(tan((board.sideToMove ? search::findBestValue(root) : -search::findBestValue(root))*1.56375)*100))));
           fenIter++;
         }
 
-        search::makeMove(board, search::findBestChild(root)->edge, rootBoard, root);
+        search::makeMove(board, search::findBestChild(root)->edge, rootBoard, root, tree);
 
         if(root->isTerminal || std::abs(root->value)>0.9999){
           gameIter++;
@@ -105,18 +106,17 @@ int main(){
           stream << std::fixed << std::setprecision(1) << ((board.sideToMove ? -root->value : root->value) + 1) / 2.0;
           std::string gameResultStr = stream.str();
 
-          HANDLE dataFile = CreateFileA((dataFolderPath+"/"+version+"-thread"+std::to_string(threadId)+".txt").c_str(), FILE_APPEND_DATA, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+          std::ofstream dataFile;
+          dataFile.open(dataFolderPath+"/"+version+"-thread"+std::to_string(threadId)+".txt", std::ios_base::app);
           for(std::string currData : gameData){
             currData += " | " + gameResultStr + "\n";
-
-            DWORD dwBytesToWrite = (DWORD)strlen(currData.c_str());
-            DWORD dwBytesWritten = 0;
-            WriteFile(dataFile, currData.c_str(), dwBytesToWrite, &dwBytesWritten, NULL);
+            
+            dataFile << currData;
           }
           gameData.clear();
-          CloseHandle(dataFile);
+          dataFile.close();
 
-          search::destroyTree(root);
+          search::destroyTree(tree);
           root = nullptr;
 
           validOpening = false;
