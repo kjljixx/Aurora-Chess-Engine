@@ -69,6 +69,8 @@ std::string benchFens[AMOUNT_OF_FENS] = { //From Alexandria
 
 //The "position" command
 chess::Board position(std::istringstream input){
+  tree.tt.init(search::TT_DEFAULT_SIZE);
+
   std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   std::string token;
 

@@ -66,12 +66,49 @@ struct Node{
   }
 };
 
+struct TTEntry{
+  Node* node;
+  U64 hash;
+
+  TTEntry() : node(nullptr), hash(0) {}
+  TTEntry(Node* node, U64 hash) : node(node), hash(hash) {}
+};
+
+const int TT_DEFAULT_SIZE = 4194304;
+
+struct TT{
+  std::vector<TTEntry> tt;
+  uint32_t size;
+  U64 mask;
+
+  void init(uint32_t _size){
+    size = _size;
+    mask = _size - 1;
+    tt.resize(_size, TTEntry());
+    std::fill(tt.begin(), tt.end(), TTEntry());
+  }
+
+  void storeEntry(TTEntry entry){
+    tt[entry.hash & mask] = entry;
+  }
+
+  TTEntry getEntry(U64 hash){
+    return tt[hash & mask];
+  }
+};
+
 struct Tree{
   std::deque<Node> tree;
+  TT tt;
+
+  Tree(){
+    tt.init(TT_DEFAULT_SIZE);
+  }
 };
 
 void destroyTree(Tree& tree){
   tree.tree.clear();
+  tree.tt.init(TT_DEFAULT_SIZE);
 }
 
 uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked = true){
@@ -177,17 +214,25 @@ Node* selectChild(Node* parent, bool isRoot){
   return parent->getChildByIndex(maxPriorityNodeIndex);
 }
 
-void expand(Tree& tree, Node* parent, chess::MoveList& moves){
+void expand(Tree& tree, Node* parent, chess::Board& board, chess::MoveList& moves){
   if(moves.size()==0){return;}
 
   tree.tree.push_back(Node(parent, 0, moves[0], parent->depth+1));
   parent->firstChild = &tree.tree[tree.tree.size()-1];
+  U64 hash = zobrist::updateHash(board, moves[0]);
+  if(tree.tt.getEntry(hash).hash == 0){
+    tree.tt.storeEntry(TTEntry(parent->firstChild, hash));
+  }
   parent->firstChild->mark = parent->mark;
   Node* currNode = parent->firstChild;
 
   for(uint16_t i=1; i<moves.size(); i++){
     tree.tree.push_back(Node(parent, i, moves[i], parent->depth+1));
     currNode->nextSibling = &tree.tree[tree.tree.size()-1];
+    U64 hash = zobrist::updateHash(board, moves[i]);
+    if(tree.tt.getEntry(hash).hash == 0){
+      tree.tt.storeEntry(TTEntry(currNode->nextSibling, hash));
+    }
     currNode->nextSibling->mark = parent->mark;
     currNode = currNode->nextSibling;
   }
@@ -392,7 +437,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
       //Reached a leaf node
       chess::MoveList moves(board);
       if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currNode->value>=-1); currNode->isTerminal=true; continue;}
-      expand(tree, currNode, moves); //Create new child nodes
+      expand(tree, currNode, board, moves); //Create new child nodes
       //Simulate for all new nodes
       Node* parentNode = currNode; //This will be the root of the backpropagation
       currNode = currNode->firstChild;
@@ -400,11 +445,20 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
       nnue.refreshAccumulator(board);
       std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> currAccumulator = nnue.accumulator;
       while(currNode != nullptr){
-        chess::Board movedBoard = board;
-        nnue.accumulator = currAccumulator;
+        U64 hash = zobrist::updateHash(board, currNode->edge);
+        TTEntry entry = tree.tt.getEntry(hash);
 
-        nnue.updateAccumulator(movedBoard, currNode->edge);
-        float result = playout(movedBoard, currNode, nnue);
+        float result;
+        if(entry.hash != hash || entry.node == currNode){
+          chess::Board movedBoard = board;
+          nnue.accumulator = currAccumulator;
+
+          nnue.updateAccumulator(movedBoard, currNode->edge);
+          result = playout(movedBoard, currNode, nnue);
+        }
+        else{
+          result = entry.node->value;
+        }
         //std::cout << "\nRESULT: " << result;
         assert(-1<=result && 1>=result);
         currNode->value = result;
