@@ -81,12 +81,12 @@ int main(){
 
         root = search::search(board, tm, root, tree);
 
-        if(board.squareUnderAttack(_bitscanForward(board.getOurPieces(chess::KING)))==64 && board.mailbox[0][search::findBestChild(root)->edge.getEndSquare()]==0 && std::abs(root->value)<0.9999){
+        if(board.squareUnderAttack(_bitscanForward(board.getOurPieces(chess::KING)))==64 && board.mailbox[0][search::findBestEdge(root).move.getEndSquare()]==0 && std::abs(root->value)<0.9999){
           gameData.push_back(board.getFen() + " | " + std::to_string(int(round(tan((board.sideToMove ? search::findBestValue(root) : -search::findBestValue(root))*1.56375)*100))));
           fenIter++;
         }
 
-        search::makeMove(board, search::findBestChild(root)->edge, rootBoard, root, tree);
+        search::makeMove(board, search::findBestEdge(root).move, rootBoard, root, tree);
 
         if(root->isTerminal || std::abs(root->value)>0.9999){
           gameIter++;
