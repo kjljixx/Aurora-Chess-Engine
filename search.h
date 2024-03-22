@@ -290,56 +290,52 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
   }
 }
 
-void backpropagate(float result, Node* currNode, uint8_t visits){
-  //Backpropogate results
+void backpropagate(float result, Node* currNode, uint8_t visits, bool runFindBestMove, bool continueBackprop, bool forceResult){
+  //Backpropagate results
 
-  bool runFindBestMove = false;
-  bool continueBackprop = true;
+  if(currNode == nullptr){return;}
+
   float oldCurrNodeValue = 2;
 
-  if(backpropStrat == MINIMAX){
-    if(currNode->parent && -currNode->value == currNode->parent->value){oldCurrNodeValue = currNode->value;}
-
-    currNode->value = result;
-    assert(-1<=currNode->value && 1>=currNode->value);
-
-    runFindBestMove = currNode->value > oldCurrNodeValue;
+  if(backpropStrat == AVERAGE){
+    currNode->value = (currNode->value*currNode->visits+result)/(currNode->visits+1);
     result = -result;
-    currNode->visits+=visits;
-    currNode->updatePriority = true;
-    currNode = currNode->parent;
   }
+  else if(backpropStrat == MINIMAX){
+    //We only need to backpropagate two types of results here: the current best child becomes worse, or there is a new best child
+    if(continueBackprop){
+      //If currNode is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currNode
+      oldCurrNodeValue = 2;
+      if(currNode->parent && -currNode->value == currNode->parent->value){oldCurrNodeValue = currNode->value;}
 
-  while(currNode != nullptr){
-    if(backpropStrat == AVERAGE){
-      currNode->value = (currNode->value*currNode->visits+result)/(currNode->visits+1);
-      result = -result;
-    }
-    else if(backpropStrat == MINIMAX){
-      //We only need to backpropagate two types of results here: the current best child becomes worse, or there is a new best child
-      if(continueBackprop){
-        //If currNode is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currNode
-        oldCurrNodeValue = 2;
-        if(currNode->parent && -currNode->value == currNode->parent->value){oldCurrNodeValue = currNode->value;}
+      //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
+      if(result <= currNode->value && !runFindBestMove && !forceResult){
+        continueBackprop = false;
+        currNode->visits+=visits;
+        currNode->updatePriority = true;
+        currNode = currNode->parent;
 
-        //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
-        if(result <= currNode->value && !runFindBestMove){continueBackprop = false; continue;}
-
-        currNode->value = runFindBestMove ? -findBestValue(currNode) : result;
-
-        assert(-1<=currNode->value && 1>=currNode->value);
-
-        runFindBestMove = currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
-
-        result = -currNode->value;
+        backpropagate(result, currNode, visits, runFindBestMove, continueBackprop, false);
+        return;
       }
-    }
 
-    currNode->visits+=visits;
-    currNode->updatePriority = true;
-    currNode = currNode->parent;
+      currNode->value = runFindBestMove ? -findBestValue(currNode) : result;
+
+      assert(-1<=currNode->value && 1>=currNode->value);
+
+      runFindBestMove = currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
+
+      result = -currNode->value;
+    }
   }
+
+  currNode->visits+=visits;
+  currNode->updatePriority = true;
+  currNode = currNode->parent;
+
+  backpropagate(result, currNode, visits, runFindBestMove, continueBackprop, false);
 }
+
 //Code relating to the time manager
 enum timeManagementType{
   FOREVER,
@@ -390,7 +386,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     }
     //Expand & Backpropagate new values
     if(currNode->isTerminal){
-      backpropagate(currNode->value, currNode, 1);
+      backpropagate(currNode->value, currNode, 1, false, true, true);
     }
     else{
       //Reached a leaf node
@@ -420,7 +416,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
         currNode = currNode->nextSibling;
       }
       //Backpropagate best value
-      backpropagate(-currBestValue, parentNode, 1);
+      backpropagate(-currBestValue, parentNode, 1, false, true, true);
     }
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
