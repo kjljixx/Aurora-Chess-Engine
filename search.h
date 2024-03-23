@@ -331,7 +331,8 @@ void backpropagate(float result, Node* currNode, uint8_t visits, bool runFindBes
   currNode->updatePriority = true;
   currNode->mark = originalMark;
 
-  float oldCurrNodeValue = 2;
+  //If currNode is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currNode
+  float oldCurrNodeValue = currNode->value;
 
   if(backpropStrat == AVERAGE){
     currNode->value = (currNode->value*currNode->visits+result)/(currNode->visits+1);
@@ -340,9 +341,6 @@ void backpropagate(float result, Node* currNode, uint8_t visits, bool runFindBes
   else if(backpropStrat == MINIMAX){
     //We only need to backpropagate two types of results here: the current best child becomes worse, or there is a new best child
     if(continueBackprop){
-      //If currNode is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currNode
-      oldCurrNodeValue = 2;
-      if(currNode->parent && -currNode->value == currNode->parent->value){oldCurrNodeValue = currNode->value;}
 
       //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
       if(result <= currNode->value && !runFindBestMove && !forceResult){
@@ -355,7 +353,7 @@ void backpropagate(float result, Node* currNode, uint8_t visits, bool runFindBes
     }
     if(currNode->parent){
       Node* parent = currNode->parent;
-      bool _runFindBestMove = currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
+      bool _runFindBestMove = -oldCurrNodeValue == parent->value && currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
       backpropagate(-currNode->value, parent, visits, _runFindBestMove, continueBackprop, false, originalMark, onlyBackpropMarked);
     }
   }
