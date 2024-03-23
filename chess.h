@@ -1068,6 +1068,12 @@ struct MoveList{
 
 enum gameStatus{WIN = 1, DRAW = 0, LOSS = -1, ONGOING = 2};
 
+//Count repetitions of the given hash in the board's history
+uint8_t countRepetitions(Board& board, U64 hash = 0){
+  if(hash == 0){hash = board.history[board.halfmoveClock];} //current hash of the board
+  return std::count(&board.history[board.startHistoryIndex], &board.history[board.halfmoveClock], hash);
+}
+
 gameStatus getGameStatus(Board& board, bool isLegalMoves){
   /*if(_popCount(board.occupied)<=5){
     auto tbProbeResult = tb_probe_wdl(board.white, board.black, board.kings, board.queens, board.rooks, board.bishops, board.knights, board.pawns, board.halfmoveClock, board.castlingRights, board.enPassant ? _bitscanForward(board.enPassant) : 0, board.sideToMove==WHITE);
@@ -1087,7 +1093,7 @@ gameStatus getGameStatus(Board& board, bool isLegalMoves){
   (_popCount(board.bishops | board.knights)<=1))
   {return DRAW;}
   //Threefold Repetition
-  if(std::count(&board.history[board.startHistoryIndex], &board.history[board.halfmoveClock], board.history[board.halfmoveClock]) >= 2)
+  if(countRepetitions(board) >= 2)
   {return DRAW;}
 
   return ONGOING;

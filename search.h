@@ -14,7 +14,7 @@
 namespace search{
 
 //parameters for search
-enum backpropagationStrategy{AVERAGE, MINIMAX};
+enum backpropagationStrategy{AVERAGE, MINIMAX}; //AVERAGE no longer works
 backpropagationStrategy backpropStrat = MINIMAX;
 
 //float eP[12] = {1.6301532566281178, 0.3415019889631426, 1.462459315326555, 0.09830134955092976, 0.3670339438501686, 0.5028838849947221, 0.28917477475978387, 1.581231015213, 0.2747746463404976, 0.9214915071600298, 0.14796697203232123, 1.2260899419271722}; //exploration parameters
@@ -52,7 +52,7 @@ struct Node{
 
   //For Tree Reuse
   Node* newAddress = nullptr;
-  bool mark = false;
+  bool mark = false; //Also used in tree traversal
 
   Node(Node* parent, chess::Move edge, uint8_t depth) :
   parent(parent), visits(0), value(-2), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true) {}
@@ -311,10 +311,25 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
   }
 }
 
-void backpropagate(float result, Node* currNode, uint8_t visits, bool runFindBestMove, bool continueBackprop, bool forceResult){
+/*
+Params:
+result: the result to backpropagate
+currNode: the node from which to start the backpropagation (including the node itself)
+visits: the amount of visits to add to each node as we backpropagate
+runFindBestMove: whether or not to do a re-check of all child nodes to find the best value, or just use result (main purpose is to be utilized by the function as it does recursion)
+continueBackprop: whether or not to continue to backpropagate the result (main purpose is to be utilized by the function as it does recursion)
+forceResult: whether or not to force the currNode to take the value of result (normally, if the result is worse than the current value of the node, we will not set the value of the node to the result)
+originalMark: the 'mark' of the tree. All nodes except the nodes traversed by the search in this iteration should have node.mark = originalMark
+onlyBackpropMarked: Only backpropagate through nodes which are marked (!originalMark). If onlyBackpropMarked is false, it is assumed (and necessary) that the entire tree has a mark of originalMark
+*/
+void backpropagate(float result, Node* currNode, uint8_t visits, bool runFindBestMove, bool continueBackprop, bool forceResult, bool originalMark, bool onlyBackpropMarked){
   //Backpropagate results
 
   if(currNode == nullptr){return;}
+
+  currNode->visits+=visits;
+  currNode->updatePriority = true;
+  currNode->mark = originalMark;
 
   float oldCurrNodeValue = 2;
 
@@ -332,29 +347,18 @@ void backpropagate(float result, Node* currNode, uint8_t visits, bool runFindBes
       //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
       if(result <= currNode->value && !runFindBestMove && !forceResult){
         continueBackprop = false;
-        currNode->visits+=visits;
-        currNode->updatePriority = true;
-        currNode = currNode->parent;
-
-        backpropagate(result, currNode, visits, runFindBestMove, continueBackprop, false);
-        return;
       }
-
-      currNode->value = runFindBestMove ? -findBestValue(currNode) : result;
-
-      assert(-1<=currNode->value && 1>=currNode->value);
-
-      runFindBestMove = currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
-
-      result = -currNode->value;
+      else{
+        currNode->value = runFindBestMove ? -findBestValue(currNode) : result;
+        assert(-1<=currNode->value && 1>=currNode->value);
+      }
+    }
+    if(currNode->parent){
+      Node* parent = currNode->parent;
+      bool _runFindBestMove = currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
+      backpropagate(-currNode->value, parent, visits, _runFindBestMove, continueBackprop, false, originalMark, onlyBackpropMarked);
     }
   }
-
-  currNode->visits+=visits;
-  currNode->updatePriority = true;
-  currNode = currNode->parent;
-
-  backpropagate(result, currNode, visits, runFindBestMove, continueBackprop, false);
 }
 
 //Code relating to the time manager
@@ -401,14 +405,19 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     currNode = root;
     chess::Board board = rootBoard;
     //Traverse the search tree
+    bool originalMark = root->mark; //Used to detect when we have traversed a cycle
     while(currNode->children.size() > 0){
       Edge currEdge = selectEdge(currNode, currNode == root);
       chess::makeMove(board, currEdge.move);
+      //currNode->mark = !originalMark;
       currNode = currEdge.child;
+      // if(currNode->mark != originalMark){
+      //   break;
+      // }
     }
     //Expand & Backpropagate new values
-    if(currNode->isTerminal){
-      backpropagate(currNode->value, currNode, 1, false, true, true);
+    if(currNode->isTerminal || currNode->mark != originalMark){
+      backpropagate(currNode->value, currNode, 1, false, true, true, originalMark, true);
     }
     else{
       //Reached a leaf node
@@ -447,7 +456,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
         currBestValue = fminf(currBestValue, result);
       }
       //Backpropagate best value
-      backpropagate(-currBestValue, parentNode, 1, false, true, true);
+      backpropagate(-currBestValue, parentNode, 1, false, true, true, originalMark, true);
     }
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
