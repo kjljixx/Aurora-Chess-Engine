@@ -41,7 +41,6 @@ struct Edge{
 };
 
 struct Node{
-  Node* parent;
   std::vector<Edge> children;
   uint32_t visits;
   float value;
@@ -54,10 +53,10 @@ struct Node{
   Node* newAddress = nullptr;
   bool mark = false; //Also used in tree traversal
 
-  Node(Node* parent, chess::Move edge, uint8_t depth) :
-  parent(parent), visits(0), value(-2), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true) {}
+  Node(uint8_t depth) :
+  visits(0), value(-2), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true) {}
 
-  Node() : parent(nullptr), visits(0), value(-2), isTerminal(false), depth(0), sPriority(-1), updatePriority(true) {}
+  Node() : visits(0), value(-2), isTerminal(false), depth(0), sPriority(-1), updatePriority(true) {}
 };
 
 struct TTEntry{
@@ -145,10 +144,6 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
 
   for(Node& node : tree.tree){
     if(node.mark == marked){
-      if(node.parent){
-        assert(&node == newRoot || node.parent->mark == marked);
-        node.parent = node.parent->newAddress;
-      }
       for(int i=0; i<node.children.size(); i++){
         node.children[i].child = node.children[i].child->newAddress;
       }
@@ -205,7 +200,7 @@ void expand(Tree& tree, Node* parent, chess::Board& board, chess::MoveList& move
   Node* currNode;
 
   for(uint16_t i=0; i<moves.size(); i++){
-    tree.tree.push_back(Node(parent, moves[i], parent->depth+1));
+    tree.tree.push_back(Node(parent->depth+1));
     currNode = &tree.tree[tree.tree.size()-1];
     parent->children.push_back(Edge(currNode, moves[i]));
     U64 hash = zobrist::updateHash(board, moves[i]);
@@ -322,8 +317,9 @@ forceResult: whether or not to force the currNode to take the value of result (n
 originalMark: the 'mark' of the tree. All nodes except the nodes traversed by the search in this iteration should have node.mark = originalMark
 onlyBackpropMarked: Only backpropagate through nodes which are marked (!originalMark). If onlyBackpropMarked is false, it is assumed (and necessary) that the entire tree has a mark of originalMark
 */
-void backpropagate(float result, Node* currNode, uint8_t visits, bool runFindBestMove, bool continueBackprop, bool forceResult, bool originalMark, bool onlyBackpropMarked){
+void backpropagate(float result, std::vector<Node*>& traversePath, uint8_t visits, bool runFindBestMove, bool continueBackprop, bool forceResult, bool originalMark, bool onlyBackpropMarked){
   //Backpropagate results
+  Node* currNode = traversePath[traversePath.size()-1];
 
   if(currNode == nullptr){return;}
 
@@ -351,10 +347,11 @@ void backpropagate(float result, Node* currNode, uint8_t visits, bool runFindBes
         assert(-1<=currNode->value && 1>=currNode->value);
       }
     }
-    if(currNode->parent){
-      Node* parent = currNode->parent;
+    if(int(traversePath.size())-2 >= 0){
+      Node* parent = traversePath[traversePath.size()-2];
       bool _runFindBestMove = -oldCurrNodeValue == parent->value && currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
-      backpropagate(-currNode->value, parent, visits, _runFindBestMove, continueBackprop, false, originalMark, onlyBackpropMarked);
+      traversePath.pop_back();
+      backpropagate(-currNode->value, traversePath, visits, _runFindBestMove, continueBackprop, false, originalMark, onlyBackpropMarked);
     }
   }
 }
@@ -404,18 +401,20 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     chess::Board board = rootBoard;
     //Traverse the search tree
     bool originalMark = root->mark; //Used to detect when we have traversed a cycle
+    std::vector<Node*> traversed; traversed.push_back(currNode);
     while(currNode->children.size() > 0){
       Edge currEdge = selectEdge(currNode, currNode == root);
       chess::makeMove(board, currEdge.move);
       //currNode->mark = !originalMark;
       currNode = currEdge.child;
+      traversed.push_back(currNode);
       // if(currNode->mark != originalMark){
       //   break;
       // }
     }
     //Expand & Backpropagate new values
     if(currNode->isTerminal || currNode->mark != originalMark){
-      backpropagate(currNode->value, currNode, 1, false, true, true, originalMark, true);
+      backpropagate(currNode->value, traversed, 1, false, true, true, originalMark, true);
     }
     else{
       //Reached a leaf node
@@ -454,7 +453,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
         currBestValue = fminf(currBestValue, result);
       }
       //Backpropagate best value
-      backpropagate(-currBestValue, parentNode, 1, false, true, true, originalMark, true);
+      backpropagate(-currBestValue, traversed, 1, false, true, true, originalMark, true);
     }
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
@@ -490,7 +489,7 @@ void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, No
 
   root = moveRootToChild(tree, newRoot, root);
 
-  root->parent = nullptr; root->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
+  root->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
 
   chess::makeMove(rootBoard, move);
 }
