@@ -21,7 +21,7 @@ g++ aurora.cpp -o aurora -O3
 You should now have a file named ```aurora.exe```, which is the engine. Now go to your GUI and find instructions for adding engines. When the GUI prompts you to choose a file/engine, choose ```aurora.exe```.
 
 # Technical Details
-Aurora uses a UCT (Upper Confidence Bounds applied to Trees) search with a NNUE (Efficiently Updatable Neural Network)
+Aurora uses a UCT (Upper Confidence Bounds applied to Trees) search with an NNUE (Efficiently Updatable Neural Network)
 
 ## Search
 Here are some details about the search:
