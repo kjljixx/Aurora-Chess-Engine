@@ -11,7 +11,7 @@ See [Playing Strength Testing](https://github.com/kjljixx/Aurora-Chess-Engine/wi
 
 ## Usage
 
-To use Aurora, simply download a binary from the [latest release](https://github.com/kjljixx/Aurora-Chess-Engine/releases), for example on Windows you would download ```aurora-x-windows-2022.exe```, where x is the version of the latest release. Go to a chess GUI of your choice, and find instructions for adding engines, and add this binary.
+To use Aurora, simply download a binary from the [latest release](https://github.com/kjljixx/Aurora-Chess-Engine/releases), for example on Windows you would download ```aurora-x-windows.exe```, where x is the version of the latest release. Go to a chess GUI of your choice, and find instructions for adding engines, and add this binary.
 
 If you want to build Aurora from the source code, download the source code, navigate to the directory, and build ```aurora.cpp```. For example, if you use g++, run the following command (with any compiler flags you want in addition) in the directory of the source code:
 ```shell
