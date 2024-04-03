@@ -190,7 +190,7 @@ extern "C" {
 const NNUEparameters* _NNUEparameters = reinterpret_cast<const NNUEparameters *>(gnetworkDataData);
 
 struct NNUE{
-  std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> accumulator = {{0}};
+  std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> accumulator = {{}};
 
   int evaluate(chess::Colors sideToMove){
     //Adapted from Obsidian https://github.com/gab8192/Obsidian/blob/main/Obsidian/nnue.cpp

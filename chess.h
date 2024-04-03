@@ -1074,7 +1074,7 @@ uint8_t countRepetitions(Board& board, U64 hash = 0){
   return std::count(&board.history[board.startHistoryIndex], &board.history[board.halfmoveClock], hash);
 }
 
-gameStatus getGameStatus(Board& board, bool isLegalMoves){
+gameStatus getGameStatus(Board& board, bool isLegalMoves, bool detectReps){
   /*if(_popCount(board.occupied)<=5){
     auto tbProbeResult = tb_probe_wdl(board.white, board.black, board.kings, board.queens, board.rooks, board.bishops, board.knights, board.pawns, board.halfmoveClock, board.castlingRights, board.enPassant ? _bitscanForward(board.enPassant) : 0, board.sideToMove==WHITE);
     if(tbProbeResult==TB_RESULT_FAILED){board.printBoard(); assert(0);}
@@ -1093,7 +1093,7 @@ gameStatus getGameStatus(Board& board, bool isLegalMoves){
   (_popCount(board.bishops | board.knights)<=1))
   {return DRAW;}
   //Threefold Repetition
-  if(countRepetitions(board) >= 2)
+  if(detectReps && countRepetitions(board) >= 2)
   {return DRAW;}
 
   return ONGOING;
