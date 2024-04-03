@@ -11,7 +11,7 @@ See [Playing Strength Testing](https://github.com/kjljixx/Aurora-Chess-Engine/wi
 
 ## Usage
 
-To use Aurora, simply download a binary from the [latest release](https://github.com/kjljixx/Aurora-Chess-Engine/releases), for example on Windows you would download ```aurora-x-windows-2022.exe```, where x is the version of the latest release. Go to a chess GUI of your choice, and find instructions for adding engines, and add this binary.
+To use Aurora, simply download a binary from the [latest release](https://github.com/kjljixx/Aurora-Chess-Engine/releases), for example on Windows you would download ```aurora-x-windows.exe```, where x is the version of the latest release. Go to a chess GUI of your choice, and find instructions for adding engines, and add this binary.
 
 If you want to build Aurora from the source code, download the source code, navigate to the directory, and build ```aurora.cpp```. For example, if you use g++, run the following command (with any compiler flags you want in addition) in the directory of the source code:
 ```shell
@@ -21,7 +21,7 @@ g++ aurora.cpp -o aurora -O3
 You should now have a file named ```aurora.exe```, which is the engine. Now go to your GUI and find instructions for adding engines. When the GUI prompts you to choose a file/engine, choose ```aurora.exe```.
 
 # Technical Details
-Aurora uses a UCT (Upper Confidence Bounds applied to Trees) search with a NNUE (Efficiently Updatable Neural Network)
+Aurora uses a UCT (Upper Confidence Bounds applied to Trees) search with an NNUE (Efficiently Updatable Neural Network)
 
 ## Search
 Here are some details about the search:
