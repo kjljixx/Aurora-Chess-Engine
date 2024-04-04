@@ -251,7 +251,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
   Node* currNode = root;
 
   if(Aurora::options["outputLevel"].value==3){
-    std::cout << "\nNODES: " << root->visits;
+    std::cout << "NODES: " << root->visits;
     #if DATAGEN == 0
     std::cout << " SELDEPTH: " << seldepth-root->depth <<"\n";
     #endif
@@ -263,7 +263,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
       pvNode = findBestChild(pvNode);
       std::cout << pvNode->edge.toStringRep() << " ";
     }
-    std::cout << "\n";
+    std::cout << std::endl;
     currNode = currNode->nextSibling;
     }
   }
@@ -271,7 +271,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
   if(Aurora::options["outputLevel"].value >= 2 || (finalResult && Aurora::options["outputLevel"].value >= 1)){
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
-    std::cout << "\ninfo ";
+    std::cout << "info ";
       #if DATAGEN == 0
       std::cout << "depth " << seldepth-root->depth;
       #endif
@@ -285,6 +285,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
       currNode = findBestChild(currNode);
       std::cout << currNode->edge.toStringRep() << " ";
     }
+    std::cout << std::endl;
 
     previousVisits = root->visits; previousElapsed = elapsed.count();
   }
@@ -371,7 +372,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
 
   if(chess::getGameStatus(rootBoard, chess::isLegalMoves(rootBoard)) != chess::ONGOING){
     #if DATAGEN != 1
-      std::cout << "bestmove a1a1\n";
+      std::cout << "bestmove a1a1" << std::endl;
     #endif
     return root;
   }
@@ -430,7 +431,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
   //Output the final result of the search
   #if DATAGEN != 1
     printSearchInfo(root, start, true);
-    std::cout << "\nbestmove " << findBestChild(root)->edge.toStringRep() << "\n";
+    std::cout << "\nbestmove " << findBestChild(root)->edge.toStringRep() << std::endl;
   #endif
 
   return root;
