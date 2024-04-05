@@ -208,10 +208,10 @@ void expand(Tree& tree, Node* parent, chess::Board& board, chess::MoveList& move
     tree.tree.push_back(Node(parent, moves[i], parent->depth+1));
     currNode = &tree.tree[tree.tree.size()-1];
     parent->children.push_back(Edge(currNode, moves[i]));
-    U64 hash = zobrist::updateHash(board, moves[i]);
-    if(tree.tt.getEntry(hash).hash == 0){
-      tree.tt.storeEntry(TTEntry(currNode, hash));
-    }
+    // U64 hash = zobrist::updateHash(board, moves[i]);
+    // if(tree.tt.getEntry(hash).hash == 0){
+    //   tree.tt.storeEntry(TTEntry(currNode, hash));
+    // }
     currNode->mark = parent->mark;
   }
 
@@ -225,7 +225,7 @@ float playout(chess::Board& board, Node* currNode, evaluation::NNUE& nnue){
   assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){
     currNode->isTerminal = true;
-    if(_gameStatus == chess::LOSS){return _gameStatus+0.00000001*currNode->depth;}
+    if(_gameStatus == chess::LOSS){return double(_gameStatus)+0.00000001*currNode->depth;}
     return _gameStatus;
   }
 
@@ -319,17 +319,14 @@ visits: the amount of visits to add to each node as we backpropagate
 runFindBestMove: whether or not to do a re-check of all child nodes to find the best value, or just use result (main purpose is to be utilized by the function as it does recursion)
 continueBackprop: whether or not to continue to backpropagate the result (main purpose is to be utilized by the function as it does recursion)
 forceResult: whether or not to force the currNode to take the value of result (normally, if the result is worse than the current value of the node, we will not set the value of the node to the result)
-originalMark: the 'mark' of the tree. All nodes except the nodes traversed by the search in this iteration should have node.mark = originalMark
-onlyBackpropMarked: Only backpropagate through nodes which are marked (!originalMark). If onlyBackpropMarked is false, it is assumed (and necessary) that the entire tree has a mark of originalMark
 */
-void backpropagate(float result, Node* currNode, uint8_t visits, bool runFindBestMove, bool continueBackprop, bool forceResult, bool originalMark, bool onlyBackpropMarked){
+void backpropagate(float result, Node* currNode, uint8_t visits, bool runFindBestMove, bool continueBackprop, bool forceResult){
   //Backpropagate results
 
   if(currNode == nullptr){return;}
 
   currNode->visits+=visits;
   currNode->updatePriority = true;
-  currNode->mark = originalMark;
 
   //If currNode is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currNode
   float oldCurrNodeValue = currNode->value;
@@ -354,7 +351,7 @@ void backpropagate(float result, Node* currNode, uint8_t visits, bool runFindBes
     if(currNode->parent){
       Node* parent = currNode->parent;
       bool _runFindBestMove = -oldCurrNodeValue == parent->value && currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
-      backpropagate(-currNode->value, parent, visits, _runFindBestMove, continueBackprop, false, originalMark, onlyBackpropMarked);
+      backpropagate(-currNode->value, parent, visits, _runFindBestMove, continueBackprop, false);
     }
   }
 }
@@ -402,60 +399,56 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
   while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (root->visits<tm.limit && tm.tmType == NODES)){
     currNode = root;
     chess::Board board = rootBoard;
+
     //Traverse the search tree
     bool originalMark = root->mark; //Used to detect when we have traversed a cycle
     while(currNode->children.size() > 0){
       Edge currEdge = selectEdge(currNode, currNode == root);
       chess::makeMove(board, currEdge.move);
-      //currNode->mark = !originalMark;
       currNode = currEdge.child;
-      // if(currNode->mark != originalMark){
-      //   break;
-      // }
     }
+
     //Expand & Backpropagate new values
-    if(currNode->isTerminal || currNode->mark != originalMark){
-      backpropagate(currNode->value, currNode, 1, false, true, true, originalMark, true);
+    if(currNode->isTerminal){
+      backpropagate(currNode->value, currNode, 1, false, true, true);
     }
-    else{
-      //Reached a leaf node
+    else{//Reached a leaf node
+      //Create new child nodes
       chess::MoveList moves(board);
       if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currNode->value>=-1); currNode->isTerminal=true; continue;}
-      expand(tree, currNode, board, moves); //Create new child nodes
+      expand(tree, currNode, board, moves);
+
       //Simulate for all new nodes
       Node* parentNode = currNode; //This will be the root of the backpropagation
+
       float currBestValue = 2; //Find and only backpropagate the best value we end up finding
+
       nnue.refreshAccumulator(board);
       std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> currAccumulator = nnue.accumulator;
+
       for(int i=0; i<parentNode->children.size(); i++){
         Edge currEdge = parentNode->children[i];
         currNode = currEdge.child;
 
-        U64 hash = zobrist::updateHash(board, currEdge.move);
-        TTEntry entry = tree.tt.getEntry(hash);
+        chess::Board movedBoard = board;
+        nnue.accumulator = currAccumulator;
 
+        nnue.updateAccumulator(movedBoard, currEdge.move);
         float result;
-        if(entry.hash != hash || entry.node == currNode){
-          chess::Board movedBoard = board;
-          nnue.accumulator = currAccumulator;
-
-          nnue.updateAccumulator(movedBoard, currEdge.move);
-          result = playout(movedBoard, currNode, nnue);
-        }
-        else{
-          result = entry.node->value;
-        }
-        //std::cout << "\nRESULT: " << result;
+        result = playout(movedBoard, currNode, nnue);
         assert(-1<=result && 1>=result);
+
         currNode->value = result;
         currNode->visits = 1;
         currNode->updatePriority = true;
 
         currBestValue = fminf(currBestValue, result);
       }
+
       //Backpropagate best value
-      backpropagate(-currBestValue, parentNode, 1, false, true, true, originalMark, true);
+      backpropagate(-currBestValue, parentNode, 1, false, true, true);
     }
+
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
     #if DATAGEN != 1
@@ -465,6 +458,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
       }
     #endif
   }
+  
   //Output the final result of the search
   #if DATAGEN != 1
     printSearchInfo(root, start, true);

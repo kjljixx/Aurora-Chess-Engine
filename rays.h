@@ -9,7 +9,7 @@ enum Direction{NORTH, SOUTH, EAST, WEST, NORTHWEST, NORTHEAST, SOUTHWEST, SOUTHE
 //this file is basically completely copied from https://github.com/GunshipPenguin/shallow-blue/blob/master/src/rays.cc
 namespace rays{
 
-U64 rays[8][64] = {0};
+U64 rays[8][64] = {{0}};
 
 inline U64 _eastN(U64 board, int n) {
   U64 newBoard = board;
