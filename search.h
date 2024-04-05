@@ -319,10 +319,8 @@ visits: the amount of visits to add to each node as we backpropagate
 runFindBestMove: whether or not to do a re-check of all child nodes to find the best value, or just use result (main purpose is to be utilized by the function as it does recursion)
 continueBackprop: whether or not to continue to backpropagate the result (main purpose is to be utilized by the function as it does recursion)
 forceResult: whether or not to force the currNode to take the value of result (normally, if the result is worse than the current value of the node, we will not set the value of the node to the result)
-originalMark: the 'mark' of the tree. All nodes except the nodes traversed by the search in this iteration should have node.mark = originalMark
-onlyBackpropMarked: Only backpropagate through nodes which are marked (!originalMark). If onlyBackpropMarked is false, it is assumed (and necessary) that the entire tree has a mark of originalMark
 */
-void backpropagate(float result, std::vector<Node*>& traversePath, uint8_t visits, bool runFindBestMove, bool continueBackprop, bool forceResult, bool originalMark, bool onlyBackpropMarked){
+void backpropagate(float result, std::vector<Node*>& traversePath, uint8_t visits, bool runFindBestMove, bool continueBackprop, bool forceResult){
   //Backpropagate results
   Node* currNode = traversePath[traversePath.size()-1];
 
@@ -330,7 +328,6 @@ void backpropagate(float result, std::vector<Node*>& traversePath, uint8_t visit
 
   currNode->visits+=visits;
   currNode->updatePriority = true;
-  currNode->mark = originalMark;
 
   //If currNode is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currNode
   float oldCurrNodeValue = currNode->value;
@@ -342,7 +339,6 @@ void backpropagate(float result, std::vector<Node*>& traversePath, uint8_t visit
   else if(backpropStrat == MINIMAX){
     //We only need to backpropagate two types of results here: the current best child becomes worse, or there is a new best child
     if(continueBackprop){
-
       //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
       if(result <= currNode->value && !runFindBestMove && !forceResult){
         continueBackprop = false;
@@ -352,12 +348,13 @@ void backpropagate(float result, std::vector<Node*>& traversePath, uint8_t visit
         assert(-1<=currNode->value && 1>=currNode->value);
       }
     }
-    if(int(traversePath.size())-2 >= 0){
-      Node* parent = traversePath[traversePath.size()-2];
-      bool _runFindBestMove = -oldCurrNodeValue == parent->value && currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
-      traversePath.pop_back();
-      backpropagate(-currNode->value, traversePath, visits, _runFindBestMove, continueBackprop, false, originalMark, onlyBackpropMarked);
-    }
+  }
+  
+  if(int(traversePath.size())-2 >= 0){
+    Node* parent = traversePath[traversePath.size()-2];
+    bool _runFindBestMove = -oldCurrNodeValue == parent->value && currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
+    traversePath.pop_back();
+    backpropagate(-currNode->value, traversePath, visits, _runFindBestMove, continueBackprop, false, originalMark, onlyBackpropMarked);
   }
 }
 
@@ -416,13 +413,13 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
       traversed.push_back(currNode);
     }
     //Expand & Backpropagate new values
-    if(currNode->isTerminal || currNode->mark != originalMark){
+    if(currNode->isTerminal){
       backpropagate(currNode->value, traversed, 1, false, true, true, originalMark, true);
     }
     else{
       //Reached a leaf node
       chess::MoveList moves(board);
-      if(chess::getGameStatus(board, moves.size()!=0, true) != chess::ONGOING){assert(currNode->value>=-1); currNode->isTerminal=true; continue;}
+
       //Create new child nodes
       expand(tree, currNode, board, moves, originalMark);
       
