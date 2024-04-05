@@ -217,7 +217,7 @@ void expand(Tree& tree, Node* parent, chess::Board& board, chess::MoveList& move
 }
 
 float playout(chess::Board& board, Node* currNode, evaluation::NNUE& nnue){
-  chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board), false);
+  chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board), true);
   assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){
     currNode->isTerminal = true;
@@ -429,8 +429,8 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     else{
       //Reached a leaf node
       chess::MoveList moves(board);
-      if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currNode->value>=-1); currNode->isTerminal=true; continue;}
-      expand(tree, currNode, board, moves); //Create new child nodes
+      if(chess::getGameStatus(board, moves.size()!=0, true) != chess::ONGOING){assert(currNode->value>=-1); currNode->isTerminal=true; continue;}
+      expand(tree, currNode, board, moves, originalMark); //Create new child nodes
       //Simulate for all new nodes
       Node* parentNode = currNode; //This will be the root of the backpropagation
       float currBestValue = 2; //Find and only backpropagate the best value we end up finding
