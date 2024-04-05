@@ -354,7 +354,7 @@ void backpropagate(float result, std::vector<Node*>& traversePath, uint8_t visit
     Node* parent = traversePath[traversePath.size()-2];
     bool _runFindBestMove = -oldCurrNodeValue == parent->value && currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
     traversePath.pop_back();
-    backpropagate(-currNode->value, traversePath, visits, _runFindBestMove, continueBackprop, false, originalMark, onlyBackpropMarked);
+    backpropagate(-currNode->value, traversePath, visits, _runFindBestMove, continueBackprop, false);
   }
 }
 
@@ -414,7 +414,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     }
     //Expand & Backpropagate new values
     if(currNode->isTerminal){
-      backpropagate(currNode->value, traversed, 1, false, true, true, originalMark, true);
+      backpropagate(currNode->value, traversed, 1, false, true, true);
     }
     else{
       //Reached a leaf node
@@ -459,7 +459,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
         currBestValue = fminf(currBestValue, result);
       }
       //Backpropagate best value
-      backpropagate(-currBestValue, traversed, 1, false, true, true, originalMark, true);
+      backpropagate(-currBestValue, traversed, 1, false, true, true);
     }
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
