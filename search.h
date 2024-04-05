@@ -17,8 +17,6 @@ namespace search{
 enum backpropagationStrategy{AVERAGE, MINIMAX}; //AVERAGE no longer works
 backpropagationStrategy backpropStrat = MINIMAX;
 
-//float eP[12] = {1.6301532566281178, 0.3415019889631426, 1.462459315326555, 0.09830134955092976, 0.3670339438501686, 0.5028838849947221, 0.28917477475978387, 1.581231015213, 0.2747746463404976, 0.9214915071600298, 0.14796697203232123, 1.2260899419271722}; //exploration parameters
-
 void init(){
   Aurora::initOptions();
   evaluation::init();
@@ -117,13 +115,11 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
   uint64_t markedNodes = markSubtree(newRoot);
   bool marked = newRoot->mark;
 
-  //std::cout << "\n" << currRoot << ":" << currRoot->mark << " " << newRoot << ":" << newRoot->mark << " | ";
-
   uint64_t freePointer = 0;
 
   for(uint32_t i=0; i<tree.tree.size(); i++){
     Node* livePointer = &tree.tree[i];
-    //std::cout << livePointer << ":" << livePointer->mark << " ";
+
     if(livePointer->mark == marked){
       livePointer->newAddress = &tree.tree[freePointer];
       freePointer++;
@@ -131,7 +127,6 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
   }
 
   Node* newRootNewAddress = newRoot->newAddress;
-  //std::cout << " | " << newRootNewAddress << " ";
 
   for(Node& node : tree.tree){
     if(node.mark == marked){
@@ -165,11 +160,6 @@ Edge selectEdge(Node* parent, bool isRoot){
 
   const float parentVisitsTerm = (isRoot ? Aurora::options["rootExplorationFactor"].value : Aurora::options["explorationFactor"].value)*std::sqrt(std::log(parent->visits));
 
-  //const float parentVisitsTerm = eP[5]*powl(eP[2]*logl(eP[0]*parent->visits+eP[1])+eP[3], eP[4])+eP[6];
-
-  // while(currNode != nullptr){
-  //   if(true){
-  //     currNode->sPriority = -currNode->value+parentVisitsTerm/(eP[11]*powl(eP[7]*currNode->visits+eP[8], eP[9])+eP[10]);
   for(int i=0; i<parent->children.size(); i++){
     Node* currNode = parent->children[i].child;
 
@@ -212,8 +202,6 @@ float playout(chess::Board& board, Node* currNode, evaluation::NNUE& nnue){
     if(_gameStatus == chess::LOSS){return float(_gameStatus);}
     return _gameStatus;
   }
-
-  //std::cout << evaluation::evaluate(board, nnue) << " ";
 
   float eval = std::max(std::min(std::atan(evaluation::evaluate(board, nnue)*Aurora::options["evalScaleFactor"].value/100.0)/1.57079633, 1.0),-1.0)*0.999999;
   assert(-1<=eval && 1>=eval);
