@@ -114,8 +114,7 @@ uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked = true
     node->mark = !unmarked;
     markedNodes++;
     for(Edge edge : node->children){
-      if(edge.child->mark == unmarked){markedNodes += markSubtree(edge.child, false, unmarked);}
-      assert(edge.child->mark == !unmarked);
+      markedNodes += markSubtree(edge.child, false, unmarked);
     }
   }
   return markedNodes;
@@ -157,7 +156,6 @@ Node* moveRootToChild(Tree& tree, Node* newRoot){
     if(livePointer->mark == marked){
       *(livePointer->newAddress) = *livePointer;
       assert(tree.tree[i].value == tree.tree[i].newAddress->value);
-      assert(tree.tree[i].children.size() == tree.tree[i].newAddress->children.size());
     }
     livePointer++;
   }
@@ -203,22 +201,11 @@ void expand(Tree& tree, Node* parent, chess::Board& board, chess::MoveList& move
   Node* currNode;
 
   for(uint16_t i=0; i<moves.size(); i++){
-    U64 hash = zobrist::updateHash(board, moves[i]);
-    std::cout << hash;
-    TTEntry entry = tree.tt.getEntry(hash);
-
-    if(entry.hash == hash){
-      std::cout << "hit";
-      currNode = entry.node;
-    }
-    else{
-      tree.tree.push_back(Node(parent->depth+1));
-      currNode = &tree.tree[tree.tree.size()-1];
-    }
-
+    tree.tree.push_back(Node(parent->depth+1));
+    currNode = &tree.tree[tree.tree.size()-1];
     parent->children.push_back(Edge(currNode, moves[i]));
-
-    if(entry.hash == 0){
+    U64 hash = zobrist::updateHash(board, moves[i]);
+    if(tree.tt.getEntry(hash).hash == 0){
       tree.tt.storeEntry(TTEntry(currNode, hash));
     }
     currNode->mark = originalMark;
@@ -362,21 +349,17 @@ void backpropagate(float result, std::vector<Node*>& traversePath, uint8_t visit
     if(continueBackprop){
 
       //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
-      // if(result <= currNode->value && !runFindBestMove && !forceResult){
-      //   continueBackprop = false;
-      // }
-      if(false){
-
+      if(result <= currNode->value && !runFindBestMove && !forceResult){
+        continueBackprop = false;
       }
       else{
-        currNode->value = (runFindBestMove && !forceResult) ? -findBestValue(currNode) : result;
+        currNode->value = runFindBestMove ? -findBestValue(currNode) : result;
         assert(-1<=currNode->value && 1>=currNode->value);
       }
     }
     if(int(traversePath.size())-2 >= 0){
       Node* parent = traversePath[traversePath.size()-2];
       bool _runFindBestMove = -oldCurrNodeValue == parent->value && currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
-      _runFindBestMove = true;
       traversePath.pop_back();
       backpropagate(-currNode->value, traversePath, visits, _runFindBestMove, continueBackprop, false, originalMark, onlyBackpropMarked);
     }
@@ -422,6 +405,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     #endif
     return root;
   }
+
   while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (root->visits<tm.limit && tm.tmType == NODES)){
     currNode = root;
     chess::Board board = rootBoard;
@@ -431,24 +415,22 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     while(currNode->children.size() > 0){
       Edge currEdge = selectEdge(currNode, currNode == root);
       chess::makeMove(board, currEdge.move);
-      currNode->mark = !originalMark;
+      //currNode->mark = !originalMark;
       currNode = currEdge.child;
       traversed.push_back(currNode);
-      if(currNode->mark != originalMark){
-        break;
-      }
+      // if(currNode->mark != originalMark){
+      //   break;
+      // }
     }
     //Expand & Backpropagate new values
-    chess::MoveList moves(board);
-    if(currNode->isTerminal || chess::getGameStatus(board, moves.size()!=0, false) != chess::ONGOING){
+    if(currNode->isTerminal || currNode->mark != originalMark){
       backpropagate(currNode->value, traversed, 1, false, true, true, originalMark, true);
-    }
-    else if(currNode->mark != originalMark){
-      backpropagate(0, traversed, 1, false, true, true, originalMark, true);
     }
     else{
       //Reached a leaf node
-      expand(tree, currNode, board, moves, originalMark); //Create new child nodes
+      chess::MoveList moves(board);
+      if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currNode->value>=-1); currNode->isTerminal=true; continue;}
+      expand(tree, currNode, board, moves); //Create new child nodes
       //Simulate for all new nodes
       Node* parentNode = currNode; //This will be the root of the backpropagation
       float currBestValue = 2; //Find and only backpropagate the best value we end up finding
@@ -458,22 +440,25 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
         Edge currEdge = parentNode->children[i];
         currNode = currEdge.child;
 
+        U64 hash = zobrist::updateHash(board, currEdge.move);
+        TTEntry entry = tree.tt.getEntry(hash);
+
         float result;
-        if(currNode->visits == 0){
+        if(entry.hash != hash || entry.node == currNode){
           chess::Board movedBoard = board;
           nnue.accumulator = currAccumulator;
 
           nnue.updateAccumulator(movedBoard, currEdge.move);
           result = playout(movedBoard, currNode, nnue);
-          currNode->value = result;
-          currNode->visits = 1;
-          currNode->updatePriority = true;
         }
         else{
-          result = currNode->value;
+          result = entry.node->value;
         }
         //std::cout << "\nRESULT: " << result;
         assert(-1<=result && 1>=result);
+        currNode->value = result;
+        currNode->visits = 1;
+        currNode->updatePriority = true;
 
         currBestValue = fminf(currBestValue, result);
       }

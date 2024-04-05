@@ -6,7 +6,7 @@
 //See https://backscattering.de/chess/uci/ for information on the Universal Chess Interface, which this file implements
 namespace uci{
 
-search::Node* root = nullptr;
+search::Node* root;
 chess::Board rootBoard;
 search::Tree tree;
 
@@ -69,8 +69,7 @@ std::string benchFens[AMOUNT_OF_FENS] = { //From Alexandria
 
 //The "position" command
 chess::Board position(std::istringstream input){
-  search::destroyTree(tree); root = nullptr;
-  //tree.tt.init(search::TT_DEFAULT_SIZE);
+  tree.tt.init(search::TT_DEFAULT_SIZE);
 
   std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   std::string token;
@@ -264,7 +263,6 @@ chess::Move getMoveFromString(chess::Board &board, std::string token){
 
 //The main UCI loop which detects input and runs other functions based on it
 void loop(chess::Board board){
-  search::destroyTree(tree);
 
   std::string token;
 
@@ -277,13 +275,7 @@ void loop(chess::Board board){
     if(token == "position"){std::getline(std::cin, token); board = position(std::istringstream(token));}
     if(token == "go"){std::getline(std::cin, token); go(std::istringstream(token), board);}
     if(token == "quit"){break;}
-    if(token == "ucinewgame"){
-      search::destroyTree(tree);
-      root = nullptr;
-      for(int i=0; i<(search::TT_DEFAULT_SIZE); i++){
-        assert(tree.tt.tt[i].hash == 0);
-      }
-    }
+    if(token == "ucinewgame"){search::destroyTree(tree); root = nullptr;}
     //non-uci, custom commands
     if(token == "moves"){std::getline(std::cin, token); board = makeMoves(board, std::istringstream(token));}
     //bwlow are mostly for debugging purposes
