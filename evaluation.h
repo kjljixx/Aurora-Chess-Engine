@@ -264,7 +264,7 @@ struct NNUE{
     }
   }
 
-  void updateAccumulator(chess::Board& board, chess::Move move){
+  void updateAccumulatorAndMakeMove(chess::Board& board, chess::Move move){
     U64 newHash;
     if(board.hashed){
       newHash = zobrist::updateHash(board, move);
@@ -568,7 +568,7 @@ int qSearch(chess::Board& board, NNUE& nnue, int alpha, int beta){
 
     chess::Board movedBoard = board;
     nnue.accumulator = currAccumulator;
-    nnue.updateAccumulator(movedBoard, moves[i]);
+    nnue.updateAccumulatorAndMakeMove(movedBoard, moves[i]);
 
     eval = -qSearch(movedBoard, nnue, -beta, -alpha);
     

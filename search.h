@@ -405,7 +405,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
         chess::Board movedBoard = board;
         nnue.accumulator = currAccumulator;
 
-        nnue.updateAccumulator(movedBoard, currEdge.move);
+        nnue.updateAccumulatorAndMakeMove(movedBoard, currEdge.move);
         float result;
         result = playout(movedBoard, currNode, nnue);
         assert(-1<=result && 1>=result);
