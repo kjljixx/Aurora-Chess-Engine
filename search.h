@@ -47,27 +47,6 @@ struct Node{
   Node() : visits(0), value(-2), isTerminal(false) {}
 };
 
-struct Test{
-  std::vector<Edge> children;
-  uint32_t info;
-  float value;
-  // bool isTerminal;
-
-  //For Tree Reuse
-  Test* newAddress = nullptr;
-  // bool mark = false; //Also used in tree traversal
-
-  bool mark(){
-    return info & 2;
-  }
-  bool isTerminal(){
-    return info & 1;
-  }
-  uint32_t visits(){
-    return info >> 2;
-  }
-};
-
 struct TTEntry{
   Node* node;
   U64 hash;
