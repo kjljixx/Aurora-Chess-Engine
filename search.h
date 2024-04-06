@@ -35,7 +35,6 @@ struct Edge{
 };
 
 struct Node{
-  Node* parent;
   std::vector<Edge> children;
   uint32_t visits;
   float value;
@@ -45,7 +44,28 @@ struct Node{
   Node* newAddress = nullptr;
   bool mark = false; //Also used in tree traversal
 
-  Node() : parent(nullptr), visits(0), value(-2), isTerminal(false) {}
+  Node() : visits(0), value(-2), isTerminal(false) {}
+};
+
+struct Test{
+  std::vector<Edge> children;
+  uint32_t info;
+  float value;
+  // bool isTerminal;
+
+  //For Tree Reuse
+  Test* newAddress = nullptr;
+  // bool mark = false; //Also used in tree traversal
+
+  bool mark(){
+    return info & 2;
+  }
+  bool isTerminal(){
+    return info & 1;
+  }
+  uint32_t visits(){
+    return info >> 2;
+  }
 };
 
 struct TTEntry{
@@ -130,10 +150,6 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
 
   for(Node& node : tree.tree){
     if(node.mark == marked){
-      if(node.parent){
-        assert(&node == newRoot || node.parent->mark == marked);
-        node.parent = node.parent->newAddress;
-      }
       for(int i=0; i<node.children.size(); i++){
         node.children[i].child = node.children[i].child->newAddress;
       }
@@ -183,8 +199,7 @@ void expand(Tree& tree, Node* parent, chess::Board& board, chess::MoveList& move
 
   for(uint16_t i=0; i<moves.size(); i++){
     tree.tree.push_back(Node());
-    currNode = &tree.tree[tree.tree.size()-1];
-    currNode->parent = parent;
+    currNode = &tree.tree.back();
     parent->children.push_back(Edge(currNode, moves[i]));
     // U64 hash = zobrist::updateHash(board, moves[i]);
     // if(tree.tt.getEntry(hash).hash == 0){
@@ -280,14 +295,15 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
 /*
 Params:
 result: the result to backpropagate
-currNode: the node from which to start the backpropagation (including the node itself)
+traversePath: the path to backpropagate on
 visits: the amount of visits to add to each node as we backpropagate
 runFindBestMove: whether or not to do a re-check of all child nodes to find the best value, or just use result (main purpose is to be utilized by the function as it does recursion)
 continueBackprop: whether or not to continue to backpropagate the result (main purpose is to be utilized by the function as it does recursion)
 forceResult: whether or not to force the currNode to take the value of result (normally, if the result is worse than the current value of the node, we will not set the value of the node to the result)
 */
-void backpropagate(float result, Node* currNode, uint8_t visits, bool runFindBestMove, bool continueBackprop, bool forceResult){
+void backpropagate(float result, std::vector<Node*>& traversePath, uint8_t visits, bool runFindBestMove, bool continueBackprop, bool forceResult){
   //Backpropagate results
+  Node* currNode = traversePath.back(); traversePath.pop_back();
 
   if(currNode == nullptr){return;}
 
@@ -313,10 +329,10 @@ void backpropagate(float result, Node* currNode, uint8_t visits, bool runFindBes
         assert(-1<=currNode->value && 1>=currNode->value);
       }
     }
-    if(currNode->parent){
-      Node* parent = currNode->parent;
+    if(std::ssize(traversePath) > 0){
+      Node* parent = traversePath.back();
       bool _runFindBestMove = -oldCurrNodeValue == parent->value && currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
-      backpropagate(-currNode->value, parent, visits, _runFindBestMove, continueBackprop, false);
+      backpropagate(-currNode->value, traversePath, visits, _runFindBestMove, continueBackprop, false);
     }
   }
 }
@@ -339,7 +355,7 @@ struct timeManagement{
 Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree){
   auto start = std::chrono::steady_clock::now();
 
-  if(!root){tree.tree.push_back(Node()); root = &tree.tree[tree.tree.size()-1];}
+  if(!root){tree.tree.push_back(Node()); root = &tree.tree.back();}
 
   evaluation::NNUE nnue;
 
@@ -362,15 +378,20 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     chess::Board board = rootBoard;
 
     //Traverse the search tree
+    std::vector<Node*> traversePath;
+    traversePath.push_back(currNode);
     while(currNode->children.size() > 0){
       Edge currEdge = selectEdge(currNode, currNode == root);
+
       chess::makeMove(board, currEdge.move);
+
       currNode = currEdge.child;
+      traversePath.push_back(currNode);
     }
 
     //Expand & Backpropagate new values
     if(currNode->isTerminal){
-      backpropagate(currNode->value, currNode, 1, false, true, true);
+      backpropagate(currNode->value, traversePath, 1, false, true, true);
     }
     else{//Reached a leaf node
       //Create new child nodes
@@ -405,7 +426,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
       }
 
       //Backpropagate best value
-      backpropagate(-currBestValue, parentNode, 1, false, true, true);
+      backpropagate(-currBestValue, traversePath, 1, false, true, true);
     }
 
     //Output some information on the search occasionally
@@ -443,7 +464,7 @@ void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, No
 
   root = moveRootToChild(tree, newRoot, root);
 
-  root->parent = nullptr; root->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
+  root->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
 
   chess::makeMove(rootBoard, move);
 }
