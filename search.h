@@ -82,17 +82,8 @@ struct Tree{
   std::deque<Node> tree;
   TT tt;
 
-  Node* DRAW_NODE;
-  Node* LOSS_NODE;
-
   Tree(){
     tt.init(TT_DEFAULT_SIZE);
-
-    DRAW_NODE = new Node();            LOSS_NODE = new Node();
-    DRAW_NODE->value = 0;              LOSS_NODE->value = -1;
-    DRAW_NODE->visits = UINT32_MAX;    LOSS_NODE->visits = UINT32_MAX;
-    DRAW_NODE->isTerminal = true;      LOSS_NODE->isTerminal = true;
-    DRAW_NODE->newAddress = DRAW_NODE; LOSS_NODE->newAddress = LOSS_NODE;
   }
 };
 
@@ -108,11 +99,11 @@ uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked = true
     unmarked = node->mark;
   }
   if(node){
+    for(Edge edge : node->children){
+      markedNodes += markSubtree(edge.child, false, unmarked);
+    }
     node->mark = !unmarked;
     markedNodes++;
-    for(Edge edge : node->children){
-      if(edge.child->isTerminal == false){markedNodes += markSubtree(edge.child, false, unmarked);}
-    }
   }
   return markedNodes;
 }
@@ -186,31 +177,26 @@ void expand(Tree& tree, Node* parent, chess::Board& board, chess::MoveList& move
   Node* currNode;
 
   for(uint16_t i=0; i<moves.size(); i++){
-    chess::Board movedBoard = board;
-    chess::makeMove(movedBoard, moves[i]);
-    chess::gameStatus gameStatus = chess::getGameStatus(movedBoard, chess::isLegalMoves(movedBoard));
-
-    if(gameStatus == chess::LOSS){
-      currNode = tree.LOSS_NODE;
-    }
-    else if(gameStatus == chess::DRAW){
-      currNode = tree.DRAW_NODE;
-    }
-    else{
-      tree.tree.push_back(Node());
-      currNode = &tree.tree.back();
-      // U64 hash = zobrist::updateHash(board, moves[i]);
-      // if(tree.tt.getEntry(hash).hash == 0){
-      //   tree.tt.storeEntry(TTEntry(currNode, hash));
-      // }
-      currNode->mark = parent->mark;
-    }
-
+    tree.tree.push_back(Node());
+    currNode = &tree.tree.back();
     parent->children.push_back(Edge(currNode, moves[i]));
+    // U64 hash = zobrist::updateHash(board, moves[i]);
+    // if(tree.tt.getEntry(hash).hash == 0){
+    //   tree.tt.storeEntry(TTEntry(currNode, hash));
+    // }
+    currNode->mark = parent->mark;
   }
 }
 
 float playout(chess::Board& board, Node* currNode, evaluation::NNUE& nnue){
+  chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
+  assert(-1<=_gameStatus && 2>=_gameStatus);
+  if(_gameStatus != chess::ONGOING){
+    currNode->isTerminal = true;
+    if(_gameStatus == chess::LOSS){return float(_gameStatus);}
+    return _gameStatus;
+  }
+
   float eval = std::max(std::min(std::atan(evaluation::evaluate(board, nnue)*Aurora::options["evalScaleFactor"].value/100.0)/1.57079633, 1.0),-1.0)*0.999999;
   assert(-1<=eval && 1>=eval);
   return eval;
@@ -268,7 +254,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
     std::cout <<
-      "info depth 1 nodes " << root->visits <<
+      "info nodes " << root->visits <<
           " score cp " << round(tan(-findBestValue(root)*1.57079633)*100) <<
           " nps " << round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
           " time " << round(elapsed.count()*1000) <<
@@ -300,7 +286,7 @@ void backpropagate(float result, std::vector<Node*>& traversePath, uint8_t visit
 
   if(currNode == nullptr){return;}
 
-  currNode->visits = std::max(currNode->visits + visits, currNode->visits);
+  currNode->visits+=visits;
 
   //If currNode is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currNode
   float oldCurrNodeValue = currNode->value;
@@ -365,9 +351,6 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
   }
 
   while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (root->visits<tm.limit && tm.tmType == NODES)){
-    assert(tree.DRAW_NODE->visits > 0);
-    assert(tree.LOSS_NODE->visits > 0);
-    
     currNode = root;
     chess::Board board = rootBoard;
 
@@ -381,6 +364,11 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
 
       currNode = currEdge.child;
       traversePath.push_back(currNode);
+
+      if(chess::countRepetitions(board) >= 2){
+        backpropagate(0, traversePath, 1, false, true, true);
+        goto endIter;
+      }
     }
 
     //Expand & Backpropagate new values
@@ -390,6 +378,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     else{//Reached a leaf node
       //Create new child nodes
       chess::MoveList moves(board);
+      if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currNode->value>=-1); currNode->isTerminal=true; continue;}
       expand(tree, currNode, board, moves);
 
       //Simulate for all new nodes
@@ -404,22 +393,16 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
         Edge currEdge = parentNode->children[i];
         currNode = currEdge.child;
 
+        chess::Board movedBoard = board;
+        nnue.accumulator = currAccumulator;
+
+        nnue.updateAccumulatorAndMakeMove(movedBoard, currEdge.move);
         float result;
+        result = playout(movedBoard, currNode, nnue);
+        assert(-1<=result && 1>=result);
 
-        if(currNode != tree.DRAW_NODE && currNode != tree.LOSS_NODE){
-          chess::Board movedBoard = board;
-          nnue.accumulator = currAccumulator;
-
-          nnue.updateAccumulatorAndMakeMove(movedBoard, currEdge.move);
-          result = playout(movedBoard, currNode, nnue);
-          assert(-1<=result && 1>=result);
-
-          currNode->value = result;
-          currNode->visits = 1;
-        }
-        else{
-          result = currNode->value;
-        }
+        currNode->value = result;
+        currNode->visits = 1;
 
         currBestValue = fminf(currBestValue, result);
       }
