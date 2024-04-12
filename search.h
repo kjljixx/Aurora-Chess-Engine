@@ -254,7 +254,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
     std::cout <<
-      "info nodes " << root->visits <<
+      "info depth 1 nodes " << root->visits <<
           " score cp " << round(tan(-findBestValue(root)*1.57079633)*100) <<
           " nps " << round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
           " time " << round(elapsed.count()*1000) <<
@@ -364,11 +364,6 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
 
       currNode = currEdge.child;
       traversePath.push_back(currNode);
-
-      if(chess::countRepetitions(board) >= 2){
-        backpropagate(0, traversePath, 1, false, true, true);
-        goto endIter;
-      }
     }
 
     //Expand & Backpropagate new values
@@ -378,7 +373,6 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     else{//Reached a leaf node
       //Create new child nodes
       chess::MoveList moves(board);
-      if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currNode->value>=-1); currNode->isTerminal=true; continue;}
       expand(tree, currNode, board, moves);
 
       //Simulate for all new nodes
