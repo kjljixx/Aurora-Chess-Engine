@@ -254,7 +254,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
     std::cout <<
-      "info nodes " << root->visits <<
+      "info depth 1 nodes " << root->visits <<
           " score cp " << round(tan(-findBestValue(root)*1.57079633)*100) <<
           " nps " << round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
           " time " << round(elapsed.count()*1000) <<
