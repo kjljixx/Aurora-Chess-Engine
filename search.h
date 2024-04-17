@@ -361,7 +361,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     //Traverse the search tree
     std::vector<Node*> traversePath;
     traversePath.push_back(currNode);
-    bool isTerminal = false;
+    bool isTerminal = false; bool isCycle = false;
     while(currNode->children.size() > 0){
       Edge currEdge = selectEdge(currNode, currNode == root);
 
@@ -370,6 +370,9 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
       currNode = currEdge.child;
       traversePath.push_back(currNode);
 
+      if(currNode->mark == !originalMark){
+        isTerminal = true; isCycle = true; break;
+      }
       if(currNode->isTerminal){
         isTerminal = true; break;
       }
@@ -379,7 +382,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
 
     //Expand & Backpropagate new values
     if(isTerminal){
-      backpropagate(currNode->value, traversePath, 1, originalMark, false, true, true);
+      backpropagate(isCycle ? 0 : currNode->value, traversePath, 1, originalMark, false, true, true);
     }
     else{//Reached a leaf node
       //Create new child nodes
