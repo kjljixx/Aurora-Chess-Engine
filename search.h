@@ -171,7 +171,7 @@ Edge selectEdge(Node* parent, bool isRoot){
   return parent->children[maxPriorityNodeIndex];
 }
 
-void expand(Tree& tree, Node* parent, chess::Board& board, chess::MoveList& moves){
+void expand(Tree& tree, Node* parent, chess::Board& board, chess::MoveList& moves, bool originalMark){
   if(moves.size()==0){return;}
 
   Node* currNode;
@@ -184,7 +184,7 @@ void expand(Tree& tree, Node* parent, chess::Board& board, chess::MoveList& move
     // if(tree.tt.getEntry(hash).hash == 0){
     //   tree.tt.storeEntry(TTEntry(currNode, hash));
     // }
-    currNode->mark = parent->mark;
+    currNode->mark = originalMark;
   }
 }
 
@@ -280,13 +280,14 @@ runFindBestMove: whether or not to do a re-check of all child nodes to find the 
 continueBackprop: whether or not to continue to backpropagate the result (main purpose is to be utilized by the function as it does recursion)
 forceResult: whether or not to force the currNode to take the value of result (normally, if the result is worse than the current value of the node, we will not set the value of the node to the result)
 */
-void backpropagate(float result, std::vector<Node*>& traversePath, uint8_t visits, bool runFindBestMove, bool continueBackprop, bool forceResult){
+void backpropagate(float result, std::vector<Node*>& traversePath, uint8_t visits, bool originalMark, bool runFindBestMove, bool continueBackprop, bool forceResult){
   //Backpropagate results
   Node* currNode = traversePath.back(); traversePath.pop_back();
 
   if(currNode == nullptr){return;}
 
   currNode->visits+=visits;
+  currNode->mark = originalMark;
 
   //If currNode is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currNode
   float oldCurrNodeValue = currNode->value;
@@ -311,7 +312,7 @@ void backpropagate(float result, std::vector<Node*>& traversePath, uint8_t visit
     if(std::ssize(traversePath) > 0){
       Node* parent = traversePath.back();
       bool _runFindBestMove = -oldCurrNodeValue == parent->value && currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
-      backpropagate(-currNode->value, traversePath, visits, _runFindBestMove, continueBackprop, false);
+      backpropagate(-currNode->value, traversePath, visits, originalMark, _runFindBestMove, continueBackprop, false);
     }
   }
 }
@@ -354,11 +355,13 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
 
   while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (root->visits<tm.limit && tm.tmType == NODES)){
     currNode = root;
+    bool originalMark = currNode->mark;
     chess::Board board = rootBoard;
 
     //Traverse the search tree
     std::vector<Node*> traversePath;
     traversePath.push_back(currNode);
+    bool isTerminal = false;
     while(currNode->children.size() > 0){
       Edge currEdge = selectEdge(currNode, currNode == root);
 
@@ -366,17 +369,23 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
 
       currNode = currEdge.child;
       traversePath.push_back(currNode);
+
+      if(currNode->isTerminal){
+        isTerminal = true; break;
+      }
+
+      currNode->mark = !originalMark;
     }
 
     //Expand & Backpropagate new values
-    if(currNode->isTerminal){
-      backpropagate(currNode->value, traversePath, 1, false, true, true);
+    if(isTerminal){
+      backpropagate(currNode->value, traversePath, 1, originalMark, false, true, true);
     }
     else{//Reached a leaf node
       //Create new child nodes
       chess::MoveList moves(board);
       if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currNode->value>=-1); currNode->isTerminal=true; continue;}
-      expand(tree, currNode, board, moves);
+      expand(tree, currNode, board, moves, originalMark);
 
       //Simulate for all new nodes
       Node* parentNode = currNode; //This will be the root of the backpropagation
@@ -405,7 +414,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
       }
 
       //Backpropagate best value
-      backpropagate(-currBestValue, traversePath, 1, false, true, true);
+      backpropagate(-currBestValue, traversePath, 1, originalMark, false, true, true);
     }
 
     //Output some information on the search occasionally
