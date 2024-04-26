@@ -36,6 +36,8 @@ void initOptions(){
   options["evalScaleFactor"] = Option(1, -1024, 1024, 0);
 
   options["searchTimePortion"] = Option(0.05, 0, 1, 0);
+
+  options["nodeLimit"] = Option(4294967296, 1, 4294967296, 1)
 }
 
 }
