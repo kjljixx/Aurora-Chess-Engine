@@ -99,11 +99,13 @@ uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked = true
     unmarked = node->mark;
   }
   if(node){
-    for(Edge edge : node->children){
-      markedNodes += markSubtree(edge.child, false, unmarked);
-    }
     node->mark = !unmarked;
     markedNodes++;
+    for(Edge edge : node->children){
+      if(edge.child->mark == unmarked){
+        markedNodes += markSubtree(edge.child, false, unmarked);
+      }
+    }
   }
   return markedNodes;
 }
@@ -177,13 +179,22 @@ void expand(Tree& tree, Node* parent, chess::Board& board, chess::MoveList& move
   Node* currNode;
 
   for(uint16_t i=0; i<moves.size(); i++){
-    tree.tree.push_back(Node());
-    currNode = &tree.tree.back();
+    U64 hash = zobrist::updateHash(board, moves[i]);
+    TTEntry entry = tree.tt.getEntry(hash);
+
+    if(entry.hash == hash){
+      currNode = entry.node;
+    }
+    else{
+      tree.tree.push_back(Node());
+      currNode = &tree.tree[tree.tree.size()-1];
+    }
+
     parent->children.push_back(Edge(currNode, moves[i]));
-    // U64 hash = zobrist::updateHash(board, moves[i]);
-    // if(tree.tt.getEntry(hash).hash == 0){
-    //   tree.tt.storeEntry(TTEntry(currNode, hash));
-    // }
+
+    if(entry.hash == 0){
+      tree.tt.storeEntry(TTEntry(currNode, hash));
+    }
     currNode->mark = originalMark;
   }
 }
@@ -312,7 +323,7 @@ void backpropagate(float result, std::vector<Node*>& traversePath, uint8_t visit
     if(std::ssize(traversePath) > 0){
       Node* parent = traversePath.back();
       bool _runFindBestMove = -oldCurrNodeValue == parent->value && currNode->value > oldCurrNodeValue; //currNode(which used to be the best child)'s value got worse from currNode's parent's perspective
-      backpropagate(-currNode->value, traversePath, visits, originalMark, _runFindBestMove, continueBackprop, false);
+      backpropagate(-currNode->value, traversePath, visits, originalMark, true, continueBackprop, false);
     }
   }
 }
@@ -402,18 +413,20 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
         Edge currEdge = parentNode->children[i];
         currNode = currEdge.child;
 
-        chess::Board movedBoard = board;
-        nnue.accumulator = currAccumulator;
+        if(currNode->visits == 0){
+          chess::Board movedBoard = board;
+          nnue.accumulator = currAccumulator;
 
-        nnue.updateAccumulatorAndMakeMove(movedBoard, currEdge.move);
-        float result;
-        result = playout(movedBoard, currNode, nnue);
-        assert(-1<=result && 1>=result);
+          nnue.updateAccumulatorAndMakeMove(movedBoard, currEdge.move);
+          float result;
+          result = playout(movedBoard, currNode, nnue);
+          assert(-1<=result && 1>=result);
 
-        currNode->value = result;
-        currNode->visits = 1;
+          currNode->value = result;
+          currNode->visits = 1;
+        }
 
-        currBestValue = fminf(currBestValue, result);
+        currBestValue = fminf(currBestValue, currNode->value);
       }
 
       //Backpropagate best value
