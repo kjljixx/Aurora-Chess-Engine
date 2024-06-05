@@ -266,7 +266,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
       std::cout << "depth " << seldepth-root->depth;
       #endif
       std::cout << " nodes " << root->visits <<
-      " score cp " << round(tan(-findBestValue(root)*1.57079633)*100) <<
+      " score cp " << fminf(fmaxf(round(tan(-fminf(fmaxf(findBestValue(root), -0.9999), 0.9999)*1.57079633)*100), -100000), 100000) <<
       " nps " << round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
       " time " << round(elapsed.count()*1000) <<
       " pv ";
