@@ -9,6 +9,8 @@ int infoPrintInterval = 10;
 
 int numberOfThreads = 8;
 
+float softmaxTemp = 0.2;
+
 int main(){
   #if DATAGEN == 0
     std::cout << "Preprocessor Variable DATAGEN must be set to 1 or 2 to Generate Data";
@@ -33,7 +35,7 @@ int main(){
 
       std::vector<std::string> gameData;
 
-      search::timeManagement tm(search::NODES, 360);
+      search::timeManagement tm(search::NODES, 150);
 
       chess::Board board;
       chess::Board rootBoard; //Only exists to make the search::makeMove function happy
@@ -64,6 +66,10 @@ int main(){
       int previousFenIter = 0;
       int previousElapsed = 0;
 
+      int totalSearches = 0;
+      int differChoices = 0;
+      float differValue = 0;
+
       auto start = std::chrono::steady_clock::now();
 
       search::Node* root = nullptr;
@@ -80,15 +86,48 @@ int main(){
         }
 
         root = search::search(board, tm, root, tree);
+        rootBoard = board;
 
-        if(board.squareUnderAttack(_bitscanForward(board.getOurPieces(chess::KING)))==64 && board.mailbox[0][search::findBestChild(root)->edge.getEndSquare()]==0 && std::abs(root->value)<0.9999){
+        search::Edge bestEdge = search::findBestEdge(root);
+        search::Edge chosenEdge = bestEdge;
+        // float softmaxTotal = 0;
+        // for(int i=0; i<root->children.size(); i++){
+        //   softmaxTotal += exp(fminf(fmaxf(round(tan(-fminf(fmaxf(root->children[i].value, -0.9999), 0.9999)*1.57079633)*100), -100000), 100000)*softmaxTemp);
+        // }
+        // std::vector<float> probDistr;
+        // for(int i=0; i<root->children.size(); i++){
+        //   probDistr.push_back(exp(fminf(fmaxf(round(tan(-fminf(fmaxf(root->children[i].value, -0.9999), 0.9999)*1.57079633)*100), -100000), 100000)*softmaxTemp)/softmaxTotal);
+        // }
+        // float cumProb = 0;
+        // for(int i=0; i<probDistr.size(); i++){
+        //   probDistr[i] = cumProb + probDistr[i];
+        //   cumProb = probDistr[i];
+        // }
+
+        // std::uniform_real_distribution<> distr(0, 1);
+        // float r = distr(eng);
+        // for(int i=0; i<probDistr.size(); i++){
+        //   if(r<probDistr[i]){
+        //     chosenEdge = root->children[i];
+        //     break;
+        //   }
+        // }
+        if(chosenEdge.child != bestEdge.child){
+          differChoices += 1;
+          differValue += -(bestEdge.value - chosenEdge.value);
+        }
+        totalSearches += 1;
+
+        if(board.squareUnderAttack(_bitscanForward(board.getOurPieces(chess::KING)))==64 && board.mailbox[0][chosenEdge.edge.getEndSquare()]==0 && std::abs(bestEdge.value)<0.9999){
           gameData.push_back(board.getFen() + " | " + std::to_string(int(round(tan((board.sideToMove ? search::findBestValue(root) : -search::findBestValue(root))*1.56375)*100))));
           fenIter++;
         }
 
-        search::makeMove(board, search::findBestChild(root)->edge, rootBoard, root, tree);
+        float rootVal = chosenEdge.value;
 
-        if(root->isTerminal || std::abs(root->value)>0.9999){
+        search::makeMove(board, chosenEdge.edge, rootBoard, root, tree);
+
+        if((root && root->isTerminal) || std::abs(rootVal)>0.9999){
           gameIter++;
           if(gameIter % infoPrintInterval == 0){
             std::cout << "Thread: " << threadId << "\n";
@@ -98,12 +137,16 @@ int main(){
             std::cout << "Overall FENs/second: " << fenIter / elapsed.count() << "\n";
             std::cout << "Recent FENs/second: " << (fenIter - previousFenIter) / (elapsed.count() - previousElapsed) << "\n";
 
+            std::cout << "Total searches: " << totalSearches << "\n";
+            std::cout << "Differ choices: " << differChoices << "\n";
+            std::cout << "Differ value: " << differValue / differChoices << "\n";
+
             previousElapsed = elapsed.count();
             previousFenIter = fenIter;
           }
 
           std::stringstream stream;
-          stream << std::fixed << std::setprecision(1) << ((board.sideToMove ? -root->value : root->value) + 1) / 2.0;
+          stream << std::fixed << std::setprecision(1) << ((board.sideToMove ? -rootVal : rootVal) + 1) / 2.0;
           std::string gameResultStr = stream.str();
 
           std::ofstream dataFile;
