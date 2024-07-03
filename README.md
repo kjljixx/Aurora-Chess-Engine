@@ -30,12 +30,15 @@ Here are some details about the search:
 * Values backpropagated up the tree are done so with minimax
 
 ## Evaluation
-A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```vesta-8.nnue```):
-* Arch:  (768->128)x2->1
+A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```andromeda-1.nnue```):
+* Arch:  (768->256)x2->1
 * Scale: 400
-* Epochs: 60
+* Batch Size: 16384
+* Batches / Superbatch: 6104
+* Positions / Superbatch: 100007936
+* Superbatches: 88
 * WDL scheduler: constant 0.0
-* LR scheduler: start 0.001 gamma 0.1 drop every 30 epochs
+* LR scheduler: start 0.001 gamma 0.1 drop every 44 superbatches
 * Device: NVIDIA GeForce MX550
 * Threads: 8
 * Positions: 146688588
