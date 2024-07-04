@@ -184,7 +184,8 @@ void expand(Tree& tree, Node* parent, chess::MoveList& moves){
   #endif
 }
 
-float playout(chess::Board& board, evaluation::NNUE& nnue){
+template<int numHiddenNeurons>
+float playout(chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){
@@ -354,7 +355,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
   seldepth = 0;
   #endif
 
-  evaluation::NNUE nnue;
+  evaluation::NNUE<NNUEhiddenNeurons> nnue(evaluation::_NNUEparameters);
 
   Node* currNode = root;
   

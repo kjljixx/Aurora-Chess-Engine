@@ -177,20 +177,29 @@ const int WeightsPerVec = sizeof(SIMD::Vec) / sizeof(int16_t);
 
 int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
 
+template<int numHiddenNeurons>
 struct NNUEparameters{
-    alignas(32) std::array<std::array<int16_t, NNUEhiddenNeurons>, 768> hiddenLayerWeights;
-    alignas(32) std::array<int16_t, NNUEhiddenNeurons> hiddenLayerBiases;
-    alignas(32) std::array<int16_t, 2*NNUEhiddenNeurons> outputLayerWeights;
+    alignas(32) std::array<std::array<int16_t, numHiddenNeurons>, 768> hiddenLayerWeights;
+    alignas(32) std::array<int16_t, numHiddenNeurons> hiddenLayerBiases;
+    alignas(32) std::array<int16_t, 2*numHiddenNeurons> outputLayerWeights;
     int16_t outputLayerBias;
 };
 
 extern "C" {
   INCBIN(networkData, "andromeda-1.nnue");
 }
-const NNUEparameters* _NNUEparameters = reinterpret_cast<const NNUEparameters *>(gnetworkDataData);
+const NNUEparameters<NNUEhiddenNeurons>* _NNUEparameters = reinterpret_cast<const NNUEparameters<NNUEhiddenNeurons>*>(gnetworkDataData);
+extern "C" {
+  INCBIN(smallNetworkData, "vesta-8.nnue");
+}
+const NNUEparameters<smallNNUEhiddenNeurons>* smallNNUEparameters = reinterpret_cast<const NNUEparameters<smallNNUEhiddenNeurons>*>(gsmallNetworkDataData);
 
+template<int numHiddenNeurons>
 struct NNUE{
-  std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> accumulator = {{{{0}}}};
+  std::array<std::array<int16_t, numHiddenNeurons>, 2> accumulator = {{{{0}}}};
+  const NNUEparameters<numHiddenNeurons>* parameters;
+
+  NNUE(const NNUEparameters<numHiddenNeurons>* parameters) : parameters(parameters) {}
 
   int evaluate(chess::Colors sideToMove){
     //Adapted from Obsidian https://github.com/gab8192/Obsidian/blob/main/Obsidian/nnue.cpp
@@ -203,12 +212,12 @@ struct NNUE{
     SIMD::Vec sum = SIMD::vecSetZero();
     SIMD::Vec v0; SIMD::Vec v1;
 
-    for (int i = 0; i < NNUEhiddenNeurons / WeightsPerVec; ++i) {
+    for (int i = 0; i < numHiddenNeurons / WeightsPerVec; ++i) {
       // Side to move
       stmAcc = SIMD::load(reinterpret_cast<const SIMD::Vec *>(&accumulator[sideToMove][i * WeightsPerVec]));
       v0 = SIMD::maxEpi16(stmAcc, vecZero); // clip
       v0 = SIMD::minEpi16(v0, vecQA); // clip
-      v1 = SIMD::mulloEpi16(v0, SIMD::load(reinterpret_cast<const SIMD::Vec *>(&_NNUEparameters->outputLayerWeights[i * WeightsPerVec]))); // multiply with output layer weights
+      v1 = SIMD::mulloEpi16(v0, SIMD::load(reinterpret_cast<const SIMD::Vec *>(&parameters->outputLayerWeights[i * WeightsPerVec]))); // multiply with output layer weights
       v1 = SIMD::maddEpi16(v0, v1); // square
       sum = SIMD::addEpi32(sum, v1); // collect the result
 
@@ -216,27 +225,27 @@ struct NNUE{
       oppAcc = SIMD::load(reinterpret_cast<const SIMD::Vec *>(&accumulator[!sideToMove][i * WeightsPerVec]));
       v0 = SIMD::maxEpi16(oppAcc, vecZero);
       v0 = SIMD::minEpi16(v0, vecQA);
-      v1 = SIMD::mulloEpi16(v0, SIMD::load(reinterpret_cast<const SIMD::Vec *>(&_NNUEparameters->outputLayerWeights[NNUEhiddenNeurons + i * WeightsPerVec])));
+      v1 = SIMD::mulloEpi16(v0, SIMD::load(reinterpret_cast<const SIMD::Vec *>(&parameters->outputLayerWeights[numHiddenNeurons + i * WeightsPerVec])));
       v1 = SIMD::maddEpi16(v0, v1);
       sum = SIMD::addEpi32(sum, v1);
     }
-    int unsquared = SIMD::vecHaddEpi32(sum) / 255 + _NNUEparameters->outputLayerBias;
+    int unsquared = SIMD::vecHaddEpi32(sum) / 255 + parameters->outputLayerBias;
 
     return (unsquared * 400) / (255 * 64);
   }
 
   void refreshAccumulator(chess::Board& board){
-    for(int i=0; i<NNUEhiddenNeurons; i++){
-      accumulator[0][i] = _NNUEparameters->hiddenLayerBiases[i];
-      accumulator[1][i] = _NNUEparameters->hiddenLayerBiases[i];
+    for(int i=0; i<numHiddenNeurons; i++){
+      accumulator[0][i] = parameters->hiddenLayerBiases[i];
+      accumulator[1][i] = parameters->hiddenLayerBiases[i];
     }
 
     for(int square=0; square<64; square++){
       if(board.mailbox[0][square]!=0){
         int currFeatureIndex[2] = {64*(board.mailbox[0][square]-1)+square, 64*(switchPieceColor[board.mailbox[0][square]]-1)+(square^56)};
-        for(int i=0; i<NNUEhiddenNeurons; i++){
-          accumulator[0][i] += _NNUEparameters->hiddenLayerWeights[currFeatureIndex[0]][i];
-          accumulator[1][i] += _NNUEparameters->hiddenLayerWeights[currFeatureIndex[1]][i];
+        for(int i=0; i<numHiddenNeurons; i++){
+          accumulator[0][i] += parameters->hiddenLayerWeights[currFeatureIndex[0]][i];
+          accumulator[1][i] += parameters->hiddenLayerWeights[currFeatureIndex[1]][i];
         }
       }
     }
@@ -251,15 +260,15 @@ struct NNUE{
     int newFeatureIndex[2] = {64*(newPiece-1)+square, 64*(switchPieceColor[newPiece]-1)+squareFromBlackPerspective};
 
     if(board.mailbox[0][square] != 0){
-      for(int i=0; i<NNUEhiddenNeurons; i++){
-        accumulator[0][i] -= _NNUEparameters->hiddenLayerWeights[currFeatureIndex[0]][i];
-        accumulator[1][i] -= _NNUEparameters->hiddenLayerWeights[currFeatureIndex[1]][i];
+      for(int i=0; i<numHiddenNeurons; i++){
+        accumulator[0][i] -= parameters->hiddenLayerWeights[currFeatureIndex[0]][i];
+        accumulator[1][i] -= parameters->hiddenLayerWeights[currFeatureIndex[1]][i];
       }
     }
     if(newPieceType != chess::null){
-      for(int i=0; i<NNUEhiddenNeurons; i++){
-        accumulator[0][i] += _NNUEparameters->hiddenLayerWeights[newFeatureIndex[0]][i];
-        accumulator[1][i] += _NNUEparameters->hiddenLayerWeights[newFeatureIndex[1]][i];
+      for(int i=0; i<numHiddenNeurons; i++){
+        accumulator[0][i] += parameters->hiddenLayerWeights[newFeatureIndex[0]][i];
+        accumulator[1][i] += parameters->hiddenLayerWeights[newFeatureIndex[1]][i];
       }
     }
   }
@@ -539,7 +548,8 @@ int mvvLva(chess::Board& board, chess::Move move){
   return 30*mg_value[sidedPieceToPiece[move.getMoveFlags() == chess::ENPASSANT ? 1 : board.mailbox[0][move.getEndSquare()]]-1] - mg_value[sidedPieceToPiece[board.mailbox[0][move.getStartSquare()]]-1];
 }
 
-int qSearch(chess::Board& board, NNUE& nnue, int alpha, int beta){
+template<int numHiddenNeurons>
+int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int beta){
   int eval = nnue.evaluate(board.sideToMove);
   int bestEval = eval;
 
@@ -553,7 +563,7 @@ int qSearch(chess::Board& board, NNUE& nnue, int alpha, int beta){
   int i=0;
   for(auto move : moves){orderValue[i] = mvvLva(board, move); i++;}
 
-  std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> currAccumulator = nnue.accumulator;
+  std::array<std::array<int16_t, numHiddenNeurons>, 2> currAccumulator = nnue.accumulator;
 
   for(uint32_t i=0; i<moves.size(); i++){
     //std::cout << "\n";
@@ -580,7 +590,8 @@ int qSearch(chess::Board& board, NNUE& nnue, int alpha, int beta){
   return bestEval;
 }
 
-int evaluate(chess::Board& board, NNUE& nnue){
+template<int numHiddenNeurons>
+int evaluate(chess::Board& board, NNUE<numHiddenNeurons>& nnue){
   int cpEvaluation = qSearch(board, nnue, -999999, 999999);
 
   return cpEvaluation;
