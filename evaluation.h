@@ -189,10 +189,6 @@ extern "C" {
   INCBIN(networkData, "andromeda-1.nnue");
 }
 const NNUEparameters<NNUEhiddenNeurons>* _NNUEparameters = reinterpret_cast<const NNUEparameters<NNUEhiddenNeurons>*>(gnetworkDataData);
-extern "C" {
-  INCBIN(smallNetworkData, "vesta-8.nnue");
-}
-const NNUEparameters<smallNNUEhiddenNeurons>* smallNNUEparameters = reinterpret_cast<const NNUEparameters<smallNNUEhiddenNeurons>*>(gsmallNetworkDataData);
 
 template<int numHiddenNeurons>
 struct NNUE{
