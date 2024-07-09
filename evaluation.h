@@ -445,7 +445,7 @@ int pieceSquareTable(chess::Board& board){
 //Returns the value in cp from the current board's sideToMove's perspective on how good capturing an enemy piece on targetSquare is
 //Returns 0 if the capture is not good for the current board's sideToMove or if there is no capture
 //Threshold is the highest SEE value we have already found (see the part in evaluate() which runs SEE())
-int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0){
+int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0, int piecePos = 64){
   int values[32];
   int i=0;
 
@@ -464,8 +464,9 @@ int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0){
   board.sideToMove = chess::Colors(!board.sideToMove);
   bool isOurSideToMove = false;
 
-  uint8_t piecePos = board.squareUnderAttack(targetSquare);
-
+  if(piecePos == 64){
+    piecePos = board.squareUnderAttack(targetSquare);
+  }
   //See https://www.chessprogramming.org/Alpha-Beta#Negamax_Framework for the recursive implementation this implementation is based on
   int alpha = -999999;
   int beta = -(threshold*24);
@@ -570,7 +571,7 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
           std::swap(moves.moveList[j], moves.moveList[i]);
       }
     }
-    if(SEE(board, moves[i].getEndSquare(), 0) == 0) continue;
+    if(SEE(board, moves[i].getEndSquare(), 0, moves[i].getStartSquare()) == 0) continue;
 
     chess::Board movedBoard = board;
     nnue.accumulator = currAccumulator;
