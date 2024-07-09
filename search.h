@@ -290,6 +290,8 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, bool
   Edge* currEdge = edges.back();
   edges.pop_back();
 
+  currEdge->child->visits+=visits;
+  currEdge->child->updatePriority = true;
 
   float oldCurrNodeValue = 2;
 
@@ -308,9 +310,6 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, bool
       //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
       if(result <= currEdge->value && !runFindBestMove && !forceResult){
         continueBackprop = false;
-        currEdge->child->visits+=visits;
-        currEdge->child->updatePriority = true;
-
         backpropagate(result, edges, visits, runFindBestMove, continueBackprop, false);
         return;
       }
@@ -324,9 +323,6 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, bool
       result = -currEdge->value;
     }
   }
-
-  currEdge->child->visits+=visits;
-  currEdge->child->updatePriority = true;
 
   backpropagate(result, edges, visits, runFindBestMove, continueBackprop, false);
 }
