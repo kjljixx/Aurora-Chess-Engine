@@ -411,8 +411,11 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
 
         currBestValue = fminf(currBestValue, result);
       }
+      int visits = 0;
+      for(int i=0; i<parentNode->children.size(); i++){if(parentNode->children[i].value <= currBestValue + 0.04){visits++;}}
+      assert(visits >= 1);
       //Backpropagate best value
-      backpropagate(-currBestValue, traversePath, 1, false, true, true);
+      backpropagate(-currBestValue, traversePath, visits, false, true, true);
     }
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
