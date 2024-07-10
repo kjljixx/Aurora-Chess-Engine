@@ -21,6 +21,7 @@ backpropagationStrategy backpropStrat = MINIMAX;
 
 #if DATAGEN == 0
 uint8_t seldepth = 0;
+uint32_t depth = 0;
 #endif
 
 void init(){
@@ -258,7 +259,8 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
 
     std::cout << "info ";
       #if DATAGEN == 0
-      std::cout << "depth " << int(seldepth) << " ";
+      std::cout << "depth " << int(depth / root->visits) << " ";
+      std::cout << "seldepth " << int(seldepth) << " ";
       #endif
       std::cout << "nodes " << root->visits <<
       " score cp " << fminf(fmaxf(round(tan(-fminf(fmaxf(findBestValue(root), -0.9999), 0.9999)*1.57079633)*100), -100000), 100000) <<
@@ -343,6 +345,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
 
   #if DATAGEN == 0
   seldepth = 0;
+  depth = 0;
   #endif
 
   evaluation::NNUE<NNUEhiddenNeurons> nnue(evaluation::_NNUEparameters);
@@ -383,6 +386,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     }
     //Expand & Backpropagate new values
     if(currNode->isTerminal){
+      depth += currDepth;
       root->visits += 1;
       backpropagate(currEdge->value, traversePath, 1, false, true, true);
     }
@@ -413,6 +417,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
       for(int i=0; i<parentNode->children.size(); i++){if(parentNode->children[i].value <= currBestValue + 0.04){visits++;}}
       assert(visits >= 1);
       //Backpropagate best value
+      depth += currDepth*visits;
       root->visits += visits;
       backpropagate(-currBestValue, traversePath, visits, false, true, true);
     }
