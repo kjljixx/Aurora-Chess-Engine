@@ -44,11 +44,9 @@ struct Edge{
 
 struct Node{
   Node* parent;
-  uint8_t index;
   std::vector<Edge> children;
   uint32_t visits;
   bool isTerminal;
-  uint8_t depth;
   float sPriority;
   bool updatePriority;
 
@@ -56,11 +54,11 @@ struct Node{
   Node* newAddress = nullptr;
   bool mark = false;
 
-  Node(Node* parent, uint8_t index, uint8_t depth) :
-  parent(parent), index(index),
-  visits(0), isTerminal(false), depth(depth), sPriority(-1), updatePriority(true) {}
+  Node(Node* parent) :
+  parent(parent),
+  visits(0), isTerminal(false), sPriority(-1), updatePriority(true) {}
 
-  Node() : parent(nullptr), index(0), visits(0), isTerminal(false), depth(0), sPriority(-1), updatePriority(true) {}
+  Node() : parent(nullptr), visits(0), isTerminal(false), sPriority(-1), updatePriority(true) {}
 };
 
 struct Tree{
@@ -178,10 +176,6 @@ void expand(Tree& tree, Node* parent, chess::MoveList& moves){
   for(uint16_t i=0; i<moves.size(); i++){
     parent->children[i] = Edge(moves[i]);
   }
-
-  #if DATAGEN == 0
-  if(parent->depth+1>seldepth){seldepth = parent->depth+1;}
-  #endif
 }
 
 template<int numHiddenNeurons>
@@ -244,7 +238,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
   if(Aurora::options["outputLevel"].value==3){
     std::cout << "NODES: " << root->visits;
     #if DATAGEN == 0
-    std::cout << " SELDEPTH: " << seldepth-root->depth <<"\n";
+    std::cout << " SELDEPTH: " << seldepth <<"\n";
     #endif
     for(int i=0; i<root->children.size(); i++){
       Edge currEdge = root->children[i];
@@ -264,7 +258,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
 
     std::cout << "info ";
       #if DATAGEN == 0
-      std::cout << "depth " << seldepth-root->depth << " ";
+      std::cout << "depth " << int(seldepth) << " ";
       #endif
       std::cout << "nodes " << root->visits <<
       " score cp " << fminf(fmaxf(round(tan(-fminf(fmaxf(findBestValue(root), -0.9999), 0.9999)*1.57079633)*100), -100000), 100000) <<
@@ -368,17 +362,19 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
   }
 
   while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (root->visits<tm.limit && tm.tmType == NODES)){
+    int currDepth = 0;
     currNode = root; currNode->visits++;
     chess::Board board = rootBoard;
     Edge* currEdge;
     std::vector<Edge*> traversePath;
     //Traverse the search tree
     while(currNode->children.size() > 0){
+      currDepth++;
       currEdge = selectEdge(currNode, currNode == root);
       traversePath.push_back(currEdge);
       chess::makeMove(board, currEdge->edge);
       if(currEdge->child == nullptr){
-        tree.tree.push_back(Node(currNode, 0, currNode->depth+1));
+        tree.tree.push_back(Node(currNode));
         currEdge->child = &tree.tree[tree.tree.size()-1];
         currEdge->child->mark = currNode->mark;
         currEdge->child->visits = 1;
@@ -391,6 +387,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     }
     else{
       //Reached a leaf node
+      currDepth++;
       chess::MoveList moves(board);
       if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currEdge->value>=-1); currNode->isTerminal=true; continue;}
       expand(tree, currNode, moves); //Create new child nodes
@@ -417,6 +414,10 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
       //Backpropagate best value
       backpropagate(-currBestValue, traversePath, visits, false, true, true);
     }
+
+    #if DATAGEN == 0
+    if(currDepth > seldepth){seldepth = currDepth;}
+    #endif
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
     #if DATAGEN != 1
@@ -452,7 +453,7 @@ void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, No
 
   root = moveRootToChild(tree, newRoot, root);
 
-  root->parent = nullptr; root->index = 0; root->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
+  root->parent = nullptr; root->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
 
   chess::makeMove(rootBoard, move);
 }
