@@ -363,7 +363,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
 
   while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (root->visits<tm.limit && tm.tmType == NODES)){
     int currDepth = 0;
-    currNode = root; currNode->visits++;
+    currNode = root;
     chess::Board board = rootBoard;
     Edge* currEdge;
     std::vector<Edge*> traversePath;
@@ -383,6 +383,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     }
     //Expand & Backpropagate new values
     if(currNode->isTerminal){
+      root->visits += 1;
       backpropagate(currEdge->value, traversePath, 1, false, true, true);
     }
     else{
@@ -412,6 +413,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
       for(int i=0; i<parentNode->children.size(); i++){if(parentNode->children[i].value <= currBestValue + 0.04){visits++;}}
       assert(visits >= 1);
       //Backpropagate best value
+      root->visits += visits;
       backpropagate(-currBestValue, traversePath, visits, false, true, true);
     }
 
