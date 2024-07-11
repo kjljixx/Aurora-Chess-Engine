@@ -50,6 +50,7 @@ struct Node{
   bool isTerminal;
   float sPriority;
   bool updatePriority;
+  uint8_t index;
 
   //For Tree Reuse
   Node* newAddress = nullptr;
@@ -64,10 +65,52 @@ struct Node{
 
 struct Tree{
   std::deque<Node> tree;
+  Node* root;
+  uint32_t sizeLimit;
+
+  Tree(){
+    uint32_t hash = Aurora::options["hash"].value;
+    sizeLimit = hash * 1000000 / sizeof(Node);
+  }
+
+  void deleteNode(Node* node){
+    assert(node != root);
+
+    Node* front = &tree.front();
+    for(int i=0; i<front->children.size(); i++){
+      if(front->children[i].child){
+        front->children[i].child->parent = node;
+      }
+    }
+    front->parent->children[front->index].child = node;
+
+    for(int i=0; i<node->children.size(); i++){
+      if(node->children[i].child){
+        node->children[i].child->parent = nullptr;
+      }
+    }
+    node->parent->children[front->index].child = nullptr;
+
+    if(root == front){
+      root = node;
+    }
+    *node = *front;
+    tree.pop_front();
+  }
+
+  bool push_back(Node node){
+    tree.push_back(node);
+    // if(sizeLimit == 0 || tree.size() >= sizeLimit){
+    //   deleteNode()
+    //   return false;
+    // }
+    return true;
+  }
 };
 
 void destroyTree(Tree& tree){
   tree.tree.clear();
+  tree.root = nullptr;
 }
 
 uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked = true){
@@ -136,7 +179,7 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
   return newRootNewAddress;
 }
 
-Edge* selectEdge(Node* parent, bool isRoot){
+uint8_t selectEdge(Node* parent, bool isRoot){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
@@ -161,7 +204,7 @@ Edge* selectEdge(Node* parent, bool isRoot){
     }
   }
 
-  return &parent->children[maxPriorityNodeIndex];
+  return maxPriorityNodeIndex;
 }
 
 void expand(Tree& tree, Node* parent, chess::MoveList& moves){
@@ -338,10 +381,10 @@ struct timeManagement{
 };
 
 //The main search function
-Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree){
+void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   auto start = std::chrono::steady_clock::now();
 
-  if(!root){tree.tree.push_back(Node()); root = &tree.tree[tree.tree.size()-1];}
+  if(!tree.root){tree.push_back(Node()); tree.root = &tree.tree[tree.tree.size()-1];}
 
   #if DATAGEN == 0
   seldepth = 0;
@@ -350,35 +393,37 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
 
   evaluation::NNUE<NNUEhiddenNeurons> nnue(evaluation::_NNUEparameters);
 
-  Node* currNode = root;
+  Node* currNode = tree.root;
   
   int lastNodeCheck = 1;
   std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
-  previousVisits = root->visits;
+  previousVisits = tree.root->visits;
   previousElapsed = 0;
 
   if(chess::getGameStatus(rootBoard, chess::isLegalMoves(rootBoard)) != chess::ONGOING){
     #if DATAGEN != 1
       std::cout << "bestmove a1a1" << std::endl;
     #endif
-    return root;
+    return;
   }
 
-  while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (root->visits<tm.limit && tm.tmType == NODES)){
+  while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
     int currDepth = 0;
-    currNode = root;
+    currNode = tree.root;
     chess::Board board = rootBoard;
     Edge* currEdge;
     std::vector<Edge*> traversePath;
     //Traverse the search tree
     while(currNode->children.size() > 0){
       currDepth++;
-      currEdge = selectEdge(currNode, currNode == root);
+      uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root);
+      currEdge = &currNode->children[currEdgeIndex];
       traversePath.push_back(currEdge);
       chess::makeMove(board, currEdge->edge);
       if(currEdge->child == nullptr){
-        tree.tree.push_back(Node(currNode));
+        tree.push_back(Node(currNode));
         currEdge->child = &tree.tree[tree.tree.size()-1];
+        currEdge->child->index = currEdgeIndex;
         currEdge->child->mark = currNode->mark;
         currEdge->child->visits = 1;
       }
@@ -387,7 +432,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     //Expand & Backpropagate new values
     if(currNode->isTerminal){
       depth += currDepth;
-      root->visits += 1;
+      tree.root->visits += 1;
       backpropagate(currEdge->value, traversePath, 1, false, true, true);
     }
     else{
@@ -418,7 +463,7 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
       assert(visits >= 1);
       //Backpropagate best value
       depth += currDepth*visits;
-      root->visits += visits;
+      tree.root->visits += visits;
       backpropagate(-currBestValue, traversePath, visits, false, true, true);
     }
 
@@ -430,37 +475,37 @@ Node* search(chess::Board& rootBoard, timeManagement tm, Node* root, Tree& tree)
     #if DATAGEN != 1
       if(elapsed.count() >= lastNodeCheck*2){
         lastNodeCheck++;
-        printSearchInfo(root, start, false);
+        printSearchInfo(tree.root, start, false);
       }
     #endif
   }
   //Output the final result of the search
   #if DATAGEN != 1
-    printSearchInfo(root, start, true);
-    std::cout << "\nbestmove " << findBestEdge(root).edge.toStringRep() << std::endl;
+    printSearchInfo(tree.root, start, true);
+    std::cout << "\nbestmove " << findBestEdge(tree.root).edge.toStringRep() << std::endl;
   #endif
 
-  return root;
+  return;
 }
 //Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
 //Parameter "board" must be different than parameter "rootBoard"
-void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Node*& root, Tree& tree){
-  if(root == nullptr || zobrist::getHash(board) != zobrist::getHash(rootBoard)){chess::makeMove(board, move); return;}
+void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Tree& tree){
+  if(tree.root == nullptr || zobrist::getHash(board) != zobrist::getHash(rootBoard)){chess::makeMove(board, move); return;}
 
   chess::makeMove(board, move);
 
   Edge newRootEdge = Edge(chess::Move());
-  for(int i=0; i<root->children.size(); i++){
-    newRootEdge = root->children[i];
+  for(int i=0; i<tree.root->children.size(); i++){
+    newRootEdge = tree.root->children[i];
     if(newRootEdge.edge == move){break;}
   }
   Node* newRoot = newRootEdge.child;
 
-  if(newRoot == nullptr){root = nullptr; destroyTree(tree); return;}
+  if(newRoot == nullptr){tree.root = nullptr; destroyTree(tree); return;}
 
-  root = moveRootToChild(tree, newRoot, root);
+  tree.root = moveRootToChild(tree, newRoot, tree.root);
 
-  root->parent = nullptr; root->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
+  tree.root->parent = nullptr; tree.root->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
 
   chess::makeMove(rootBoard, move);
 }
