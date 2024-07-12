@@ -229,8 +229,11 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
     }
   }
 
+  tree.currSize = 0;
+
   for(Node& node : tree.tree){
     if(node.mark == marked){
+      tree.currSize += sizeof(Node);
       if(node.parent){
         assert(&node == newRoot || node.parent->mark == marked);
         node.parent = node.parent->newAddress;
@@ -242,6 +245,7 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
         node.forwardLink = node.forwardLink->newAddress;
       }
       for(int i=0; i<node.children.size(); i++){
+        tree.currSize += sizeof(Edge);
         if(node.children[i].child){
           assert(node.children[i].child->mark == marked);
           node.children[i].child = node.children[i].child->newAddress;
