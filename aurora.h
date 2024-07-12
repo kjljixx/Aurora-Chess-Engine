@@ -4,7 +4,7 @@
 //Set to 1 if you want to build a version of Aurora which generates data, 2 for generating data while playing (cutechess), 0 for the normal version.
 #define DATAGEN 0
 
-#define VERSION "v1.14.3-depth"
+#define VERSION "v1.15.0-lru"
 
 namespace Aurora{
 
@@ -24,6 +24,8 @@ struct Option{
 std::map<std::string, Option> options;
 
 void initOptions(){
+  options["Hash"] = Option(0, 0, 65536, 1);
+
   options["outputLevel"] = Option(2, 0, 3, 1);
   //0: only output bestmove at end of search
   //1: ouput bestmove and info at end of search

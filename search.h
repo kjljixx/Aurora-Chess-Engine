@@ -52,6 +52,10 @@ struct Node{
   bool updatePriority;
   uint8_t index;
 
+  //For LRU tree management
+  Node* backLink = nullptr; //back = older node
+  Node* forwardLink = nullptr; //forward = newer node
+
   //For Tree Reuse
   Node* newAddress = nullptr;
   bool mark = false;
@@ -66,51 +70,97 @@ struct Node{
 struct Tree{
   std::deque<Node> tree;
   Node* root;
-  uint32_t sizeLimit;
+  uint64_t sizeLimit;
+  uint64_t currSize;
+  Node* tail = nullptr;
+  Node* head = nullptr;
 
-  Tree(){
-    uint32_t hash = Aurora::options["hash"].value;
-    sizeLimit = hash * 1000000 / sizeof(Node);
+  void setHash(){
+    uint32_t hash = Aurora::options["Hash"].value;
+    sizeLimit = 1000000 * hash;
   }
 
-  void deleteNode(Node* node){
-    assert(node != root);
-
-    Node* front = &tree.front();
-    for(int i=0; i<front->children.size(); i++){
-      if(front->children[i].child){
-        front->children[i].child->parent = node;
-      }
+  //for debug purposes
+  void passthrough(){
+    Node* currNode = tail;
+    while(currNode){
+      currNode = currNode->forwardLink;
     }
-    front->parent->children[front->index].child = node;
-
-    for(int i=0; i<node->children.size(); i++){
-      if(node->children[i].child){
-        node->children[i].child->parent = nullptr;
-      }
+    currNode = head;
+    while(currNode){
+      currNode = currNode->backLink;
     }
-    node->parent->children[front->index].child = nullptr;
-
-    if(root == front){
-      root = node;
-    }
-    *node = *front;
-    tree.pop_front();
+    return;
   }
 
-  bool push_back(Node node){
-    tree.push_back(node);
-    // if(sizeLimit == 0 || tree.size() >= sizeLimit){
-    //   deleteNode()
-    //   return false;
-    // }
-    return true;
+  void moveToHead(Node* node){
+    if(head == node){
+      return;
+    }
+    if(tail == node && node->forwardLink){
+      tail = node->forwardLink;
+    }
+    if(node->backLink){
+      node->backLink->forwardLink = node->forwardLink;
+    }
+    if(node->forwardLink){
+      node->forwardLink->backLink = node->backLink;
+    }
+    head->forwardLink = node;
+    node->backLink = head;
+    node->forwardLink = nullptr;
+    head = node;
+  }
+
+  Node* push_back(Node node){
+    if(sizeLimit != 0 && currSize >= sizeLimit){
+      assert(tail);
+      Node* currTail = tail;
+      for(int i=0; i<currTail->children.size(); i++){
+        if(currTail->children[i].child){
+          currSize -= sizeof(Edge);
+          currTail->children[i].child->parent = nullptr;
+        }
+      }
+      if(currTail->parent){
+        currTail->parent->children[currTail->index].child = nullptr;
+      }
+      if(currTail->forwardLink){
+        currTail->forwardLink->backLink = nullptr;
+      }
+
+      tail = currTail->forwardLink;
+      tail->backLink = nullptr;
+
+      *currTail = node;
+      head->forwardLink = currTail;
+      currTail->backLink = head;
+      currTail->forwardLink = nullptr;
+      head = currTail;
+      return head;
+    }
+    else{
+      tree.push_back(node);
+      currSize += sizeof(Node);
+      tree.back().backLink = head;
+      if(head){
+        head->forwardLink = &tree.back();
+      }
+      else{
+        tail = &tree.back();
+      }
+      head = &tree.back();
+      return &tree.back();
+    }
   }
 };
 
 void destroyTree(Tree& tree){
   tree.tree.clear();
   tree.root = nullptr;
+  tree.tail = nullptr;
+  tree.head = nullptr;
+  tree.currSize = 0;
 }
 
 uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked = true){
@@ -149,13 +199,47 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
   }
 
   Node* newRootNewAddress = newRoot->newAddress;
-  //std::cout << " | " << newRootNewAddress << " ";
+
+  for(Node& node : tree.tree){
+    if(node.mark == marked){
+      Node* currNode = node.backLink;
+      while(currNode && currNode->mark == !marked){
+        currNode = currNode->backLink;
+      }
+      if(!currNode){
+        node.backLink = nullptr;
+        tree.tail = &node;
+      }
+      else{
+        node.backLink = currNode;
+        currNode->forwardLink = &node;
+      }
+      currNode = node.forwardLink;
+      while(currNode && currNode->mark == !marked){
+        currNode = currNode->forwardLink;
+      }
+      if(!currNode){
+        node.forwardLink = nullptr;
+        tree.head = &node;
+      }
+      else{
+        node.forwardLink = currNode;
+        currNode->backLink = &node;
+      }
+    }
+  }
 
   for(Node& node : tree.tree){
     if(node.mark == marked){
       if(node.parent){
         assert(&node == newRoot || node.parent->mark == marked);
         node.parent = node.parent->newAddress;
+      }
+      if(node.backLink){
+        node.backLink = node.backLink->newAddress;
+      }
+      if(node.forwardLink){
+        node.forwardLink = node.forwardLink->newAddress;
       }
       for(int i=0; i<node.children.size(); i++){
         if(node.children[i].child){
@@ -165,6 +249,9 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
       }
     }
   }
+
+  tree.head = tree.head->newAddress;
+  tree.tail = tree.tail->newAddress;
 
   for(uint32_t i=0; i<tree.tree.size(); i++){
     Node* livePointer = &tree.tree[i];
@@ -216,6 +303,7 @@ void expand(Tree& tree, Node* parent, chess::MoveList& moves){
   // Node* currNode = parent->firstChild;
 
   parent->children.resize(moves.size());
+  tree.currSize += moves.size() * sizeof(Edge);
 
   for(uint16_t i=0; i<moves.size(); i++){
     parent->children[i] = Edge(moves[i]);
@@ -282,7 +370,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
   if(Aurora::options["outputLevel"].value==3){
     std::cout << "NODES: " << root->visits;
     #if DATAGEN == 0
-    std::cout << " SELDEPTH: " << seldepth <<"\n";
+    std::cout << " SELDEPTH: " << int(seldepth) <<"\n";
     #endif
     for(int i=0; i<root->children.size(); i++){
       Edge currEdge = root->children[i];
@@ -384,6 +472,7 @@ struct timeManagement{
 void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   auto start = std::chrono::steady_clock::now();
 
+  tree.setHash();
   if(!tree.root){tree.push_back(Node()); tree.root = &tree.tree[tree.tree.size()-1];}
 
   #if DATAGEN == 0
@@ -409,7 +498,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
   while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
     int currDepth = 0;
-    currNode = tree.root;
+    currNode = tree.root; tree.moveToHead(tree.root);
     chess::Board board = rootBoard;
     Edge* currEdge;
     std::vector<Edge*> traversePath;
@@ -421,11 +510,13 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       traversePath.push_back(currEdge);
       chess::makeMove(board, currEdge->edge);
       if(currEdge->child == nullptr){
-        tree.push_back(Node(currNode));
-        currEdge->child = &tree.tree[tree.tree.size()-1];
+        currEdge->child = tree.push_back(Node(currNode));
         currEdge->child->index = currEdgeIndex;
         currEdge->child->mark = currNode->mark;
         currEdge->child->visits = 1;
+      }
+      else{
+        tree.moveToHead(currEdge->child);
       }
       currNode = currEdge->child;
     }
