@@ -18,6 +18,8 @@ If you want to build Aurora from the source code, download the source code, navi
 g++ aurora.cpp -o aurora -O3
 ```
 
+See an explanation of all the options [on the wiki](https://github.com/kjljixx/Aurora-Chess-Engine/wiki/Options)
+
 You should now have a file named ```aurora.exe```, which is the engine. Now go to your GUI and find instructions for adding engines. When the GUI prompts you to choose a file/engine, choose ```aurora.exe```.
 
 # Technical Details
