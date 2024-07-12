@@ -10,7 +10,7 @@ int main() {
   //tb_init("C:\\Users\\kjlji\\OneDrive\\Documents\\VSCode\\C++\\AuroraChessEngine-main\\3-4-5");
 
   chess::Board board;
-  std::cout << "Aurora " << VERSION << ", a chess engine by kjljixx\n";
+  std::cout << "Aurora " << VERSION_NUM VERSION_NAME DEV_STRING << ", a chess engine by kjljixx\n";
   uci::loop(board);
   return 1;
 }

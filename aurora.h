@@ -4,7 +4,14 @@
 //Set to 1 if you want to build a version of Aurora which generates data, 2 for generating data while playing (cutechess), 0 for the normal version.
 #define DATAGEN 0
 
-#define VERSION "v1.16.0-better-ucb-formula"
+
+#define VERSION_NUM "v1.16.0"
+#define VERSION_NAME "-better-ucb-formula"
+#ifdef DEV
+#define DEV_STRING "-dev"
+#else
+#define DEV_STRING ""
+#endif
 
 namespace Aurora{
 
