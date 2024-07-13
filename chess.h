@@ -45,9 +45,9 @@ struct Board{
   unsigned char canCurrentlyCastle;
 
   //use to check for repetitions
-  U64 history[128];
-  bool hashed; //if there is a zobrist hash of the position in history, this is true
-  uint8_t startHistoryIndex; //When a fen is entered, we want getGameStatus to ignore all items of history before the halfmoveClock of the fen
+  U64 history[128] = {};
+  bool hashed = false; //if there is a zobrist hash of the position in history, this is true
+  uint8_t startHistoryIndex = 0; //When a fen is entered, we want getGameStatus to ignore all items of history before the halfmoveClock of the fen
 
   std::array<std::array<uint8_t, 64>, 2> mailbox; //mailbox representation of the board, one for each side
 
