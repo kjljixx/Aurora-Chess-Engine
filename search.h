@@ -117,8 +117,8 @@ struct Tree{
       assert(tail);
       Node* currTail = tail;
       for(int i=0; i<currTail->children.size(); i++){
+        currSize -= sizeof(Edge);
         if(currTail->children[i].child){
-          currSize -= sizeof(Edge);
           currTail->children[i].child->parent = nullptr;
         }
       }
@@ -133,6 +133,7 @@ struct Tree{
       tail->backLink = nullptr;
 
       *currTail = node;
+      currTail->children.shrink_to_fit();
       head->forwardLink = currTail;
       currTail->backLink = head;
       currTail->forwardLink = nullptr;
