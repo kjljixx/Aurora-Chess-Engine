@@ -5,8 +5,8 @@
 #define DATAGEN 0
 
 
-#define VERSION_NUM "v1.16.1"
-#define VERSION_NAME "-shrink-children"
+#define VERSION_NUM "v1.16.2"
+#define VERSION_NAME "-boost-exploration"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
