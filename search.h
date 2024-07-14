@@ -286,7 +286,7 @@ uint8_t selectEdge(Node* parent, bool isRoot){
     Node* currNode = parent->children[i].child;
     Edge currEdge = parent->children[i];
 
-    float currPriority = -currEdge.value+parentVisitsTerm/std::sqrt(currNode ? currNode->visits : 1);
+    float currPriority = -currEdge.value+(parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*parentVisitsTerm/std::sqrt(currNode ? currNode->visits : 1);
 
     assert(currPriority>=-1);
 
