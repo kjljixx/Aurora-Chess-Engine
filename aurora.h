@@ -6,7 +6,7 @@
 
 
 #define VERSION_NUM "v1.16.2"
-#define VERSION_NAME "-boost-exploration"
+#define VERSION_NAME ""
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
