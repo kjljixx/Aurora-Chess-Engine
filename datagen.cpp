@@ -18,7 +18,7 @@ int main(){
     return 0;
   #else
 
-  std::string version = VERSION;
+  std::string version = VERSION_NUM;
   version += "-datagen";
 
   search::init();
@@ -85,7 +85,8 @@ int main(){
           assert(0);
         }
 
-        root = search::search(board, tm, root, tree);
+        search::search(board, tm, tree);
+        root = tree.root;
         rootBoard = board;
 
         search::Edge bestEdge = search::findBestEdge(root);
@@ -125,9 +126,9 @@ int main(){
 
         float rootVal = chosenEdge.value;
 
-        search::makeMove(board, chosenEdge.edge, rootBoard, root, tree);
+        search::makeMove(board, chosenEdge.edge, rootBoard, tree);
 
-        if((root && root->isTerminal) || std::abs(rootVal)>0.9999){
+        if((tree.root && tree.root->isTerminal) || std::abs(rootVal)>0.9999){
           gameIter++;
           if(gameIter % infoPrintInterval == 0){
             std::cout << "Thread: " << threadId << "\n";

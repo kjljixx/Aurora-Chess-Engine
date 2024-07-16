@@ -69,9 +69,9 @@ struct Node{
 
 struct Tree{
   std::deque<Node> tree;
-  Node* root;
-  uint64_t sizeLimit;
-  uint64_t currSize;
+  Node* root = nullptr;
+  uint64_t sizeLimit = 0;
+  uint64_t currSize = 0;
   Node* tail = nullptr;
   Node* head = nullptr;
 
@@ -527,7 +527,9 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     }
     //Expand & Backpropagate new values
     if(currNode->isTerminal){
+      #if DATAGEN == 0
       depth += currDepth;
+      #endif
       tree.root->visits += 1;
       backpropagate(currEdge->value, traversePath, 1, false, true, true);
     }
@@ -558,7 +560,9 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       for(int i=0; i<parentNode->children.size(); i++){if(parentNode->children[i].value <= currBestValue + 0.04){visits++;}}
       assert(visits >= 1);
       //Backpropagate best value
+      #if DATAGEN == 0
       depth += currDepth*visits;
+      #endif
       tree.root->visits += visits;
       backpropagate(-currBestValue, traversePath, visits, false, true, true);
     }
