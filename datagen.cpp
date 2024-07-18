@@ -35,7 +35,7 @@ int main(){
 
       std::vector<std::string> gameData;
 
-      search::timeManagement tm(search::NODES, 150);
+      search::timeManagement tm(search::NODES, 450);
 
       chess::Board board;
       chess::Board rootBoard; //Only exists to make the search::makeMove function happy
@@ -128,7 +128,7 @@ int main(){
 
         search::makeMove(board, chosenEdge.edge, rootBoard, tree);
 
-        if((tree.root && tree.root->isTerminal) || std::abs(rootVal)>0.9999){
+        if((chess::getGameStatus(board, chess::isLegalMoves(board)) != chess::ONGOING) || std::abs(rootVal)>0.9999){
           gameIter++;
           if(gameIter % infoPrintInterval == 0){
             std::cout << "Thread: " << threadId << "\n";
