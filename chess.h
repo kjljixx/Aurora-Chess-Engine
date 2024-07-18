@@ -1093,5 +1093,3 @@ gameStatus getGameStatus(Board& board, bool isLegalMoves){
   return ONGOING;
 }
 }//namespace chess
-//cutechess-cli -engine cmd=stockfish16 name=sf-tc20+0.2 tc=0/20+0.2 -engine cmd=stockfish16 name=sf-tc10+-.1 tc=0/10+0.1 -each proto=uci option.Threads=16 timemargin=1000 -rounds 100 -openings file=C:\Users\kjlji\Downloads\uho_2022\UHO_2022\UHO_2022_+150_+159\UHO_2022_8mvs_big_+140_+169.pgn plies=8 -draw movenumber=20 movecount=10 score=10 -resign movecount=10 score=1000 twosided=true -concurrency 2
-//cutechess-cli -engine cmd=lc0 tc=0/60+6 option.WeightsFile=C:\Users\kjlji\Downloads\LeelaChessZeroDAG\lc0\t1-512x15x8h-distilled-swa-3395000.pb.gz -engine cmd=stockfish16 tc=0/10+1 -each proto=uci -rounds 10 -openings file=C:\Users\kjlji\Downloads\uho_2022\UHO_2022\UHO_2022_+150_+159\UHO_2022_8mvs_big_+140_+169.pgn plies=8 -debug
