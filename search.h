@@ -8,7 +8,7 @@
 #include <deque>
 
 #if DATAGEN >= 1
-  std::string dataFolderPath = "C:/Users/kjlji/OneDrive/Documents/VSCode/C++/AuroraChessEngine-main/data";
+  std::string dataFolderPath = "/root/auroradata";
 #endif
 
 namespace search{
@@ -317,13 +317,18 @@ void expand(Tree& tree, Node* parent, chess::MoveList& moves){
 
 template<int numHiddenNeurons>
 float playout(chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
+  //First, check if the position is terminal
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){
     return _gameStatus;
   }
 
-  //std::cout << evaluation::evaluate(board, nnue) << " ";
+  //Next, probe TB
+  // chess::gameStatus tbResult = chess::probeWdlTb(board);
+  // if(tbResult != chess::ONGOING){
+    // return tbResult;
+  // }
 
   float eval = std::max(std::min(std::atan(evaluation::evaluate(board, nnue)*Aurora::options["evalScaleFactor"].value/100.0)/1.57079633, 1.0),-1.0)*0.999999;
   assert(-1<=eval && 1>=eval);
@@ -395,8 +400,8 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
 
     std::cout << "info ";
       #if DATAGEN == 0
-      std::cout << "depth " << int(depth / root->visits) << " ";
-      std::cout << "seldepth " << int(seldepth) << " ";
+      std::cout << "depth " << fmaxf(int(depth / root->visits), 1) << " ";
+      std::cout << "seldepth " << fmaxf(int(seldepth), 1) << " ";
       #endif
       std::cout << "nodes " << root->visits <<
       " score cp " << fminf(fmaxf(round(tan(-fminf(fmaxf(findBestValue(root), -0.9999), 0.9999)*1.57079633)*100), -100000), 100000) <<
@@ -500,6 +505,22 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     #endif
     return;
   }
+  // chess::Move tbMove = chess::probeDtzTb(rootBoard);
+  // if(tbMove.value){
+  //   chess::MoveList moves(rootBoard);
+  //   expand(tree, tree.root, moves);
+  //   for(int i=0; i<moves.size(); i++){
+  //     if(moves[i] == tbMove){
+  //       tree.root->children[i].value = -1;
+  //     }
+  //     else{
+  //       tree.root->children[i].value = 1;
+  //     }
+  //   }
+  //   tree.root->visits = 1;
+  //   tm.tmType = NODES;
+  //   tm.limit = -1;
+  // }
 
   while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
     int currDepth = 0;
