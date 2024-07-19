@@ -186,7 +186,7 @@ struct NNUEparameters{
 };
 
 extern "C" {
-  INCBIN(networkData, "mini-1.nnue");
+  INCBIN(networkData, "mini-2.nnue");
 }
 const NNUEparameters<NNUEhiddenNeurons>* _NNUEparameters = reinterpret_cast<const NNUEparameters<NNUEhiddenNeurons>*>(gnetworkDataData);
 
