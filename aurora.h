@@ -5,7 +5,7 @@
 #define DATAGEN 0
 
 
-#define VERSION_NUM "v1.17.0"
+#define VERSION_NUM "v1.17.0-mini"
 #define VERSION_NAME "-net-andromeda-2"
 #ifdef DEV
 #define DEV_STRING "-dev"
