@@ -167,17 +167,25 @@ void go(std::istringstream input, chess::Board board){
     search::timeManagement tm(search::TIME);
     int time;
 
-    if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += fmaxf(Aurora::options["searchTimePortion"].value*time/1000.0, 0.005);}}
-    else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += fmaxf(Aurora::options["searchTimePortion"].value*time/1000.0, 0.005);}}
-    else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += 0/20000.0;}}
-    else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += 0/20000.0;}}
+    int ourTime = 0;
+    int ourInc = 0;
+    int theirTime = 0;
+    int theirInc = 0;
+
+    if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){ourTime = time;}else{theirTime = time;}}
+    else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){ourTime = time;}else{theirTime = time;}}
+    else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){ourInc = time;}else{theirInc = time;}}
+    else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){ourInc = time;}else{theirInc = time;}}
 
     while(input >> token){
-      if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += fmaxf(Aurora::options["searchTimePortion"].value*time/1000.0, 0.005);}}
-      else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += fmaxf(Aurora::options["searchTimePortion"].value*time/1000.0, 0.005);}}
-      else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){tm.limit += 0/20000.0;}}
-      else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){tm.limit += 0/20000.0;}}
+      if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){ourTime = time;}else{theirTime = time;}}
+      else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){ourTime = time;}else{theirTime = time;}}
+      else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){ourInc = time;}else{theirInc = time;}}
+      else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){ourInc = time;}else{theirInc = time;}}
     }
+    int movesLeft = 30;
+    int allocatedTime = fminf(0.05*(ourTime + ourInc*movesLeft), 0.1*(ourTime));
+    tm.limit = allocatedTime/1000.0;
     search::search(board, tm, tree);
     root = tree.root;
   }
