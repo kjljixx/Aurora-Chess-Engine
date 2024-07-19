@@ -35,15 +35,15 @@ Here are some details about the search:
 * Values backpropagated up the tree are done so with minimax
 
 ## Evaluation
-A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```andromeda-2.nnue```):
-* Arch:  (768->256)x2->1
+A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```mini-1.nnue```):
+* Arch:  (768->16)x2->1
 * Scale: 400
 * Batch Size: 16384
 * Batches / Superbatch: 6104
 * Positions / Superbatch: 100007936
-* Superbatches: 88
+* Superbatches: 40
 * WDL scheduler: constant 0.0
-* LR scheduler: start 0.001 gamma 0.1 drop every 44 superbatches
+* LR scheduler: start 0.001 gamma 0.1 drop every 20 superbatches
 * Device: NVIDIA GeForce MX550
 * Threads: 4
-* Positions: 135602901
+* Positions: 16951321
