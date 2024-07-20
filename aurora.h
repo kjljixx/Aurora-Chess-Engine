@@ -5,8 +5,8 @@
 #define DATAGEN 0
 
 
-#define VERSION_NUM "v1.17.0"
-#define VERSION_NAME "-net-andromeda-2"
+#define VERSION_NUM "v1.17.1"
+#define VERSION_NAME "-syzygy"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
