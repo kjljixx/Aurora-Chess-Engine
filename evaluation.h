@@ -171,7 +171,11 @@ int* eg_table[6] =
 };
 
 //A simple 768->N*2->1 NNUE
+#if DATAGEN == 0
 #define NNUEhiddenNeurons 16
+#else
+#define NNUEhiddenNeurons 256
+#endif
 
 const int WeightsPerVec = sizeof(SIMD::Vec) / sizeof(int16_t);
 
@@ -186,7 +190,11 @@ struct NNUEparameters{
 };
 
 extern "C" {
+#if DATAGEN == 0
   INCBIN(networkData, "mini-2.nnue");
+#else
+  INCBIN(networkData, "andromeda-1.nnue");
+#endif
 }
 const NNUEparameters<NNUEhiddenNeurons>* _NNUEparameters = reinterpret_cast<const NNUEparameters<NNUEhiddenNeurons>*>(gnetworkDataData);
 
