@@ -19,19 +19,28 @@ struct Option{
   float defaultValue;
   float minValue;
   float maxValue;
-  int type; //0 = string, 1 = spin
   float value;
 
+  //only used when the option is a string (type = 2)
+  std::string sDefaultValue;
+  std::string sValue;
+  
+  int type; //0 = string (which aurora uses for floats), 1 = spin (an int), 2 = string (an actual string)
+
   Option(float defaultValue, float minValue, float maxValue, int type) :
-    defaultValue(defaultValue), minValue(minValue), maxValue(maxValue), type(type), value(defaultValue) {}
+    defaultValue(defaultValue), minValue(minValue), maxValue(maxValue), value(defaultValue), type(type) {}
+  Option(std::string defaultValue, int type) :
+    minValue(-1), maxValue(-1), sDefaultValue(defaultValue), sValue(defaultValue), type(type) {}
   Option() :
-    defaultValue(0), minValue(0), maxValue(0), type(0), value(0) {}
+    defaultValue(0), minValue(0), maxValue(0), value(0), type(0) {}
 };
 
 std::map<std::string, Option> options;
 
 void initOptions(){
   options["Hash"] = Option(0, 0, 65536, 1);
+
+  options["SyzygyPath"] = Option("<empty>", 2);
 
   options["outputLevel"] = Option(2, 0, 3, 1);
   //0: only output bestmove at end of search

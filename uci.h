@@ -197,8 +197,8 @@ void respondUci(){
                 "\n";
                 for(auto option : Aurora::options){
                   std::cout << "option name " << option.first << " "
-                                      "type " << (option.second.type == 0 ? "string" : "spin") << " "
-                                      "default " << option.second.defaultValue << " "
+                                      "type " << (option.second.type == 1 ? "spin" : "string") << " "
+                                      "default " << (option.second.type == 2 ? option.second.sDefaultValue : std::to_string(option.second.defaultValue)) << " "
                                       "min " << option.second.minValue << " "
                                       "max " << option.second.maxValue << "\n";
                 }
@@ -219,11 +219,24 @@ void setOption(std::istringstream input){
 
   input >> token; //input the "value" token
 
-  float optionValue;
-  input >> optionValue;
-  Aurora::options[optionName].value = optionValue;
+  if (Aurora::options[optionName].type == 2){
+    std::string optionValue;
+    input >> optionValue;
+    Aurora::options[optionName].sValue = optionValue;
+    if(optionName != "SyzygyPath" || tb_init(Aurora::options[optionName].sValue.c_str())){
+      std::cout << "info string option " << optionName << " set to " << optionValue << "\n";
+    }
+    else{
+      std::cout << "info string could not init syzygy tablebases\n";
+    }
+  }
+  else{
+    float optionValue;
+    input >> optionValue;
+    Aurora::options[optionName].value = optionValue;
+    std::cout << "info string option " << optionName << " set to " << optionValue << "\n";
+  }
 
-  std::cout << "info string option " << optionName << " set to " << optionValue << "\n";
 }
 //Custom commands
 chess::Board makeMoves(chess::Board &board, std::istringstream input){
