@@ -54,5 +54,4 @@ void initOptions(){
 
   options["searchTimePortion"] = Option(0.05, 0, 1, 0);
 }
-
 }
