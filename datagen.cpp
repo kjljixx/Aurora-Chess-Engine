@@ -25,11 +25,14 @@ int main(){
   //tb_init("C:\\Users\\kjlji\\OneDrive\\Documents\\VSCode\\C++\\AuroraChessEngine-main\\3-4-5");
 
   std::cout << "Aurora " << version << ", a chess engine by kjljixx\n";
+  
+  tb_init("root/syzygy/3-4-5");
 
   std::vector<std::thread> threads;
   threads.reserve(numberOfThreads);
   for(int threadId=1; threadId<=numberOfThreads; threadId++) {
     threads.emplace_back([threadId, version] {
+
       std::random_device rd; 
       std::mt19937 eng(rd());
 

@@ -191,7 +191,7 @@ struct NNUEparameters{
 
 extern "C" {
 #if DATAGEN == 0
-  INCBIN(networkData, "mini-2.nnue");
+  INCBIN(networkData, "mini-3.nnue");
 #else
   INCBIN(networkData, "andromeda-1.nnue");
 #endif
