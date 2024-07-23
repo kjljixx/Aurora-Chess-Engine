@@ -41,11 +41,11 @@ void initOptions(){
 
   options["SyzygyPath"] = Option("<empty>", 2);
 
-  options["outputLevel"] = Option(2, 0, 3, 1);
   //0: only output bestmove at end of search
   //1: ouput bestmove and info at end of search
   //2: output bestmove and info at end of search and output info every 2 seconds
   //3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
+  options["outputLevel"] = Option(2, 0, 3, 1);
 
   options["explorationFactor"] = Option(0.04609718919, 0.001, 1024, 0);
   options["rootExplorationFactor"] = Option(0.09289019555, 0.001, 1024, 0);
