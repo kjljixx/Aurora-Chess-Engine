@@ -325,10 +325,10 @@ float playout(chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
   }
 
   //Next, probe TB
-  // chess::gameStatus tbResult = chess::probeWdlTb(board);
-  // if(tbResult != chess::ONGOING){
-    // return tbResult;
-  // }
+  chess::gameStatus tbResult = chess::probeWdlTb(board);
+  if(tbResult != chess::ONGOING){
+    return tbResult;
+  }
 
   float eval = std::max(std::min(std::atan(evaluation::evaluate(board, nnue)*Aurora::options["evalScaleFactor"].value/100.0)/1.57079633, 1.0),-1.0)*0.999999;
   assert(-1<=eval && 1>=eval);
@@ -505,22 +505,22 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     #endif
     return;
   }
-  // chess::Move tbMove = chess::probeDtzTb(rootBoard);
-  // if(tbMove.value){
-  //   chess::MoveList moves(rootBoard);
-  //   expand(tree, tree.root, moves);
-  //   for(int i=0; i<moves.size(); i++){
-  //     if(moves[i] == tbMove){
-  //       tree.root->children[i].value = -1;
-  //     }
-  //     else{
-  //       tree.root->children[i].value = 1;
-  //     }
-  //   }
-  //   tree.root->visits = 1;
-  //   tm.tmType = NODES;
-  //   tm.limit = -1;
-  // }
+  chess::Move tbMove = chess::probeDtzTb(rootBoard);
+  if(tbMove.value){
+    chess::MoveList moves(rootBoard);
+    expand(tree, tree.root, moves);
+    for(int i=0; i<moves.size(); i++){
+      if(moves[i] == tbMove){
+        tree.root->children[i].value = -1;
+      }
+      else{
+        tree.root->children[i].value = 1;
+      }
+    }
+    tree.root->visits = 1;
+    tm.tmType = NODES;
+    tm.limit = -1;
+  }
 
   while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
     int currDepth = 0;

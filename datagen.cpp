@@ -25,8 +25,7 @@ int main(){
   //tb_init("C:\\Users\\kjlji\\OneDrive\\Documents\\VSCode\\C++\\AuroraChessEngine-main\\3-4-5");
 
   std::cout << "Aurora " << version << ", a chess engine by kjljixx\n";
-  
-  tb_init("root/syzygy/3-4-5");
+  tb_init("/root/syzygy/3-4-5");
 
   std::vector<std::thread> threads;
   threads.reserve(numberOfThreads);
