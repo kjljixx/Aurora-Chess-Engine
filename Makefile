@@ -1,4 +1,4 @@
-EXE := aurora.exe
+EXE := aurora
 
 ifeq ($(OS),Windows_NT)
     override EXE := $(EXE).exe
