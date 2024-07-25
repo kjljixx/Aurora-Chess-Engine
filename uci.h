@@ -196,11 +196,18 @@ void respondUci(){
                 "id author kjljixx\n"
                 "\n";
                 for(auto option : Aurora::options){
-                  std::cout << "option name " << option.first << " "
-                                      "type " << (option.second.type == 1 ? "spin" : "string") << " "
-                                      "default " << (option.second.type == 2 ? option.second.sDefaultValue : std::to_string(option.second.type == 1 ? std::round(option.second.defaultValue) : option.second.defaultValue)) << " "
-                                      "min " << option.second.minValue << " "
-                                      "max " << option.second.maxValue << "\n";
+                  if(option.second.type == 2){
+                    std::cout << "option name " << option.first << " "
+                                        "type " << "string" << " "
+                                        "default " << option.second.sDefaultValue << "\n";                  
+                  }
+                  else{
+                    std::cout << "option name " << option.first << " "
+                                        "type " << (option.second.type == 1 ? "spin" : "string") << " "
+                                        "default " << option.second.defaultValue << " "
+                                        "min " << option.second.minValue << " "
+                                        "max " << option.second.maxValue << "\n";
+                  }
                 }
                 std::cout << "\nuciok\n";
 }
