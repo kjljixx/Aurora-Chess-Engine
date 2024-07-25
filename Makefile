@@ -1,3 +1,4 @@
+SRC_FILES := aurora.cpp ${wildcard *.h} external/incbin.h $(wildcard external/Fathom-1.0/src/*.*)
 EXE := aurora
 dg := -UDATAGEN
 dev :=
@@ -16,6 +17,8 @@ ifeq (${OS},Windows_NT)
   override EXE := ${EXE}.exe
 endif
 
-build:
+${EXE}: ${SRC_FILES}
 	clang++ aurora.cpp external/Fathom-1.0/src/tbprobe.cpp -o ${EXE} -march=x86-64-v3 -O3 -Wno-deprecated-declarations ${dev} ${dg}
+
+run:
 	./${EXE}
