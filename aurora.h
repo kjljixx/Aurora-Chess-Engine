@@ -3,6 +3,10 @@
 
 #define DATAGEN
 
+#ifdef NO_DATAGEN
+#undef DATAGEN
+#endif
+
 #define VERSION_NUM "mini-v1.17.0"
 #define VERSION_NAME "-net-mini-4"
 #ifdef DEV

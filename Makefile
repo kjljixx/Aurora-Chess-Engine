@@ -1,6 +1,6 @@
 SRC_FILES := aurora.cpp ${wildcard *.h} external/incbin.h $(wildcard external/Fathom-1.0/src/*.*)
 EXE := aurora
-dg := -UDATAGEN
+dg := -DNO_DATAGEN
 dev :=
 
 ifeq (${dev},1)
@@ -20,5 +20,5 @@ endif
 ${EXE}: ${SRC_FILES}
 	clang++ aurora.cpp external/Fathom-1.0/src/tbprobe.cpp -o ${EXE} -march=x86-64-v3 -O3 -Wno-deprecated-declarations ${dev} ${dg}
 
-run:
+run: ${EXE}
 	./${EXE}
