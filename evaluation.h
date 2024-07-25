@@ -171,7 +171,7 @@ int* eg_table[6] =
 };
 
 //A simple 768->N*2->1 NNUE
-#if DATAGEN == 0
+#ifndef DATAGEN
 #define NNUEhiddenNeurons 16
 #else
 #define NNUEhiddenNeurons 256
@@ -190,7 +190,7 @@ struct NNUEparameters{
 };
 
 extern "C" {
-#if DATAGEN == 0
+#ifndef DATAGEN
   INCBIN(networkData, "mini-4.nnue");
 #else
   INCBIN(networkData, "andromeda-1.nnue");
