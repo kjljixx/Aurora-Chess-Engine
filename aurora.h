@@ -32,6 +32,7 @@ std::map<std::string, Option> options;
 
 void initOptions(){
   options["Hash"] = Option(0, 0, 65536, 1);
+  options["Threads"] = Option(1, 1, 1, 1); //just here to make OpenBench happy
 
   options["outputLevel"] = Option(2, 0, 3, 1);
   //0: only output bestmove at end of search
