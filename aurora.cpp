@@ -11,7 +11,7 @@ int main(int argc, char* argv[]) {
   if(argc > 1){
     if(std::string(argv[1]) == "bench"){
       std::cout << "1 nodes 1 nps" << std::endl; //make OpenBench happy
-      return;
+      return 1;
     }
   }
 
