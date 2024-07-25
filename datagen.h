@@ -1,7 +1,10 @@
+#pragma once
 #include "search.h"
 #include <fstream>
 #include <iomanip>
 #include <thread>
+
+namespace datagen{
 
 int openingLength = 8;
 
@@ -12,12 +15,7 @@ int numberOfThreads = 8;
 float softmaxTemp = 0.2;
 
 int main(){
-  #if DATAGEN == 0
-    std::cout << "Preprocessor Variable DATAGEN must be set to 1 or 2 to Generate Data";
-    getchar();
-    return 0;
-  #else
-
+  #ifdef DATAGEN
   std::string version = VERSION_NUM;
   version += "-datagen";
 
@@ -194,3 +192,5 @@ int main(){
   #endif
   return 1;
 }
+
+}//namespace datagen

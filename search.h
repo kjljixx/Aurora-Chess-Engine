@@ -7,7 +7,7 @@
 #include <chrono>
 #include <deque>
 
-#if DATAGEN >= 1
+#ifdef DATAGEN
   std::string dataFolderPath = "/root/auroradata";
 #endif
 
@@ -19,7 +19,7 @@ backpropagationStrategy backpropStrat = MINIMAX;
 
 //float eP[12] = {1.6301532566281178, 0.3415019889631426, 1.462459315326555, 0.09830134955092976, 0.3670339438501686, 0.5028838849947221, 0.28917477475978387, 1.581231015213, 0.2747746463404976, 0.9214915071600298, 0.14796697203232123, 1.2260899419271722}; //exploration parameters
 
-#if DATAGEN == 0
+#ifndef DATAGEN
 uint8_t seldepth = 0;
 uint32_t depth = 0;
 #endif
@@ -379,7 +379,7 @@ int previousElapsed = 0;
 void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bool finalResult){
   if(Aurora::options["outputLevel"].value==3){
     std::cout << "NODES: " << root->visits;
-    #if DATAGEN == 0
+    #ifndef DATAGEN
     std::cout << " SELDEPTH: " << int(seldepth) <<"\n";
     #endif
     for(int i=0; i<root->children.size(); i++){
@@ -399,7 +399,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
     std::cout << "info ";
-      #if DATAGEN == 0
+      #ifndef DATAGEN
       std::cout << "depth " << fmaxf(int(depth / root->visits), 1) << " ";
       std::cout << "seldepth " << fmaxf(int(seldepth), 1) << " ";
       #endif
@@ -485,7 +485,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   tree.setHash();
   if(!tree.root){tree.push_back(Node()); tree.root = &tree.tree[tree.tree.size()-1];}
 
-  #if DATAGEN == 0
+  #ifndef DATAGEN
   seldepth = 0;
   depth = 0;
   #endif
@@ -500,7 +500,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   previousElapsed = 0;
 
   if(chess::getGameStatus(rootBoard, chess::isLegalMoves(rootBoard)) != chess::ONGOING){
-    #if DATAGEN != 1
+    #ifndef DATAGEN
       std::cout << "bestmove a1a1" << std::endl;
     #endif
     return;
@@ -548,7 +548,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     }
     //Expand & Backpropagate new values
     if(currNode->isTerminal){
-      #if DATAGEN == 0
+      #ifndef DATAGEN
       depth += currDepth;
       #endif
       tree.root->visits += 1;
@@ -581,19 +581,19 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       for(int i=0; i<parentNode->children.size(); i++){if(parentNode->children[i].value <= currBestValue + 0.04){visits++;}}
       assert(visits >= 1);
       //Backpropagate best value
-      #if DATAGEN == 0
+      #ifndef DATAGEN
       depth += currDepth*visits;
       #endif
       tree.root->visits += visits;
       backpropagate(-currBestValue, traversePath, visits, false, true, true);
     }
 
-    #if DATAGEN == 0
+    #ifndef DATAGEN
     if(currDepth > seldepth){seldepth = currDepth;}
     #endif
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
-    #if DATAGEN != 1
+    #ifndef DATAGEN
       if(elapsed.count() >= lastNodeCheck*2){
         lastNodeCheck++;
         printSearchInfo(tree.root, start, false);
@@ -601,7 +601,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     #endif
   }
   //Output the final result of the search
-  #if DATAGEN != 1
+  #ifndef DATAGEN
     printSearchInfo(tree.root, start, true);
     std::cout << "\nbestmove " << findBestEdge(tree.root).edge.toStringRep() << std::endl;
   #endif

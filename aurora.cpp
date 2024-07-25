@@ -1,11 +1,12 @@
 #include "uci.h"
+#include "datagen.h"
 
 int main() {
-  #if DATAGEN > 0
-    std::cout << "Preprocessor Variable DATAGEN must be set to 0 for normal use";
-    getchar();
-    return 0;
+  #ifdef DATAGEN
+    datagen::main();
+    return 1;
   #endif
+
   search::init();
 
   chess::Board board;
