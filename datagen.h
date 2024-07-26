@@ -36,7 +36,6 @@ int main(){
       std::vector<std::string> gameData;
 
       search::timeManagement tm(search::NODES, 300);
-      search::timeManagement extraTime(search::NODES, 450);
 
       chess::Board board;
       chess::Board rootBoard; //Only exists to make the search::makeMove function happy
@@ -92,10 +91,6 @@ int main(){
 
         search::Edge bestEdge = search::findBestEdge(root);
         search::Edge chosenEdge = bestEdge;
-
-        search::search(board, extraTime, tree);
-        root = tree.root;
-        rootBoard = board;
         // float softmaxTotal = 0;
         // for(int i=0; i<root->children.size(); i++){
         //   softmaxTotal += exp(fminf(fmaxf(round(tan(-fminf(fmaxf(root->children[i].value, -0.9999), 0.9999)*1.57079633)*100), -100000), 100000)*softmaxTemp);
