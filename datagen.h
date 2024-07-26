@@ -10,7 +10,7 @@ int openingLength = 8;
 
 int infoPrintInterval = 10;
 
-int numberOfThreads = 8;
+int numberOfThreads = 16;
 
 float softmaxTemp = 0.2;
 
@@ -35,7 +35,7 @@ int main(){
 
       std::vector<std::string> gameData;
 
-      search::timeManagement tm(search::NODES, 450);
+      search::timeManagement tm(search::NODES, 300);
 
       chess::Board board;
       chess::Board rootBoard; //Only exists to make the search::makeMove function happy
