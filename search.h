@@ -60,10 +60,6 @@ struct Node{
   Node* newAddress = nullptr;
   bool mark = false;
 
-  #ifdef DATAGEN
-  uint8_t lowNodeBestChildIndex = 255;
-  #endif
-
   Node(Node* parent) :
   parent(parent),
   visits(0), isTerminal(false), sPriority(-1), updatePriority(true) {}
@@ -339,18 +335,18 @@ float playout(chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
   return eval;
 }
 
-uint8_t findBestEdge(Node* parent){
+Edge findBestEdge(Node* parent){
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
-  uint8_t currBestEdgeIndex = 0;
+  Edge currBestMove = parent->children[0];
 
   for(int i=0; i<parent->children.size(); i++){
     if(parent->children[i].value < currBestValue){
       currBestValue = parent->children[i].value;
-      currBestEdgeIndex = i;
+      currBestMove = parent->children[i];
     }
   }
 
-  return currBestEdgeIndex;
+  return currBestMove;
 }
 
 Node* findBestChild(Node* parent){
@@ -391,7 +387,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
       std::cout << currEdge.edge.toStringRep() << ": Q:" << -currEdge.value << " N:" << (currEdge.child ? currEdge.child->visits : 1) <<  " PV:";
       Node* pvNode = root->children[i].child;
       while(pvNode && pvNode->children.size() > 0){
-        Edge pvEdge = pvNode->children[findBestEdge(pvNode)];
+        Edge pvEdge = findBestEdge(pvNode);
         std::cout << pvEdge.edge.toStringRep() << " ";
         pvNode = pvEdge.child;
       }
@@ -414,7 +410,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
       " pv ";
     Node* pvNode = root;
     while(pvNode && pvNode->children.size() > 0){
-      Edge pvEdge = pvNode->children[findBestEdge(pvNode)];
+      Edge pvEdge = findBestEdge(pvNode);
       std::cout << pvEdge.edge.toStringRep() << " ";
       pvNode = pvEdge.child;
     }
@@ -432,9 +428,6 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, bool
   edges.pop_back();
 
   currEdge->child->visits+=visits;
-  #ifdef DATAGEN
-  if(currEdge->child->lowNodeBestChildIndex == 255 && currEdge->child->visits >= 300){currEdge->child->lowNodeBestChildIndex = findBestEdge(currEdge->child);}
-  #endif
   currEdge->child->updatePriority = true;
 
   float oldCurrNodeValue = 2;
@@ -518,9 +511,6 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     expand(tree, tree.root, moves);
     for(int i=0; i<moves.size(); i++){
       if(moves[i] == tbMove){
-        #ifdef DATAGEN
-        tree.root->lowNodeBestChildIndex = i;
-        #endif
         tree.root->children[i].value = -1;
       }
       else{
@@ -598,9 +588,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       backpropagate(-currBestValue, traversePath, visits, false, true, true);
     }
 
-    #ifdef DATAGEN
-    if(tree.root->lowNodeBestChildIndex == 255 && tree.root->visits >= 300){tree.root->lowNodeBestChildIndex = findBestEdge(tree.root);}
-    #else
+    #ifndef DATAGEN
     if(currDepth > seldepth){seldepth = currDepth;}
     #endif
     //Output some information on the search occasionally
@@ -615,7 +603,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   //Output the final result of the search
   #ifndef DATAGEN
     printSearchInfo(tree.root, start, true);
-    std::cout << "\nbestmove " << tree.root->children[findBestEdge(tree.root)].edge.toStringRep() << std::endl;
+    std::cout << "\nbestmove " << findBestEdge(tree.root).edge.toStringRep() << std::endl;
   #endif
 
   return;

@@ -35,7 +35,7 @@ int main(){
 
       std::vector<std::string> gameData;
 
-      search::timeManagement tm(search::NODES, 450);
+      search::timeManagement tm(search::NODES, 300);
 
       chess::Board board;
       chess::Board rootBoard; //Only exists to make the search::makeMove function happy
@@ -89,10 +89,8 @@ int main(){
         root = tree.root;
         rootBoard = board;
 
-        search::Edge bestEdge = root->children[search::findBestEdge(root)];
-        assert(root->lowNodeBestChildIndex != 255);
-        assert(root->children.size() - 1 >= root->lowNodeBestChildIndex);
-        search::Edge chosenEdge = root->children[root->lowNodeBestChildIndex];
+        search::Edge bestEdge = search::findBestEdge(root);
+        search::Edge chosenEdge = bestEdge;
         // float softmaxTotal = 0;
         // for(int i=0; i<root->children.size(); i++){
         //   softmaxTotal += exp(fminf(fmaxf(round(tan(-fminf(fmaxf(root->children[i].value, -0.9999), 0.9999)*1.57079633)*100), -100000), 100000)*softmaxTemp);
@@ -115,7 +113,7 @@ int main(){
         //     break;
         //   }
         // }
-        if(chosenEdge.edge.value != bestEdge.edge.value){
+        if(chosenEdge.child != bestEdge.child){
           differChoices += 1;
           differValue += -(bestEdge.value - chosenEdge.value);
         }
