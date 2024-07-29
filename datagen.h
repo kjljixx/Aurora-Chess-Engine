@@ -35,7 +35,7 @@ int main(){
 
       std::vector<std::string> gameData;
 
-      search::timeManagement tm(search::NODES, 300);
+      search::timeManagement tm(search::NODES, 450);
 
       chess::Board board;
       chess::Board rootBoard; //Only exists to make the search::makeMove function happy
@@ -89,7 +89,7 @@ int main(){
         root = tree.root;
         rootBoard = board;
 
-        search::Edge bestEdge = search::findBestEdge(root);
+        search::Edge bestEdge = root->children[search::findBestEdge(root)];
         search::Edge chosenEdge = bestEdge;
         // float softmaxTotal = 0;
         // for(int i=0; i<root->children.size(); i++){
@@ -113,14 +113,15 @@ int main(){
         //     break;
         //   }
         // }
-        if(chosenEdge.child != bestEdge.child){
+        if(chosenEdge.edge.value != bestEdge.edge.value){
           differChoices += 1;
           differValue += -(bestEdge.value - chosenEdge.value);
         }
         totalSearches += 1;
 
+        assert(root->lowNodeEval >= -2);
         if(board.squareUnderAttack(_bitscanForward(board.getOurPieces(chess::KING)))==64 && board.mailbox[0][chosenEdge.edge.getEndSquare()]==0 && std::abs(bestEdge.value)<0.9999){
-          gameData.push_back(board.getFen() + " | " + std::to_string(int(round(tan((board.sideToMove ? search::findBestValue(root) : -search::findBestValue(root))*1.56375)*100))));
+          gameData.push_back(board.getFen() + " | " + std::to_string(int(round(tan((board.sideToMove ? -root->lowNodeEval : root->lowNodeEval)*1.56375)*100))));
           fenIter++;
         }
 
