@@ -128,8 +128,7 @@ int main(){
 
         search::makeMove(board, chosenEdge.edge, rootBoard, tree);
 
-        if((chess::getGameStatus(board, chess::isLegalMoves(board)) != chess::ONGOING) || std::abs(rootVal)>0.9999 || chess::probeWdlTb(board) != chess::ONGOING){
-          assert(std::abs(rootVal) >= 0.9999 || rootVal == 0);
+        if((chess::getGameStatus(board, chess::isLegalMoves(board)) != chess::ONGOING) || std::abs(rootVal)>0.9999){
           gameIter++;
           if(gameIter % infoPrintInterval == 0){
             std::cout << "Thread: " << threadId << "\n";
