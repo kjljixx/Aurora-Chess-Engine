@@ -30,6 +30,7 @@ int main(){
   threads.reserve(numberOfThreads);
   for(int threadId=1; threadId<=numberOfThreads; threadId++) {
     threads.emplace_back([threadId, version] {
+      
       std::random_device rd;
 
       std::mt19937 eng(rd());
@@ -92,7 +93,6 @@ int main(){
 
         search::Edge bestEdge = search::findBestEdge(root);
         search::Edge chosenEdge = bestEdge;
-        //log << "Chosen Edge:" << chosenEdge.edge.toStringRep() << "\n";
         // float softmaxTotal = 0;
         // for(int i=0; i<root->children.size(); i++){
         //   softmaxTotal += exp(fminf(fmaxf(round(tan(-fminf(fmaxf(root->children[i].value, -0.9999), 0.9999)*1.57079633)*100), -100000), 100000)*softmaxTemp);
