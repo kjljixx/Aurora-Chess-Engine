@@ -1071,9 +1071,8 @@ enum gameStatus{WIN = 1, DRAW = 0, LOSS = -1, ONGOING = 2};
 gameStatus probeWdlTb(Board& board){
   if(TB_LARGEST == 0){return ONGOING;}
   if(_popCount(board.occupied) > TB_LARGEST){return ONGOING;}
-  
-  assert(board.castlingRights == 0);
-  auto tbProbeResult = tb_probe_wdl(board.white, board.black, board.kings, board.queens, board.rooks, board.bishops, board.knights, board.pawns, 0, board.castlingRights, board.enPassant ? _bitscanForward(board.enPassant) : 0, board.sideToMove==WHITE);
+
+  auto tbProbeResult = tb_probe_wdl(board.white, board.black, board.kings, board.queens, board.rooks, board.bishops, board.knights, board.pawns, 0, 0, board.enPassant ? _bitscanForward(board.enPassant) : 0, board.sideToMove==WHITE);
   if(tbProbeResult==TB_RESULT_FAILED){board.printBoard(); assert(0);}
   if(tbProbeResult==TB_WIN){return WIN;}
   else if(tbProbeResult==TB_LOSS){return LOSS;}
