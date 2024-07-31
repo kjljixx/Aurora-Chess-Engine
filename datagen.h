@@ -142,7 +142,8 @@ int main(){
         //log << "Before Tree Reuse\n";
         search::makeMove(board, chosenEdge.edge, rootBoard, tree);
 
-        if((tree.root && tree.root->isTerminal) || (chess::getGameStatus(board, chess::isLegalMoves(board)) != chess::ONGOING) || std::abs(rootVal)>0.9999){
+        chess::gameStatus tbProbeResult = chess::probeWdlTb(board);
+        if((tbProbeResult != chess::ONGOING) || (chess::getGameStatus(board, chess::isLegalMoves(board)) != chess::ONGOING) || std::abs(rootVal)>0.9999){
           //log << "Terminal\n";
           //log << "Game:" << gameIter << "\n";
           gameIter++;
