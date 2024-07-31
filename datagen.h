@@ -24,13 +24,16 @@ int main(){
 
   std::cout << "Aurora " << version << ", a chess engine by kjljixx\n";
   tb_init("/root/syzygy/3-4-5");
+  assert(TB_LARGEST == 5);
 
   std::vector<std::thread> threads;
   threads.reserve(numberOfThreads);
   for(int threadId=1; threadId<=numberOfThreads; threadId++) {
     threads.emplace_back([threadId, version] {
+      std::ofstream log("/root/auroradata/log"+std::to_string(threadId)+".txt");
 
-      std::random_device rd; 
+      std::random_device rd;
+
       std::mt19937 eng(rd());
 
       std::vector<std::string> gameData;
@@ -85,12 +88,16 @@ int main(){
           assert(0);
         }
 
+        //log << "Start Search\n";
+
         search::search(board, tm, tree);
+        //log << "End Search\n";
         root = tree.root;
         rootBoard = board;
 
         search::Edge bestEdge = search::findBestEdge(root);
         search::Edge chosenEdge = bestEdge;
+        //log << "Chosen Edge:" << chosenEdge.edge.toStringRep() << "\n";
         // float softmaxTotal = 0;
         // for(int i=0; i<root->children.size(); i++){
         //   softmaxTotal += exp(fminf(fmaxf(round(tan(-fminf(fmaxf(root->children[i].value, -0.9999), 0.9999)*1.57079633)*100), -100000), 100000)*softmaxTemp);
@@ -119,16 +126,25 @@ int main(){
         }
         totalSearches += 1;
 
+        //log << "Before Filtering\n";
         if(board.squareUnderAttack(_bitscanForward(board.getOurPieces(chess::KING)))==64 && board.mailbox[0][chosenEdge.edge.getEndSquare()]==0 && std::abs(bestEdge.value)<0.9999){
           gameData.push_back(board.getFen() + " | " + std::to_string(int(round(tan((board.sideToMove ? search::findBestValue(root) : -search::findBestValue(root))*1.56375)*100))));
           fenIter++;
+          //log << "Not Filtered\n";
         }
+        else{
+          //log << "Filtered\n";
+        }
+        //log << "After Filtering\n";
 
         float rootVal = chosenEdge.value;
 
+        //log << "Before Tree Reuse\n";
         search::makeMove(board, chosenEdge.edge, rootBoard, tree);
 
-        if((chess::getGameStatus(board, chess::isLegalMoves(board)) != chess::ONGOING) || std::abs(rootVal)>0.9999){
+        if((tree.root && tree.root->isTerminal) || (chess::getGameStatus(board, chess::isLegalMoves(board)) != chess::ONGOING) || std::abs(rootVal)>0.9999){
+          //log << "Terminal\n";
+          //log << "Game:" << gameIter << "\n";
           gameIter++;
           if(gameIter % infoPrintInterval == 0){
             std::cout << "Thread: " << threadId << "\n";
@@ -181,6 +197,7 @@ int main(){
             else{}
           }
           rootBoard = board;
+          log << "New Opening:" << board.getFen() << "\n";
         }
       }
     });

@@ -558,7 +558,11 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       //Reached a leaf node
       currDepth++;
       chess::MoveList moves(board);
+      #ifdef DATAGEN
+      if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING || chess::probeWdlTb(board) != chess::ONGOING){assert(currEdge->value>=-1); currNode->isTerminal=true; continue;}
+      #else
       if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currEdge->value>=-1); currNode->isTerminal=true; continue;}
+      #endif
       expand(tree, currNode, moves); //Create new child nodes
       //Simulate for all new nodes
       Node* parentNode = currNode; //This will be the root of the backpropagation
