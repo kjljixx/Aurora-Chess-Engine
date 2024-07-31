@@ -30,9 +30,8 @@ int main(){
   threads.reserve(numberOfThreads);
   for(int threadId=1; threadId<=numberOfThreads; threadId++) {
     threads.emplace_back([threadId, version] {
-      
-      std::random_device rd;
 
+      std::random_device rd;
       std::mt19937 eng(rd());
 
       std::vector<std::string> gameData;
