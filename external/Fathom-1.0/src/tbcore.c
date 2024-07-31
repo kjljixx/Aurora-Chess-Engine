@@ -10,7 +10,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string>
 #include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -81,7 +80,7 @@ static FD open_tb(const char *str, const char *suffix)
 #ifndef _WIN32
     fd = open(file, O_RDONLY);
 #else
-    fd = CreateFile((LPCWSTR)(std::string(file)).c_str(), GENERIC_READ, FILE_SHARE_READ, NULL,
+    fd = CreateFile(file, GENERIC_READ, FILE_SHARE_READ, NULL,
 			  OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 #endif
     if (fd != FD_ERR) return fd;
