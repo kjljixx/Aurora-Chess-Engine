@@ -275,7 +275,7 @@ uint8_t selectEdge(Node* parent, bool isRoot, float predictedNodes){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = (isRoot ? Aurora::options["rootExplorationFactor"].value*std::log(parent->visits > 100 ? predictedNodes : parent->visits) : Aurora::options["explorationFactor"].value*std::log(parent->visits));
+  const float parentVisitsTerm = (isRoot ? Aurora::options["rootExplorationFactor"].value*std::log(parent->visits > 100 && predictedNodes != -1 ? predictedNodes : parent->visits) : Aurora::options["explorationFactor"].value*std::log(parent->visits));
 
   //const float parentVisitsTerm = eP[5]*powl(eP[2]*logl(eP[0]*parent->visits+eP[1])+eP[3], eP[4])+eP[6];
 
@@ -534,7 +534,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     while(currNode->children.size() > 0){
       currDepth++;
       elapsed = std::chrono::steady_clock::now() - start;
-      uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root, (tm.limit/elapsed.count())*currNode->visits);
+      uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root, tm.tmType == TIME ? (tm.limit/elapsed.count())*currNode->visits : -1);
       currEdge = &currNode->children[currEdgeIndex];
       traversePath.push_back(currEdge);
       chess::makeMove(board, currEdge->edge);
