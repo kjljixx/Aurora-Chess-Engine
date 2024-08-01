@@ -197,7 +197,7 @@ struct NNUE{
 
   NNUE(const NNUEparameters<numHiddenNeurons>* parameters) : parameters(parameters) {}
 
-  int evaluate(chess::Colors sideToMove){
+  float evaluate(chess::Colors sideToMove){
     //Adapted from Obsidian https://github.com/gab8192/Obsidian/blob/main/Obsidian/nnue.cpp
     SIMD::Vec stmAcc;
     SIMD::Vec oppAcc;
@@ -225,9 +225,9 @@ struct NNUE{
       v1 = SIMD::maddEpi16(v0, v1);
       sum = SIMD::addEpi32(sum, v1);
     }
-    int unsquared = SIMD::vecHaddEpi32(sum) / 255 + parameters->outputLayerBias;
+    float unsquared = SIMD::vecHaddEpi32(sum) / 255.0 + parameters->outputLayerBias;
 
-    return (unsquared * 400) / (255 * 64);
+    return (unsquared * 400.0) / (255.0 * 64.0);
   }
 
   void refreshAccumulator(chess::Board& board){
@@ -546,9 +546,9 @@ int mvvLva(chess::Board& board, chess::Move move){
 }
 
 template<int numHiddenNeurons>
-int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int beta){
-  int eval = nnue.evaluate(board.sideToMove);
-  int bestEval = eval;
+float qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, float alpha, float beta){
+  float eval = nnue.evaluate(board.sideToMove);
+  float bestEval = eval;
 
   if(eval >= beta){return eval;}
 
@@ -588,8 +588,8 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
 }
 
 template<int numHiddenNeurons>
-int evaluate(chess::Board& board, NNUE<numHiddenNeurons>& nnue){
-  int cpEvaluation = qSearch(board, nnue, -999999, 999999);
+float evaluate(chess::Board& board, NNUE<numHiddenNeurons>& nnue){
+  float cpEvaluation = qSearch(board, nnue, -999999, 999999);
 
   return cpEvaluation;
 }
