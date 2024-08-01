@@ -537,7 +537,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     tm.limit = -1;
   }
 
-  while((tm.tmType == FOREVER) || (elapsed.count()*(1.0+fmaxf(fminf(0.01*(bestMoveStability(tree)+0.05), 0.2), -0.2))<tm.limit && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
+  while((tm.tmType == FOREVER) || (elapsed.count()*(1.0+(tree.root->children.size() > 0 ? fmaxf(fminf(0.01*(bestMoveStability(tree)+0.05), 0.2), -0.2) : 0))<tm.limit && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
     int currDepth = 0;
     currNode = tree.root; tree.moveToHead(tree.root);
     chess::Board board = rootBoard;
