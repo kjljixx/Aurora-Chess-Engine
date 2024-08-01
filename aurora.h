@@ -7,8 +7,8 @@
 #undef DATAGEN
 #endif
 
-#define VERSION_NUM "mini-v1.17.0"
-#define VERSION_NAME "-net-mini-4"
+#define VERSION_NUM "mini-v1.18.0"
+#define VERSION_NAME "-net-mini-6"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
