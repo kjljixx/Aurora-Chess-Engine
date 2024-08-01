@@ -800,7 +800,11 @@ Move* generateLegalCaptures(Board &board, Move* legalMoves){
       //if pawn is pinned, you cannot push it unless it is a vertical rook pin. 
       //Also, it is not possible to have squares directly in front of the pawn be part of a pinmask if the pawn is pinned unless it is a vertical rook pin
       //So just using the rook mask suffices
-      //skip generating pawn pushes since they are not captures
+      //Only generate promotions
+      if(!(1ULL << piecePos & _kingMasks.bishopPinnedPieces)){
+        U64 singlePushBb = lookupTables::pawnPushTable[board.sideToMove][piecePos] & ~board.occupied;
+        legalMovesPtr = MoveListFromBitboard(singlePushBb & _kingMasks.checkmask & _kingMasks.rookPinmask & (bitboards::rank1 | bitboards::rank8), piecePos, true, legalMovesPtr);
+      }
 
       //Using similar logic, using just the bishop mask suffices
       if(!(1ULL << piecePos & _kingMasks.rookPinnedPieces)){
@@ -808,7 +812,9 @@ Move* generateLegalCaptures(Board &board, Move* legalMoves){
       }
     }
     else{
-      //skip generating pawn pushes since they are not captures
+      U64 singlePushBb = lookupTables::pawnPushTable[board.sideToMove][piecePos] & ~board.occupied;
+      legalMovesPtr = MoveListFromBitboard(singlePushBb & _kingMasks.checkmask & (bitboards::rank1 | bitboards::rank8), piecePos, true, legalMovesPtr);
+
       legalMovesPtr = MoveListFromBitboard(lookupTables::pawnAttackTable[board.sideToMove][piecePos] & theirPieces & _kingMasks.checkmask, piecePos, true, legalMovesPtr);
     }
 

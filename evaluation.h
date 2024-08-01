@@ -571,7 +571,7 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
           std::swap(moves.moveList[j], moves.moveList[i]);
       }
     }
-    if(SEE(board, moves[i].getEndSquare(), 0, moves[i].getStartSquare()) == 0) continue;
+    if(moves[i].getMoveFlags() != chess::PROMOTION && SEE(board, moves[i].getEndSquare(), 0, moves[i].getStartSquare()) == 0) continue;
 
     chess::Board movedBoard = board;
     nnue.accumulator = currAccumulator;
