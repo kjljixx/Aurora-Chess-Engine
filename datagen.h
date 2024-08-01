@@ -36,7 +36,7 @@ int main(){
 
       std::vector<std::string> gameData;
 
-      search::timeManagement tm(search::NODES, 300);
+      search::timeManagement tm(search::NODES, 450);
 
       chess::Board board;
       chess::Board rootBoard; //Only exists to make the search::makeMove function happy
