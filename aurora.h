@@ -49,8 +49,8 @@ void initOptions(){
   //2: output bestmove and info at end of search and output info every 2 seconds
   //3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 
-  options["explorationFactor"] = Option(0.2, 0.001, 1024, 0);
-  options["rootExplorationFactor"] = Option(0.4, 0.001, 1024, 0);
+  options["explorationFactor"] = Option(0.05, 0.001, 1024, 0);
+  options["rootExplorationFactor"] = Option(0.1, 0.001, 1024, 0);
 
   options["evalScaleFactor"] = Option(1, -1024, 1024, 0);
 
