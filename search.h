@@ -376,9 +376,22 @@ float findBestValue(Node* parent){
 int previousVisits = 0;
 int previousElapsed = 0;
 
-void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bool finalResult){
+float bestMoveStability(Tree& tree){
+  float bestMoveStability = 0.0;
+  Edge bestMove = findBestEdge(tree.root);
+  float bestMoveValue = bestMove.value;
+  for(int i=0; i<tree.root->children.size(); i++){
+    if(tree.root->children[i].edge == bestMove.edge) continue;
+    assert(tree.root->children[i].value >= bestMoveValue);
+    bestMoveStability -= std::pow(10, -(tree.root->children[i].value-bestMoveValue));
+  }
+  return bestMoveStability;
+}
+
+void printSearchInfo(Tree& tree, Node* root, std::chrono::steady_clock::time_point start, bool finalResult){
   if(Aurora::options["outputLevel"].value==3){
     std::cout << "NODES: " << root->visits;
+    std::cout << " BEST MOVE STAB: " << bestMoveStability(tree);
     #if DATAGEN == 0
     std::cout << " SELDEPTH: " << int(seldepth) <<"\n";
     #endif
@@ -524,7 +537,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     tm.limit = -1;
   }
 
-  while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
+  while((tm.tmType == FOREVER) || (elapsed.count()*(1.0+fmaxf(fminf(0.01*(bestMoveStability(tree)+0.05), 0.2), -0.2))<tm.limit && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
     int currDepth = 0;
     currNode = tree.root; tree.moveToHead(tree.root);
     chess::Board board = rootBoard;
@@ -598,13 +611,13 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     #if DATAGEN != 1
       if(elapsed.count() >= lastNodeCheck*2){
         lastNodeCheck++;
-        printSearchInfo(tree.root, start, false);
+        printSearchInfo(tree, tree.root, start, false);
       }
     #endif
   }
   //Output the final result of the search
   #if DATAGEN != 1
-    printSearchInfo(tree.root, start, true);
+    printSearchInfo(tree, tree.root, start, true);
     std::cout << "\nbestmove " << findBestEdge(tree.root).edge.toStringRep() << std::endl;
   #endif
 
