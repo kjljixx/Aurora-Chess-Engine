@@ -177,4 +177,6 @@ namespace SIMD {
 
 #endif
 
+  constexpr int Alignment = std::max<int>(8, sizeof(Vec));
+
 }

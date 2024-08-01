@@ -24,6 +24,7 @@ int main(){
 
   std::cout << "Aurora " << version << ", a chess engine by kjljixx\n";
   tb_init("/root/syzygy/3-4-5");
+  assert(TB_LARGEST == 5);
 
   std::vector<std::thread> threads;
   threads.reserve(numberOfThreads);
@@ -35,7 +36,7 @@ int main(){
 
       std::vector<std::string> gameData;
 
-      search::timeManagement tm(search::NODES, 300);
+      search::timeManagement tm(search::NODES, 450);
 
       chess::Board board;
       chess::Board rootBoard; //Only exists to make the search::makeMove function happy
@@ -128,7 +129,8 @@ int main(){
 
         search::makeMove(board, chosenEdge.edge, rootBoard, tree);
 
-        if((chess::getGameStatus(board, chess::isLegalMoves(board)) != chess::ONGOING) || std::abs(rootVal)>0.9999){
+        chess::gameStatus tbProbeResult = chess::probeWdlTb(board);
+        if((tbProbeResult != chess::ONGOING) || (chess::getGameStatus(board, chess::isLegalMoves(board)) != chess::ONGOING) || std::abs(rootVal)>0.9999){
           gameIter++;
           if(gameIter % infoPrintInterval == 0){
             std::cout << "Thread: " << threadId << "\n";

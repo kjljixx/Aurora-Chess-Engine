@@ -183,15 +183,15 @@ int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
 
 template<int numHiddenNeurons>
 struct NNUEparameters{
-    alignas(32) std::array<std::array<int16_t, numHiddenNeurons>, 768> hiddenLayerWeights;
-    alignas(32) std::array<int16_t, numHiddenNeurons> hiddenLayerBiases;
-    alignas(32) std::array<int16_t, 2*numHiddenNeurons> outputLayerWeights;
+    alignas(SIMD::Alignment) std::array<std::array<int16_t, numHiddenNeurons>, 768> hiddenLayerWeights;
+    alignas(SIMD::Alignment) std::array<int16_t, numHiddenNeurons> hiddenLayerBiases;
+    alignas(SIMD::Alignment) std::array<int16_t, 2*numHiddenNeurons> outputLayerWeights;
     int16_t outputLayerBias;
 };
 
 extern "C" {
 #ifndef DATAGEN
-  INCBIN(networkData, "mini-5.nnue");
+  INCBIN(networkData, "mini-6.nnue");
 #else
   INCBIN(networkData, "andromeda-1.nnue");
 #endif
@@ -200,7 +200,7 @@ const NNUEparameters<NNUEhiddenNeurons>* _NNUEparameters = reinterpret_cast<cons
 
 template<int numHiddenNeurons>
 struct NNUE{
-  std::array<std::array<int16_t, numHiddenNeurons>, 2> accumulator = {{{{0}}}};
+  alignas(SIMD::Alignment) std::array<std::array<int16_t, numHiddenNeurons>, 2> accumulator = {{{{0}}}};
   const NNUEparameters<numHiddenNeurons>* parameters;
 
   NNUE(const NNUEparameters<numHiddenNeurons>* parameters) : parameters(parameters) {}
