@@ -186,7 +186,7 @@ struct NNUEparameters{
 };
 
 extern "C" {
-  INCBIN(networkData, "andromeda-2.nnue");
+  INCBIN(networkData, "arch2-88.bin");
 }
 const NNUEparameters<NNUEhiddenNeurons>* _NNUEparameters = reinterpret_cast<const NNUEparameters<NNUEhiddenNeurons>*>(gnetworkDataData);
 
