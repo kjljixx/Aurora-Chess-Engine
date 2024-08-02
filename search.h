@@ -534,7 +534,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     while(currNode->children.size() > 0){
       currDepth++;
       elapsed = std::chrono::steady_clock::now() - start;
-      uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root, tm.tmType == TIME ? (tm.limit/elapsed.count())*currNode->visits : -1);
+      uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root, tm.tmType == TIME && tm.limit/elapsed.count() < 2 ? (tm.limit/elapsed.count())*currNode->visits : -1);
       currEdge = &currNode->children[currEdgeIndex];
       traversePath.push_back(currEdge);
       chess::makeMove(board, currEdge->edge);
