@@ -186,7 +186,7 @@ struct NNUEparameters{
 };
 
 extern "C" {
-  INCBIN(networkData, "andromeda-2.nnue");
+  INCBIN(networkData, "andromeda-3.nnue");
 }
 const NNUEparameters<NNUEhiddenNeurons>* _NNUEparameters = reinterpret_cast<const NNUEparameters<NNUEhiddenNeurons>*>(gnetworkDataData);
 
@@ -227,7 +227,7 @@ struct NNUE{
     }
     int unsquared = SIMD::vecHaddEpi32(sum) / 255 + parameters->outputLayerBias;
 
-    return (unsquared * 400) / (255 * 64);
+    return (unsquared * 400) / (255 * 64) + 13;
   }
 
   void refreshAccumulator(chess::Board& board){
