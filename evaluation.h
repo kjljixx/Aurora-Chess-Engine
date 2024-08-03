@@ -227,7 +227,7 @@ struct NNUE{
     }
     int unsquared = SIMD::vecHaddEpi32(sum) / 255 + parameters->outputLayerBias;
 
-    return (unsquared * 400) / (255 * 64);
+    return (unsquared * 400) / (255 * 64) + 10;
   }
 
   void refreshAccumulator(chess::Board& board){
