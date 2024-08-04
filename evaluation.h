@@ -227,7 +227,7 @@ struct NNUE{
     }
     float unsquared = SIMD::vecHaddEpi32(sum) / 255.0 + parameters->outputLayerBias;
 
-    return (unsquared * 400) / (255 * 64) + 13;
+    return (unsquared * 400) / (255 * 64) + Aurora::options["a"].value;
   }
 
 void refreshAccumulator(chess::Board& board){
