@@ -32,7 +32,7 @@ Here are some details about the search:
 * Values backpropagated up the tree are done so with minimax
 
 ## Evaluation
-A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```andromeda-2.nnue```):
+A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```andromeda-3.nnue```):
 * Arch:  (768->256)x2->1
 * Scale: 400
 * Batch Size: 16384
@@ -43,4 +43,4 @@ A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the 
 * LR scheduler: start 0.001 gamma 0.1 drop every 44 superbatches
 * Device: NVIDIA GeForce MX550
 * Threads: 4
-* Positions: 135602901
+* Positions: 154143704
