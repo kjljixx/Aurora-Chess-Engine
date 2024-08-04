@@ -227,10 +227,10 @@ struct NNUE{
     }
     float unsquared = SIMD::vecHaddEpi32(sum) / 255.0 + parameters->outputLayerBias;
 
-    return (unsquared * 400.0) / (255.0 * 64.0);
+    return (unsquared * 400) / (255 * 64);
   }
 
-  void refreshAccumulator(chess::Board& board){
+void refreshAccumulator(chess::Board& board){
     for(int i=0; i<numHiddenNeurons; i++){
       accumulator[0][i] = parameters->hiddenLayerBiases[i];
       accumulator[1][i] = parameters->hiddenLayerBiases[i];
