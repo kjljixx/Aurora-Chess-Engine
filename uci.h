@@ -183,8 +183,8 @@ void go(std::istringstream input, chess::Board board){
       else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){ourInc = time;}else{theirInc = time;}}
       else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){ourInc = time;}else{theirInc = time;}}
     }
-    int movesLeft = 30;
-    int allocatedTime = fminf(0.05*(ourTime + ourInc*movesLeft), 0.1*(ourTime));
+    int movesLeft = 70;
+    int allocatedTime = fminf(0.0384615385*(ourTime + ourInc*movesLeft), 0.1*(ourTime));
     tm.limit = allocatedTime/1000.0;
     search::search(board, tm, tree);
     root = tree.root;
