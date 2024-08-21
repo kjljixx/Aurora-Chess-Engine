@@ -5,8 +5,8 @@
 #define DATAGEN 0
 
 
-#define VERSION_NUM "v1.18.0"
-#define VERSION_NAME "-net-andromeda-3"
+#define VERSION_NUM "v1.18.1"
+#define VERSION_NAME "-fix-depth"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else

@@ -22,6 +22,7 @@ backpropagationStrategy backpropStrat = MINIMAX;
 #if DATAGEN == 0
 uint8_t seldepth = 0;
 uint32_t depth = 0;
+uint32_t startNodes = 0;
 #endif
 
 void init(){
@@ -400,7 +401,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
 
     std::cout << "info ";
       #if DATAGEN == 0
-      std::cout << "depth " << int(depth / root->visits) << " ";
+      std::cout << "depth " << (root->visits == startNodes ? 0 : int(depth / (root->visits - startNodes))) << " ";
       std::cout << "seldepth " << int(seldepth) << " ";
       #endif
       std::cout << "nodes " << root->visits <<
@@ -488,6 +489,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   #if DATAGEN == 0
   seldepth = 0;
   depth = 0;
+  startNodes = tree.root->visits;
   #endif
 
   evaluation::NNUE<NNUEhiddenNeurons> nnue(evaluation::_NNUEparameters);
