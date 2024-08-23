@@ -13,6 +13,7 @@ search::Tree tree;
 //bench stuff
 const int AMOUNT_OF_FENS = 50;
 const int SECONDS_PER_POSITION = 1;
+int numMoves = 0;
 
 std::string benchFens[AMOUNT_OF_FENS] = { //From Alexandria
 			"r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14",
@@ -172,6 +173,7 @@ void go(std::istringstream input, chess::Board board){
     int theirTime = 0;
     int theirInc = 0;
 
+
     if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){ourTime = time;}else{theirTime = time;}}
     else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){ourTime = time;}else{theirTime = time;}}
     else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){ourInc = time;}else{theirInc = time;}}
@@ -183,11 +185,12 @@ void go(std::istringstream input, chess::Board board){
       else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){ourInc = time;}else{theirInc = time;}}
       else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){ourInc = time;}else{theirInc = time;}}
     }
-    int movesLeft = 50;
-    int allocatedTime = fminf((1/23.0)*(ourTime + ourInc*movesLeft), 0.1*(ourTime));
+    float movesLeft = 51.5*std::pow(1 + 2*std::pow(numMoves/51.5, 7), 1/7.0)-numMoves;
+    int allocatedTime = fminf(0.05*(ourTime + ourInc*movesLeft), ourTime - 5);
     tm.limit = allocatedTime/1000.0;
     search::search(board, tm, tree);
     root = tree.root;
+    numMoves++;
   }
   rootBoard = board;
 }
@@ -304,7 +307,7 @@ void loop(chess::Board board){
     if(token == "position"){std::getline(std::cin, token); board = position(std::istringstream(token));}
     if(token == "go"){std::getline(std::cin, token); go(std::istringstream(token), board);}
     if(token == "quit"){break;}
-    if(token == "ucinewgame"){search::destroyTree(tree); root = nullptr;}
+    if(token == "ucinewgame"){search::destroyTree(tree); root = nullptr; numMoves = 0;}
     //non-uci, custom commands
     if(token == "moves"){std::getline(std::cin, token); board = makeMoves(board, std::istringstream(token));}
     //bwlow are mostly for debugging purposes
