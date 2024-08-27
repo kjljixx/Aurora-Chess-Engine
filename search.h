@@ -582,7 +582,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         currBestValue = fminf(currBestValue, result);
       }
       int visits = 0;
-      for(int i=0; i<parentNode->children.size(); i++){if(parentNode->children[i].value <= currBestValue){visits++;}}
+      for(int i=0; i<parentNode->children.size(); i++){if(parentNode->children[i].value <= currBestValue + 0.08){visits++;}}
       assert(visits >= 1);
       //Backpropagate best value
       #if DATAGEN == 0
