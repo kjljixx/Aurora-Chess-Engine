@@ -5,8 +5,8 @@
 #define DATAGEN 0
 
 
-#define VERSION_NUM "v1.18.1"
-#define VERSION_NAME "-fix-depth"
+#define VERSION_NUM "v1.18.2"
+#define VERSION_NAME "-total-time"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
