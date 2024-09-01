@@ -154,12 +154,14 @@ void go(std::istringstream input, chess::Board board){
 
   input >> token;
   if(token == "infinite"){
+    if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
     search::search(board, search::timeManagement(search::FOREVER), tree);
     root = tree.root;
   }
   else if(token == "nodes"){
     int maxNodes;
     input >> maxNodes;
+    if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
     search::search(board, search::timeManagement(search::NODES, maxNodes), tree);
     root = tree.root;
   }
@@ -186,6 +188,7 @@ void go(std::istringstream input, chess::Board board){
     int movesLeft = 30;
     int allocatedTime = fminf(0.05*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
     tm.limit = allocatedTime/1000.0;
+    if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
     search::search(board, tm, tree);
     root = tree.root;
   }
