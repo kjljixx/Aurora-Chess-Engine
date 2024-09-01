@@ -508,6 +508,10 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     return;
   }
 
+  int bestMoveChanges = 0;
+  float bestMoveChangesMultiplier = 1;
+  chess::Move currBestMove;
+
   chess::Move tbMove = chess::probeDtzTb(rootBoard);
   if(tbMove.value){
     chess::gameStatus result = chess::probeWdlTb(rootBoard);
@@ -526,7 +530,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     tm.limit = -1;
   }
 
-  while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
+  while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit*bestMoveChangesMultiplier && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
     int currDepth = 0;
     currNode = tree.root; tree.moveToHead(tree.root);
     chess::Board board = rootBoard;
@@ -603,6 +607,14 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         printSearchInfo(tree.root, start, false);
       }
     #endif
+
+    if(findBestEdge(tree.root).edge.value != currBestMove.value){
+      bestMoveChanges++;
+      currBestMove = findBestEdge(tree.root).edge;
+    }
+
+    double expectedBestMoveChanges = (3.9 / 2048.0) * std::pow(tree.root->visits, 0.77);
+    bestMoveChangesMultiplier = fmaxf(fminf(bestMoveChanges / expectedBestMoveChanges, 1), 0.2);
   }
   //Output the final result of the search
   #if DATAGEN != 1
