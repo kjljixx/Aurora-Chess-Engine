@@ -5,8 +5,8 @@
 #define DATAGEN 0
 
 
-#define VERSION_NUM "v1.19.2"
-#define VERSION_NAME "-destroy-mismatched-tree-before-search"
+#define VERSION_NUM "v1.19.3"
+#define VERSION_NAME "-better-expected-bestmoves"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else

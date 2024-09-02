@@ -613,7 +613,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       currBestMove = findBestEdge(tree.root).edge;
     }
 
-    double expectedBestMoveChanges = (3.9 / 2048.0) * std::pow(tree.root->visits, 0.77);
+    double expectedBestMoveChanges = 0.26061644 * (std::pow(tree.root->visits, 0.54) - std::pow(startNodes, 0.54));
     bestMoveChangesMultiplier = fmaxf(fminf(bestMoveChanges / expectedBestMoveChanges, 1), 0.2);
   }
   //Output the final result of the search
