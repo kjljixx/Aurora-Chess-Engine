@@ -474,6 +474,7 @@ enum timeManagementType{
 
 struct timeManagement{
   timeManagementType tmType = FOREVER;
+  float hardLimit;
   float limit; //For FOREVER, this does not matter. For Nodes, this is the amount of nodes. For Time, it is the amount of seconds
   timeManagement(timeManagementType _tmType, uint32_t _limit = 0): tmType(_tmType), limit(_limit) {}
   timeManagement(): tmType(FOREVER), limit(0){}
@@ -530,7 +531,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     tm.limit = -1;
   }
 
-  while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit*bestMoveChangesMultiplier && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
+  while((tm.tmType == FOREVER) || (elapsed.count()<fminf(tm.limit*bestMoveChangesMultiplier, tm.hardLimit) && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
     int currDepth = 0;
     currNode = tree.root; tree.moveToHead(tree.root);
     chess::Board board = rootBoard;
@@ -614,7 +615,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     }
 
     double expectedBestMoveChanges = 0.26061644 * (std::pow(tree.root->visits, 0.54) - std::pow(startNodes, 0.54));
-    bestMoveChangesMultiplier = fmaxf(fminf(bestMoveChanges / expectedBestMoveChanges, 1), 0.2);
+    bestMoveChangesMultiplier = fmaxf(fminf(bestMoveChanges / expectedBestMoveChanges, 2), 0.2);
   }
   //Output the final result of the search
   #if DATAGEN != 1

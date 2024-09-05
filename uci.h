@@ -188,6 +188,8 @@ void go(std::istringstream input, chess::Board board){
     int movesLeft = 30;
     int allocatedTime = fminf(0.05*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
     tm.limit = allocatedTime/1000.0;
+    allocatedTime = fminf(0.1*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
+    tm.hardLimit = allocatedTime/1000.0;
     if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
     search::search(board, tm, tree);
     root = tree.root;
