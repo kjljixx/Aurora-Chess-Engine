@@ -5,8 +5,8 @@
 #define DATAGEN 0
 
 
-#define VERSION_NUM "v1.20.0"
-#define VERSION_NAME "-exp-m-avg-values"
+#define VERSION_NUM "v1.20.1"
+#define VERSION_NAME "-less-mem-ema-values"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else

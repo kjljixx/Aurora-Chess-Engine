@@ -39,11 +39,9 @@ struct Edge{
   Node* child;
   chess::Move edge;
   float value;
-  int iters = 0;
-  float oldValue;
 
-  Edge() : child(nullptr), edge(chess::Move()), value(-2), oldValue(-2) {}
-  Edge(chess::Move move) : child(nullptr), edge(move), value(-2), oldValue(-2) {}
+  Edge() : child(nullptr), edge(chess::Move()), value(-2) {}
+  Edge(chess::Move move) : child(nullptr), edge(move), value(-2) {}
 };
 
 struct Node{
@@ -54,6 +52,8 @@ struct Node{
   float sPriority;
   bool updatePriority;
   uint8_t index;
+  int iters;
+  float avgValue;
 
   //For LRU tree management
   Node* backLink = nullptr; //back = older node
@@ -65,9 +65,9 @@ struct Node{
 
   Node(Node* parent) :
   parent(parent),
-  visits(0), isTerminal(false), sPriority(-1), updatePriority(true) {}
+  visits(0), isTerminal(false), sPriority(-1), updatePriority(true), iters(0), avgValue(-2) {}
 
-  Node() : parent(nullptr), visits(0), isTerminal(false), sPriority(-1), updatePriority(true) {}
+  Node() : parent(nullptr), visits(0), isTerminal(false), sPriority(-1), updatePriority(true), iters(0), avgValue(-2) {}
 };
 
 struct Tree{
@@ -289,7 +289,7 @@ uint8_t selectEdge(Node* parent, bool isRoot){
     Node* currNode = parent->children[i].child;
     Edge currEdge = parent->children[i];
 
-    float currPriority = -currEdge.oldValue+(parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*parentVisitsTerm/std::sqrt(currNode ? currNode->visits : 1);
+    float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+(parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*parentVisitsTerm/std::sqrt(currNode ? currNode->visits : 1);
 
     assert(currPriority>=-1);
 
@@ -387,7 +387,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
     #endif
     for(int i=0; i<root->children.size(); i++){
       Edge currEdge = root->children[i];
-      std::cout << currEdge.edge.toStringRep() << ": Q:" << -currEdge.value << " A:" << -currEdge.oldValue << " N:" << (currEdge.child ? currEdge.child->visits : 1) <<  " PV:";
+      std::cout << currEdge.edge.toStringRep() << ": Q:" << -currEdge.value << " A:" << -(currEdge.child ? currEdge.child->avgValue : -2) << " N:" << (currEdge.child ? currEdge.child->visits : 1) <<  " PV:";
       Node* pvNode = root->children[i].child;
       while(pvNode && pvNode->children.size() > 0){
         Edge pvEdge = findBestEdge(pvNode);
@@ -455,8 +455,11 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, bool
       }
 
       currEdge->value = runFindBestMove ? -findBestValue(currEdge->child) : result;
-      currEdge->iters++;
-      currEdge->oldValue = currEdge->oldValue == -2 ? currEdge->value : currEdge->oldValue*(1-fmaxf(0.2, 1.0/currEdge->iters)) + currEdge->value*fmaxf(0.2, 1.0/currEdge->iters);
+      if(currEdge->child){
+        currEdge->child->iters++;
+        float newValWeight = fminf(1.0, fmaxf(0.2, 1.0/currEdge->child->iters));
+        currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
+      }
 
       assert(-1<=currEdge->value && 1>=currEdge->value);
 
@@ -553,6 +556,8 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         currEdge->child->index = currEdgeIndex;
         currEdge->child->mark = currNode->mark;
         currEdge->child->visits = 1;
+        currEdge->child->iters = 1;
+        currEdge->child->avgValue = currEdge->value;
       }
       else{
         tree.moveToHead(currEdge->child);
@@ -587,8 +592,6 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         float result = playout(movedBoard, nnue);
         assert(-1<=result && 1>=result);
         currEdge->value = result;
-        currEdge->iters++;
-        currEdge->oldValue = result;
 
         currBestValue = fminf(currBestValue, result);
       }
