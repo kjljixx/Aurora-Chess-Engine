@@ -6,7 +6,7 @@
 
 
 #define VERSION_NUM "v1.20.1"
-#define VERSION_NAME "-less-mem-ema-values"
+#define VERSION_NAME ""
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
