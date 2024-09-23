@@ -5,8 +5,8 @@
 #define DATAGEN 0
 
 
-#define VERSION_NUM "v1.20.1"
-#define VERSION_NAME ""
+#define VERSION_NUM "v1.21.0"
+#define VERSION_NAME "-adjust-with-expected-bias"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else

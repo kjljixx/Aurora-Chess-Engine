@@ -54,6 +54,7 @@ struct Node{
   uint8_t index;
   int iters;
   float avgValue;
+  float totalValBias;
 
   //For LRU tree management
   Node* backLink = nullptr; //back = older node
@@ -65,9 +66,9 @@ struct Node{
 
   Node(Node* parent) :
   parent(parent),
-  visits(0), isTerminal(false), sPriority(-1), updatePriority(true), iters(0), avgValue(-2) {}
+  visits(0), isTerminal(false), sPriority(-1), updatePriority(true), iters(0), avgValue(-2), totalValBias(0) {}
 
-  Node() : parent(nullptr), visits(0), isTerminal(false), sPriority(-1), updatePriority(true), iters(0), avgValue(-2) {}
+  Node() : parent(nullptr), visits(0), isTerminal(false), sPriority(-1), updatePriority(true), iters(0), avgValue(-2), totalValBias(0) {}
 };
 
 struct Tree{
@@ -387,7 +388,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
     #endif
     for(int i=0; i<root->children.size(); i++){
       Edge currEdge = root->children[i];
-      std::cout << currEdge.edge.toStringRep() << ": Q:" << -currEdge.value << " A:" << -(currEdge.child ? currEdge.child->avgValue : -2) << " N:" << (currEdge.child ? currEdge.child->visits : 1) <<  " PV:";
+      std::cout << currEdge.edge.toStringRep() << ": Q:" << -currEdge.value << " A:" << -(currEdge.child ? currEdge.child->avgValue : -2) << " B:" << (currEdge.child ? currEdge.child->totalValBias : 0) << " N:" << (currEdge.child ? currEdge.child->visits : 1) <<  " PV:";
       Node* pvNode = root->children[i].child;
       while(pvNode && pvNode->children.size() > 0){
         Edge pvEdge = findBestEdge(pvNode);
@@ -423,15 +424,16 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
   }
 }
 
-void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, bool runFindBestMove, bool continueBackprop, bool forceResult){
+void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, float bias, bool forceResult, bool runFindBestMove, bool continueBackprop){
   //Backpropagate results
   if(edges.size() == 0){return;}
 
   Edge* currEdge = edges.back();
   edges.pop_back();
 
-  currEdge->child->visits+=visits;
+  currEdge->child->visits += visits;
   currEdge->child->updatePriority = true;
+  currEdge->child->totalValBias += (std::abs(bias) > 1) ? 0 : bias;
 
   float oldCurrNodeValue = 2;
 
@@ -450,7 +452,7 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, bool
       //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
       if(result <= currEdge->value && !runFindBestMove && !forceResult){
         continueBackprop = false;
-        backpropagate(result, edges, visits, runFindBestMove, continueBackprop, false);
+        backpropagate(result, edges, visits, bias, false, runFindBestMove, continueBackprop);
         return;
       }
 
@@ -469,7 +471,7 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, bool
     }
   }
 
-  backpropagate(result, edges, visits, runFindBestMove, continueBackprop, false);
+  backpropagate(result, edges, visits, bias, false, runFindBestMove, continueBackprop);
 }
 
 //Code relating to the time manager
@@ -544,9 +546,18 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     chess::Board board = rootBoard;
     Edge* currEdge;
     std::vector<Edge*> traversePath;
+    float expectedBias = 0;
+    int totalWeight = 120;
+    // std::cout << (currNode->avgValBias/(currNode->iters == 0 ? 1 : currNode->iters)) << " ";
     //Traverse the search tree
+    test0 += testStartIters;
+    test1 += currNode->iters;
+    test3 += 1;
+    test2 += currNode->iters > 0 ? float(testStartIters)/currNode->iters : 0.0;
     while(currNode->children.size() > 0){
       currDepth++;
+      expectedBias += currNode->totalValBias;
+      totalWeight += currNode->iters;
       uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root);
       currEdge = &currNode->children[currEdgeIndex];
       traversePath.push_back(currEdge);
@@ -570,7 +581,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       depth += currDepth;
       #endif
       tree.root->visits += 1;
-      backpropagate(currEdge->value, traversePath, 1, false, true, true);
+      backpropagate(currEdge->value, traversePath, 1, 2, true, false, true);
     }
     else{
       //Reached a leaf node
@@ -580,7 +591,8 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       expand(tree, currNode, moves); //Create new child nodes
       //Simulate for all new nodes
       Node* parentNode = currNode; //This will be the root of the backpropagation
-      float currBestValue = 2; //Find and only backpropagate the best value we end up finding
+      expectedBias /= totalWeight;
+      float currBestValue = 2;
       nnue.refreshAccumulator(board);
       std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> currAccumulator = nnue.accumulator;
       for(int i=0; i<parentNode->children.size(); i++){
@@ -591,10 +603,15 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         nnue.updateAccumulator(movedBoard, currEdge->edge);
         float result = playout(movedBoard, nnue);
         assert(-1<=result && 1>=result);
-        currEdge->value = result;
+        currEdge->value = std::max(std::min(result-expectedBias, 1.0f), -1.0f);
 
-        currBestValue = fminf(currBestValue, result);
+        currBestValue = fminf(currBestValue, currEdge->value);
       }
+      float bias = 2;
+      if(abs(parentNode->avgValue) < 2){
+        bias = currBestValue-(-parentNode->avgValue);
+      }
+      // std::cout << currBestUnbiasedValue << " " << currBestValue << " " << -parentNode->avgValue << " " << expectedBias << std::endl;
       int visits = 0;
       for(int i=0; i<parentNode->children.size(); i++){if(parentNode->children[i].value <= currBestValue + 0.04){visits++;}}
       assert(visits >= 1);
@@ -603,7 +620,9 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       depth += currDepth*visits;
       #endif
       tree.root->visits += visits;
-      backpropagate(-currBestValue, traversePath, visits, false, true, true);
+      tree.root->totalValBias += (std::abs(bias) > 1) ? 0 : bias;
+      tree.root->iters += 1;
+      backpropagate(-currBestValue, traversePath, visits, bias, true, false, true);
     }
 
     #if DATAGEN == 0
