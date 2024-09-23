@@ -548,12 +548,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     std::vector<Edge*> traversePath;
     float expectedBias = 0;
     int totalWeight = 120;
-    // std::cout << (currNode->avgValBias/(currNode->iters == 0 ? 1 : currNode->iters)) << " ";
     //Traverse the search tree
-    test0 += testStartIters;
-    test1 += currNode->iters;
-    test3 += 1;
-    test2 += currNode->iters > 0 ? float(testStartIters)/currNode->iters : 0.0;
     while(currNode->children.size() > 0){
       currDepth++;
       expectedBias += currNode->totalValBias;
