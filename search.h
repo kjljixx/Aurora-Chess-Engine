@@ -551,13 +551,26 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     //Traverse the search tree
     while(currNode->children.size() > 0){
       currDepth++;
+      //Refine expected bias
       expectedBias += currNode->totalValBias;
       totalWeight += currNode->iters;
+      
+      //Move all children nodes to the front of LRU
+      for(int i=0; i<currNode->children.size(); i++){
+        if(currNode->children[i].child != nullptr){
+          tree.moveToHead(currNode->children[i].child);
+        }
+      }
+
+      //Select Child Node to explore
       uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root);
+
       currEdge = &currNode->children[currEdgeIndex];
       traversePath.push_back(currEdge);
       chess::makeMove(board, currEdge->edge);
+
       if(currEdge->child == nullptr){
+        //If we only had a child edge before, create the corresponding child node
         currEdge->child = tree.push_back(Node(currNode));
         currEdge->child->index = currEdgeIndex;
         currEdge->child->mark = currNode->mark;
@@ -565,9 +578,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         currEdge->child->iters = 1;
         currEdge->child->avgValue = currEdge->value;
       }
-      else{
-        tree.moveToHead(currEdge->child);
-      }
+
       currNode = currEdge->child;
     }
     //Expand & Backpropagate new values
