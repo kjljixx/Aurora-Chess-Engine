@@ -224,6 +224,11 @@ void setOption(std::istringstream input){
   std::string optionName;
   input >> optionName;
 
+  if(optionName == "SyzygyPath"){
+    std::cout << "info string SyzygyPath has been disabled in this binary" << std::endl;
+    return;
+  }
+
   if(Aurora::options.find(optionName) == Aurora::options.end()){
     std::cout << "info string could not find option " << optionName << std::endl;
     return;
@@ -235,7 +240,7 @@ void setOption(std::istringstream input){
     std::string optionValue;
     input >> optionValue;
     Aurora::options[optionName].sValue = optionValue;
-    if(optionName != "SyzygyPath" || tb_init(Aurora::options[optionName].sValue.c_str())){
+    if(optionName != "SyzygyPath" || (tb_init(Aurora::options[optionName].sValue.c_str()) && TB_LARGEST > 0)){
       std::cout << "info string option " << optionName << " set to " << optionValue << std::endl;
     }
     else{
