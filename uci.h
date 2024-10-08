@@ -214,7 +214,7 @@ void respondUci(){
                                         "max " << option.second.maxValue << "\n";
                   }
                 }
-                std::cout << "\nuciok\n";
+                std::cout << "\nuciok" << std::endl;
 }
 void setOption(std::istringstream input){
   std::string token;
@@ -225,7 +225,7 @@ void setOption(std::istringstream input){
   input >> optionName;
 
   if(Aurora::options.find(optionName) == Aurora::options.end()){
-    std::cout << "info string could not find option " << optionName << "\n";
+    std::cout << "info string could not find option " << optionName << std::endl;
     return;
   }
 
@@ -236,17 +236,17 @@ void setOption(std::istringstream input){
     input >> optionValue;
     Aurora::options[optionName].sValue = optionValue;
     if(optionName != "SyzygyPath" || tb_init(Aurora::options[optionName].sValue.c_str())){
-      std::cout << "info string option " << optionName << " set to " << optionValue << "\n";
+      std::cout << "info string option " << optionName << " set to " << optionValue << std::endl;
     }
     else{
-      std::cout << "info string could not init syzygy tablebases\n";
+      std::cout << "info string could not init syzygy tablebases" << std::endl;
     }
   }
   else{
     float optionValue;
     input >> optionValue;
     Aurora::options[optionName].value = optionValue;
-    std::cout << "info string option " << optionName << " set to " << optionValue << "\n";
+    std::cout << "info string option " << optionName << " set to " << optionValue << std::endl;
   }
 
 }
@@ -304,7 +304,7 @@ void loop(chess::Board board){
     std::cin >> token;
     if(token == "uci"){respondUci();}
     if(token == "setoption"){std::getline(std::cin, token); setOption(std::istringstream(token));}
-    if(token == "isready"){std::cout << "readyok\n";} //TODO: make sure we are actually ready before printing readyok
+    if(token == "isready"){std::cout << "readyok" << std::endl;} //TODO: make sure we are actually ready before printing readyok
     if(token == "perft"){int depth; std::cin >> depth; perftDiv(board, depth);}
     if(token == "position"){std::getline(std::cin, token); board = position(std::istringstream(token));}
     if(token == "go"){std::getline(std::cin, token); go(std::istringstream(token), board);}
