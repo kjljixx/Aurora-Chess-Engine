@@ -235,7 +235,7 @@ void setOption(std::istringstream input){
     std::string optionValue;
     input >> optionValue;
     Aurora::options[optionName].sValue = optionValue;
-    if(optionName != "SyzygyPath" || tb_init(Aurora::options[optionName].sValue.c_str())){
+    if(optionName != "SyzygyPath" || (tb_init(Aurora::options[optionName].sValue.c_str()) && TB_LARGEST > 0)){
       std::cout << "info string option " << optionName << " set to " << optionValue << std::endl;
     }
     else{
