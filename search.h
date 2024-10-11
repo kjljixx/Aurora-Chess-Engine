@@ -477,7 +477,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
     if(continueBackprop){
       //If currEdge is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currEdge
       oldCurrNodeValue = 2;
-      if(edges.size() > 0 && -currEdge->value == edges.back().first->value){oldCurrNodeValue = currEdge->value;}
+      if(edges.size() > 0 && currEdge->value == findBestValue(edges.back().first->child)){oldCurrNodeValue = currEdge->value;}
 
       //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
       if(result <= currEdge->value && !runFindBestMove && !forceResult){
@@ -578,12 +578,26 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     std::vector<std::pair<Edge*, U64>> traversePath;
     float expectedBias = 0;
     int totalWeight = 120;
-    bool test = false; if(currNode->visits >= 7700){test = true;}
-    if(test){std::cout << "-----\n";}
+    bool skip = false;
+    // bool test = false; if(currNode->visits >= 156100){test = true;}
+    // if(test){std::cout << "-----\n";}
     //Traverse the search tree
     while(currNode->children.size() > 0){
-      if(test){std::cout << "blah";}
+      // if(test){std::cout << "blah";}
       currDepth++;
+
+      //See if we are in a terminal node (could be a loop or transposed 50-mr)
+      chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
+      if(_gameStatus != chess::ONGOING){
+        #if DATAGEN == 0
+        depth += currDepth;
+        #endif
+        tree.root->visits += 1;
+        backpropagate(tree, _gameStatus, traversePath, 1, 2, true, false, true);
+        skip = true;
+        break;
+      }
+
       //Refine expected bias
       expectedBias += currNode->totalValBias;
       totalWeight += currNode->iters;
@@ -597,19 +611,14 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
       //Select Child Node to explore
       uint8_t currEdgeIndex = selectEdge(tree, board, currNode, currNode == tree.root);
-
       currEdge = &currNode->children[currEdgeIndex];
-      if(test){
-        for(int i=0; i<currNode->children.size(); i++){
-          std::cout << currNode->children[i].edge.toStringRep() << " ";
-        }
-      }
-      if(test){std::cout << "\"" << currEdge->edge.toStringRep() << "\" " << std::endl;}
-      traversePath.push_back({currEdge, board.history[board.halfmoveClock]});
       chess::MoveList moves(board);
-      std::cout << "we";
       assert(currEdge->edge == moves[currEdgeIndex]);
       chess::makeMove(board, currEdge->edge);
+
+      // if(test){std::cout << currEdge->edge.toStringRep() << " " << std::flush;}
+      // std::cout << currEdge->edge.toStringRep() << " " << std::flush;
+      traversePath.push_back({currEdge, board.history[board.halfmoveClock]});
 
       if(currEdge->child == nullptr){
         //If we only had a child edge before, create the corresponding child node
@@ -625,7 +634,10 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       currNode = currEdge->child;
     }
     //Expand & Backpropagate new values
-    if(currNode->isTerminal){
+    if(skip){
+      continue;
+    }
+    else if(currNode->isTerminal){
       #if DATAGEN == 0
       depth += currDepth;
       #endif
