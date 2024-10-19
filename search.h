@@ -96,7 +96,7 @@ struct Tree{
     uint32_t hash = Aurora::options["Hash"].value;
     sizeLimit = 1000000 * hash;
     TT.clear();
-    TT.resize(10000);
+    TT.resize(1000000);
     // TT.resize((hash * 1000000)/sizeof(TTEntry));
   }
 
@@ -402,7 +402,7 @@ float findBestValue(Node* parent){
 int previousVisits = 0;
 int previousElapsed = 0;
 
-void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bool finalResult){
+void printSearchInfo(Node* root, chess::Board& rootBoard, std::chrono::steady_clock::time_point start, bool finalResult){
   if(Aurora::options["outputLevel"].value==3){
     std::cout << "NODES: " << root->visits;
     #if DATAGEN == 0
@@ -411,9 +411,17 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
     for(int i=0; i<root->children.size(); i++){
       Edge currEdge = root->children[i];
       std::cout << currEdge.edge.toStringRep() << ": Q:" << -currEdge.value << " A:" << -(currEdge.child ? currEdge.child->avgValue : -2) << " B:" << (currEdge.child ? currEdge.child->totalValBias : 0) << " N:" << (currEdge.child ? currEdge.child->visits : 1) <<  " PV:";
+      chess::Board pvBoard = rootBoard;
+      chess::makeMove(pvBoard, currEdge.edge);
       Node* pvNode = root->children[i].child;
       while(pvNode && pvNode->children.size() > 0){
+        chess::gameStatus _gameStatus = chess::getGameStatus(pvBoard, chess::isLegalMoves(pvBoard));
+        if(_gameStatus != chess::ONGOING){
+          break;
+        }
+
         Edge pvEdge = findBestEdge(pvNode);
+        chess::makeMove(pvBoard, pvEdge.edge);
         std::cout << pvEdge.edge.toStringRep() << " ";
         pvNode = pvEdge.child;
       }
@@ -435,8 +443,16 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
       " time " << round(elapsed.count()*1000) <<
       " pv ";
     Node* pvNode = root;
+    chess::Board pvBoard = rootBoard;
     while(pvNode && pvNode->children.size() > 0){
+      chess::gameStatus _gameStatus = chess::getGameStatus(pvBoard, chess::isLegalMoves(pvBoard));
+      if(_gameStatus != chess::ONGOING){
+        break;
+      }
+
       Edge pvEdge = findBestEdge(pvNode);
+      chess::makeMove(pvBoard, pvEdge.edge);
+
       std::cout << pvEdge.edge.toStringRep() << " ";
       pvNode = pvEdge.child;
     }
@@ -579,8 +595,6 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     float expectedBias = 0;
     int totalWeight = 120;
     bool skip = false;
-    // bool test = false; if(currNode->visits >= 156100){test = true;}
-    // if(test){std::cout << "-----\n";}
     //Traverse the search tree
     while(currNode->children.size() > 0){
       // if(test){std::cout << "blah";}
@@ -616,19 +630,27 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       assert(currEdge->edge == moves[currEdgeIndex]);
       chess::makeMove(board, currEdge->edge);
 
-      // if(test){std::cout << currEdge->edge.toStringRep() << " " << std::flush;}
-      // std::cout << currEdge->edge.toStringRep() << " " << std::flush;
       traversePath.push_back({currEdge, board.history[board.halfmoveClock]});
 
       if(currEdge->child == nullptr){
-        //If we only had a child edge before, create the corresponding child node
-        currEdge->child = tree.push_back(Node());
-        currEdge->child->parent.push_back(currNode);
-        currEdge->child->index.push_back(currEdgeIndex);
-        currEdge->child->mark = currNode->mark;
-        currEdge->child->visits = 1;
-        currEdge->child->iters = 1;
-        currEdge->child->avgValue = currEdge->value;
+        //First, check if node is in TT
+        Node* ttNode = tree.getTTNode(board.history[board.halfmoveClock]);
+        if(ttNode){
+          currEdge->child = ttNode;
+          currEdge->child->parent.push_back(currNode);
+          currEdge->child->index.push_back(currEdgeIndex);
+          currEdge->value = ttNode->avgValue;
+        }
+        else{
+          //If we only had a child edge before, create the corresponding child node
+          currEdge->child = tree.push_back(Node());
+          currEdge->child->parent.push_back(currNode);
+          currEdge->child->index.push_back(currEdgeIndex);
+          currEdge->child->mark = currNode->mark;
+          currEdge->child->visits = 1;
+          currEdge->child->iters = 1;
+          currEdge->child->avgValue = currEdge->value;
+        }
       }
 
       currNode = currEdge->child;
@@ -710,7 +732,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     #if DATAGEN != 1
       if(elapsed.count() >= lastNodeCheck*2){
         lastNodeCheck++;
-        printSearchInfo(tree.root, start, false);
+        printSearchInfo(tree.root, rootBoard, start, false);
       }
     #endif
 
@@ -724,7 +746,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   }
   //Output the final result of the search
   #if DATAGEN != 1
-    printSearchInfo(tree.root, start, true);
+    printSearchInfo(tree.root, rootBoard, start, true);
     std::cout << "\nbestmove " << findBestEdge(tree.root).edge.toStringRep() << std::endl;
   #endif
 
