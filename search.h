@@ -496,11 +496,12 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
       if(edges.size() > 0 && currEdge->value == findBestValue(edges.back().first->child)){oldCurrNodeValue = currEdge->value;}
 
       //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
-      if(result <= currEdge->value && !runFindBestMove && !forceResult){
-        continueBackprop = false;
-        backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop);
-        return;
-      }
+      //UPDATE: This is no longer valid with TT/DAG impl
+      // if(result <= currEdge->value && !runFindBestMove && !forceResult){
+      //   continueBackprop = false;
+      //   backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop);
+      //   return;
+      // }
 
       currEdge->value = runFindBestMove ? -findBestValue(currEdge->child) : result;
       if(currEdge->child){
