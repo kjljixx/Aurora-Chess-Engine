@@ -12,6 +12,11 @@
 #else
 #define DEV_STRING ""
 #endif
+#ifdef GIT_HASH
+#define GIT_HASH_STRING GIT_HASH
+#else
+#define GIT_HASH_STRING ""
+#endif
 
 namespace Aurora{
 

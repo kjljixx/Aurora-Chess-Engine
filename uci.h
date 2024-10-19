@@ -303,6 +303,7 @@ void loop(chess::Board board){
   while(true){
     std::cin >> token;
     if(token == "uci"){respondUci();}
+    if(token == "build"){std::cout << GIT_HASH_STRING << std::endl;}
     if(token == "setoption"){std::getline(std::cin, token); setOption(std::istringstream(token));}
     if(token == "isready"){std::cout << "readyok" << std::endl;} //TODO: make sure we are actually ready before printing readyok
     if(token == "perft"){int depth; std::cin >> depth; perftDiv(board, depth);}
