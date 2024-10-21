@@ -316,10 +316,16 @@ uint8_t selectEdge(Tree& tree, chess::Board& board, Node* parent, bool isRoot){
 
     assert(currPriority>=-1);
 
-    if(currPriority>maxPriority){
-      maxPriority = currPriority;
-      maxPriorityNodeIndex = i;
+    if(currPriority <= maxPriority){
+      continue;
     }
+    chess::Board movedBoard = board;
+    chess::makeMove(movedBoard, currEdge.edge);
+    if(chess::getGameStatus(movedBoard, chess::isLegalMoves(movedBoard)) != chess::ONGOING){
+      continue;
+    }
+    maxPriority = currPriority;
+    maxPriorityNodeIndex = i;
   }
 
   return maxPriorityNodeIndex;
