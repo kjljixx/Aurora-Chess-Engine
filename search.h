@@ -468,6 +468,31 @@ void printSearchInfo(Node* root, chess::Board& rootBoard, std::chrono::steady_cl
   }
 }
 
+void loopRepetitionDetection(std::vector<Edge*>& edges){
+  //Lower index = higher depth node (i.e. edges[1].child is parent of edges[0].child)
+
+  std::vector<float> originalValues;
+  originalValues.push_back(edges[0]->value);
+  edges[0]->value = 0.0;
+
+  for(int i=1; i<edges.size(); i++){
+    if(findBestValue(edges[i]->child) != 0.0){
+      break; //No repetition detected, reset to original values
+    }
+
+    originalValues.push_back(edges[i]->value);
+    edges[i]->value = 0.0;
+
+    if(i == edges.size()-1){
+      return; //If repetition is detected, don't restore original values
+    }
+  }
+
+  for(int i=0; i<originalValues.size(); i++){
+    edges[i]->value = originalValues[i];
+  }
+}
+
 void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, float bias, bool forceResult, bool runFindBestMove, bool continueBackprop){
   //Backpropagate results
   if(edges.size() == 0){return;}
