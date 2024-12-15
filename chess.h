@@ -1102,6 +1102,27 @@ Move probeDtzTb(Board& board){
   }
 }
 
+gameStatus isCheckmateOrStalemate(Board& board, bool isLegalMoves){
+  if(!isLegalMoves){
+    //If our king is under attack, we lost from checkmate. Otherwise, it is a draw by stalemate.
+    return gameStatus(-(board.squareUnderAttack(_bitscanForward(board.getOurPieces(KING)))<=63));
+  }
+  return ONGOING;
+}
+
+//Checks if in our search, we can be completely sure that a node is a threefold repetition
+//We can be completely sure if the root board has 2 repetitions of the current board
+//This way no matter what path is created through transpositions, the current node is still a threefold repetition
+//This is not necessarily true otherwise, as the current node could be a threefold repetition when we first explored it,
+//but not if the search tree transposes to certain locations
+//See example at https://lucid.app/publicSegments/view/5139e63d-2ac0-46b5-bea4-281b42e66033/image.pdf
+gameStatus permanentThreefoldRepetition(Board& rootBoard, Board& currBoard){
+  if(std::count(&rootBoard.history[rootBoard.startHistoryIndex], &rootBoard.history[rootBoard.halfmoveClock], currBoard.history[currBoard.halfmoveClock]) >= 2
+    && std::count(&currBoard.history[currBoard.startHistoryIndex], &currBoard.history[currBoard.halfmoveClock], currBoard.history[currBoard.halfmoveClock]) >= 2)
+  {return DRAW;}
+  return ONGOING;
+}
+
 gameStatus getGameStatus(Board& board, bool isLegalMoves){
   /*if(_popCount(board.occupied)<=5){
     auto tbProbeResult = tb_probe_wdl(board.white, board.black, board.kings, board.queens, board.rooks, board.bishops, board.knights, board.pawns, board.halfmoveClock, board.castlingRights, board.enPassant ? _bitscanForward(board.enPassant) : 0, board.sideToMove==WHITE);
