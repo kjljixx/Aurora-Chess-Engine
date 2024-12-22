@@ -521,7 +521,7 @@ bool loopRepetitionDetection(std::vector<std::pair<Edge*, U64>>& edges, int star
     edges[i].first->value = 0.0;
 
     if(i == startIdx){
-      std::cerr << "hi";
+      // std::cerr << "hi";
       return true; //If repetition is detected, don't restore original values
     }
   }

@@ -28,9 +28,7 @@ int main() {
   search::Tree tree;
   search::search(board, tm, tree);
 
-  chess::Board testBoard("8/1k6/3p4/p2P1p2/P2P1P2/8/2K5/8 w - - 8 5");
-  U64 testHash = zobrist::getHash(testBoard);
-  std::cout << tree.getTTEntry(testHash)->node->avgValue << "\n";
+
 
 
   // search::Tree tree;
@@ -45,7 +43,8 @@ int main() {
   // search::loopHandling(traversePath, 0, 2);
   // search::loopRepetitionDetection(traversePath, 0, 2);
 
-  std::ofstream file("tree.dot");
-  file << search::treeToDOTFormat(tree);
+  // std::ofstream file("tree.dot");
+  // file << search::treeToDOTFormat(tree);
+  std::cout << std::endl << search::debugNum;
   std::cout << "Done";
 }
