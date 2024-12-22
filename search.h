@@ -42,6 +42,7 @@ struct Edge{
 
   Edge() : child(nullptr), edge(chess::Move()), value(-2) {}
   Edge(chess::Move move) : child(nullptr), edge(move), value(-2) {}
+  Edge(Node* child, chess::Move move, float value) : child(child), edge(move), value(value) {}
 };
 
 struct Node{
@@ -52,6 +53,7 @@ struct Node{
   bool updatePriority;
   std::vector<uint8_t> index;
   int iters;
+  int originalVisits = 0; //# of children whose staticeval passed the visit threshold
   float avgValue;
   float totalValBias;
 
@@ -181,30 +183,44 @@ void destroyTree(Tree& tree){
   tree.tail = nullptr;
   tree.head = nullptr;
   tree.currSize = 0;
+  tree.TT.clear();
+  tree.TT.resize(1000000);
 }
 
 uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked = true){
+  assert(node);
+  
   uint64_t markedNodes = 0;
 
   if(isSubtreeRoot){
     unmarked = node->mark;
   }
-  if(node){
-    node->mark = !unmarked;
-    markedNodes++;
-    for(int i=0; i<node->children.size(); i++){
-      assert(node->children[i].child->mark == unmarked);
-      markedNodes += markSubtree(node->children[i].child, false, unmarked);
-    }
+
+  node->mark = !unmarked;
+  markedNodes++;
+  for(int i=0; i<node->children.size(); i++){
+    if(!node->children[i].child || node->children[i].child->mark != unmarked){continue;}
+    markedNodes += markSubtree(node->children[i].child, false, unmarked);
   }
+
   return markedNodes;
 }
 
 //Returns a pointer to the new root, which is different from the pointer given as a parameter because of the garbage collection
 Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
+  assert(newRoot);
+  assert(currRoot);
+  assert(newRoot != currRoot);
   //LISP 2 Garbage Collection Algorithm (https://en.wikipedia.org/wiki/Mark%E2%80%93compact_algorithm#LISP_2_algorithm)
   uint64_t markedNodes = markSubtree(newRoot);
   bool marked = newRoot->mark;
+
+  for(int i=0; i<tree.TT.size(); i++){
+    if(tree.TT[i].node && tree.TT[i].node->mark != marked){
+      tree.TT[i].hash = 0;
+      tree.TT[i].node = nullptr;
+    }
+  }
 
   uint64_t freePointer = 0;
 
@@ -250,15 +266,28 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
 
   tree.currSize = 0;
 
+  std::vector<Node*> newParents;
+  int newParentsLength = 0;
   for(Node& node : tree.tree){
     if(node.mark == marked){
       tree.currSize += sizeof(Node);
+      newParentsLength = 0;
       for(int i=0; i<node.parent.size(); i++){
-        if(node.parent[i]){
-          assert(&node == newRoot || node.parent[i]->mark == marked);
+        if(node.parent[i] && node.parent[i]->mark == marked){
+          if(newParents.size() <= newParentsLength){
+            assert(newParents.size() == newParentsLength);
+            newParents.push_back(node.parent[i]);
+          }
+          else{
+            newParents[newParentsLength] = node.parent[i];
+          }
+          newParentsLength++;
           node.parent[i] = node.parent[i]->newAddress;
         }
       }
+      node.parent = newParents;
+      node.parent.resize(newParentsLength);
+
       if(node.backLink){
         node.backLink = node.backLink->newAddress;
       }
@@ -295,7 +324,16 @@ uint8_t selectEdge(Node* parent, bool isRoot){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = (isRoot ? Aurora::options["rootExplorationFactor"].value : Aurora::options["explorationFactor"].value)*std::log(parent->visits);
+  uint32_t totalChildrenVisits = parent->originalVisits;
+  assert(totalChildrenVisits > 0);
+  for(int i=0; i<parent->children.size(); i++){
+    Node* currNode = parent->children[i].child;
+    if(currNode){
+      totalChildrenVisits += currNode->visits - 1;
+    }
+  }
+
+  const float parentVisitsTerm = (isRoot ? Aurora::options["rootExplorationFactor"].value : Aurora::options["explorationFactor"].value)*std::log(totalChildrenVisits);
 
   //const float parentVisitsTerm = eP[5]*powl(eP[2]*logl(eP[0]*parent->visits+eP[1])+eP[3], eP[4])+eP[6];
 
@@ -306,7 +344,7 @@ uint8_t selectEdge(Node* parent, bool isRoot){
     Node* currNode = parent->children[i].child;
     Edge currEdge = parent->children[i];
 
-    float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+(parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*parentVisitsTerm/std::sqrt(currNode ? currNode->visits : 1);
+    float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+((totalChildrenVisits+1)*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*parentVisitsTerm/std::sqrt(currNode ? currNode->visits : 1);
 
     assert(currPriority>=-1);
 
@@ -356,6 +394,7 @@ float playout(chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
 }
 
 Edge findBestEdge(Node* parent){
+  assert(parent->children.size() > 0);
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
   Edge currBestMove = parent->children[0];
 
@@ -370,6 +409,7 @@ Edge findBestEdge(Node* parent){
 }
 
 Node* findBestChild(Node* parent){
+  assert(parent->children.size() > 0);
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
   Node* currBestMove = parent->children[0].child;
 
@@ -383,12 +423,16 @@ Node* findBestChild(Node* parent){
   return currBestMove;
 }
 
+std::ofstream debug("debug.txt");
+
 float findBestValue(Node* parent){
+  assert(parent->children.size() > 0);
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
 
   for(int i=0; i<parent->children.size(); i++){
     currBestValue = std::min(currBestValue, parent->children[i].value);
   }
+  // debug << currBestValue << std::endl;
 
   return currBestValue;
 }
@@ -416,6 +460,7 @@ void printSearchInfo(Node* root, chess::Board& rootBoard, std::chrono::steady_cl
 
         Edge pvEdge = findBestEdge(pvNode);
         chess::makeMove(pvBoard, pvEdge.edge);
+        std::cerr << pvEdge.value << ", " << (pvEdge.child ? pvEdge.child->avgValue : -2) << " ";
         std::cout << pvEdge.edge.toStringRep() << " ";
         pvNode = pvEdge.child;
       }
@@ -456,6 +501,90 @@ void printSearchInfo(Node* root, chess::Board& rootBoard, std::chrono::steady_cl
   }
 }
 
+//Returns true if there is a threefold repetition loop
+bool loopRepetitionDetection(std::vector<std::pair<Edge*, U64>>& edges, int startIdx, int endIdx){
+  //Lower index = lower depth node (i.e. edges[1].child is child of edges[0].child)
+
+  assert(edges.size() >= 2);
+
+  std::vector<float> originalValues;
+  originalValues.push_back(edges[endIdx].first->value);
+  edges[endIdx].first->value = 0.0;
+
+  for(int i=endIdx-1; i>=startIdx; i--){
+    if(edges[i].first->child->children.size() > 1 && findBestValue(edges[i].first->child) != 0.0){
+      // std::cerr << "REP" << edges[i].first->edge.toStringRep() << findBestValue(edges[i].first->child) << std::endl;
+      break; //No repetition detected, reset to original values
+    }
+
+    originalValues.push_back(edges[i].first->value);
+    edges[i].first->value = 0.0;
+
+    if(i == startIdx){
+      std::cerr << "hi";
+      return true; //If repetition is detected, don't restore original values
+    }
+  }
+
+  for(int i=0; i<originalValues.size(); i++){
+    edges[endIdx-i].first->value = originalValues[i];
+    assert(edges[endIdx-i].first->value <= 1 && edges[endIdx-i].first->value >= -1);
+  }
+
+  return false;
+}
+
+void loopHandling(std::vector<std::pair<Edge*, U64>>& edges, int startIdx, int endIdx){
+  //Lower index = lower depth node (i.e. edges[1].child is child of edges[0].child)
+
+  assert(edges.size() >= 2);
+
+  float currBestValue = 2;
+  assert(edges[endIdx].first->child);
+  assert(edges[endIdx].first->child->children.size() > 0);
+  if(edges[endIdx].first->child->children.size() == 1){
+    assert(edges[endIdx].first->child->children[0].edge == edges[startIdx].first->edge);
+    currBestValue = edges[endIdx].first->child->children[0].value;
+  }
+  else{
+    bool assertion = false;
+    for(int i=0; i<edges[endIdx].first->child->children.size(); i++){
+      if(edges[endIdx].first->child->children[i].edge.value == edges[startIdx].first->edge.value){assertion = true; continue;}
+      currBestValue = std::min(currBestValue, edges[endIdx].first->child->children[i].value);
+    }
+    assert(assertion);
+  }
+  assert(currBestValue <= 1 && currBestValue >= -1);
+  edges[endIdx].first->value = -currBestValue;
+
+  for(int i=endIdx-1; i>=startIdx; i--){
+    currBestValue = 2;
+    assert(edges[i].first->child);
+    assert(edges[i].first->child->children.size() > 0);
+    if(edges[i].first->child->children.size() == 1){
+      assert(edges[i].first->child->children[0].edge == edges[i+1].first->edge);
+      currBestValue = edges[i].first->child->children[0].value;
+    }
+    else{
+      bool assertion = false;
+      // std::cerr << "\n";
+      for(int j=0; j<edges[i].first->child->children.size(); j++){
+        // std::cerr << edges[i].first->child->children[j].edge.toStringRep() << ", ";
+        if(edges[i].first->child->children[j].edge.value == edges[i+1].first->edge.value){assertion = true; continue;}
+        currBestValue = std::min(currBestValue, edges[i].first->child->children[j].value);
+      }
+      // std::cerr << "\n";
+      // std::cerr << startIdx << " " << i << " " << endIdx << std::endl;
+      assert(assertion);
+    }
+    assert(currBestValue <= 1 && currBestValue >= -1);
+    edges[i].first->value = -currBestValue;
+  }
+  return;
+}
+
+int test = 0;
+
 void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, float bias){
   //Backpropagate results
   if(edges.size() == 0){return;}
@@ -463,6 +592,16 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   std::pair<Edge*, U64> currEdgeHashPair = edges.back();
   Edge* currEdge = currEdgeHashPair.first;
   U64 hash = currEdgeHashPair.second;
+  for(int i=0; i<edges.size()-1; i++){
+    if(edges[i].first == currEdge){
+      // std::cout << "HIIIII\n";
+      loopHandling(edges, i+1, edges.size()-1);
+      loopRepetitionDetection(edges, i+1, edges.size()-1);
+    }
+  }
+  for(int i=0; i<edges.size()-1; i++){
+    assert(-1<=edges[i].first->value && 1>=edges[i].first->value);
+  }
   edges.pop_back();
 
   currEdge->child->visits += visits;
@@ -471,9 +610,13 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
 
   TTEntry* entry = tree.getTTEntry(hash);
   if(!entry->node || entry->node->visits < currEdge->child->visits){
+    if(!entry->node){
+      test++;
+    }
     entry->hash = hash;
     entry->node = currEdge->child;
   }
+
 
   float oldCurrNodeValue = 2;
 
@@ -483,13 +626,14 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
     // result = -result;
   }
   else if(backpropStrat == MINIMAX){
-    currEdge->value = -findBestValue(currEdge->child);
+    assert(-1<=currEdge->value && 1>=currEdge->value);
+    currEdge->value = currEdge->child->children.size() > 0 ? -findBestValue(currEdge->child) : currEdge->value;
     if(currEdge->child){
       currEdge->child->iters++;
       float newValWeight = fminf(1.0, fmaxf(0.2, 1.0/currEdge->child->iters));
       currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
     }
-
+    // debug << currEdge->value << std::endl;
     assert(-1<=currEdge->value && 1>=currEdge->value);
 
     result = -currEdge->value;
@@ -513,9 +657,30 @@ struct timeManagement{
   timeManagement(): tmType(FOREVER), limit(0){}
 };
 
+std::string treeToDOTFormat(search::Tree &tree) {
+  std::string s = "digraph {\n";
+
+  int iter = 0;
+  for (int i = 0; i < tree.tree.size(); i++) {
+    if(!(tree.tree[i].visits >= 0)){continue;}
+    s += std::to_string(U64(&tree.tree[i])) + "[label=\"" + std::to_string(tree.tree[i].avgValue) + "\"] ;\n";
+    for(auto edge : tree.tree[i].children){
+      iter--;
+      if(!(edge.child && edge.child->visits >= 0)){continue;}
+      s += std::to_string(U64(&tree.tree[i])) + " -> " + std::to_string(edge.child ? U64(edge.child) : iter) + "[label=\"" + edge.edge.toStringRep() + "," + std::to_string(edge.value) + "\"] ;\n";
+    }
+  }
+
+  s += "}\n";
+
+  return s;
+}
+
 //The main search function
 void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   auto start = std::chrono::steady_clock::now();
+
+  std::vector<int16_t> testTraversalPath = {0, 3121, 521, 3177, 586, 2664, 651, 2601, 724, 2672, 1301, 3113, 1366, 2664, 1439, 2608, 2022, 3112, 2469, 2601};
 
   tree.setHash();
   if(!tree.root){tree.push_back(Node()); tree.root = &tree.tree[tree.tree.size()-1];}
@@ -574,6 +739,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     int totalWeight = 120;
     bool skip = false;
     //Traverse the search tree
+    // std::cout << std::endl;
     while(currNode->children.size() > 0){
       currDepth++;
 
@@ -591,7 +757,8 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       //Select Child Node to explore
       uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root);
       currEdge = &currNode->children[currEdgeIndex];
-      traversePath.push_back({currEdge, board.history[board.halfmoveClock]});
+      // std::cout << currEdge->edge.toStringRep() << " " << currEdge->child << " ";
+      // if(currEdge->edge.value == testTraversalPath[currDepth-1]){std::cerr << currEdge->edge.toStringRep() << " " << tree.root->visits << "\n";}
       chess::makeMove(board, currEdge->edge);
 
       traversePath.push_back({currEdge, board.history[board.halfmoveClock]});
@@ -604,6 +771,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
           currEdge->child->parent.push_back(currNode);
           currEdge->child->index.push_back(currEdgeIndex);
           currEdge->value = ttNode->avgValue;
+          assert(currEdge->value >= -1 && currEdge->value <= 1);
         }
         else{
           //If we only had a child edge before, create the corresponding child node
@@ -656,6 +824,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
           currEdge->child->parent.push_back(parentNode);
           currEdge->child->index.push_back(i);
           currEdge->value = ttNode->avgValue;
+          assert(currEdge->value >= -1 && currEdge->value <= 1);
           currBestValue = fminf(currBestValue, currEdge->value);
           continue;
         }
@@ -681,6 +850,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       int visits = 0;
       for(int i=0; i<parentNode->children.size(); i++){if(parentNode->children[i].value <= currBestValue + 0.04){visits++;}}
       assert(visits >= 1);
+      parentNode->originalVisits = visits;
 
       //Backpropagate best value
       #if DATAGEN == 0
@@ -712,6 +882,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     double expectedBestMoveChanges = 0.26061644 * (std::pow(tree.root->visits, 0.54) - std::pow(startNodes, 0.54));
     bestMoveChangesMultiplier = fmaxf(fminf(bestMoveChanges / expectedBestMoveChanges, 2), 0.2);
   }
+  debug << treeToDOTFormat(tree) << std::endl;
   //Output the final result of the search
   #if DATAGEN != 1
     printSearchInfo(tree.root, rootBoard, start, true);

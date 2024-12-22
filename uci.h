@@ -314,7 +314,17 @@ void loop(chess::Board board){
     //non-uci, custom commands
     if(token == "moves"){std::getline(std::cin, token); board = makeMoves(board, std::istringstream(token));}
     //bwlow are mostly for debugging purposes
-    if(token == "board"){board.printBoard(); std::cout << "\n";} 
+    if(token == "board"){
+      board.printBoard();
+      std::cout << "\n";
+      for(int i=0; i<8; i++){
+        for(int j=0; j<8; j++){
+          std::cout << int(board.mailbox[0][i*8+j]) << " ";
+        }
+        std::cout << "\n";
+      }
+      std::cout << std::endl;
+    } 
     if(token == "checkmask"){bitboards::printBoard(board.generateKingMasks().checkmask); std::cout << "\n";}
     if(token == "rpinmask"){bitboards::printBoard(board.generateKingMasks().rookPinmask); std::cout << "\n";}
     if(token == "rpinned"){bitboards::printBoard(board.generateKingMasks().rookPinnedPieces); std::cout << "\n";}

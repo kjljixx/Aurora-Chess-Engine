@@ -48,6 +48,7 @@ struct Move{
     value(moveFlags + ((promotionPiece-KNIGHT) << 12) + (startSquare << 6) + (endSquare)){}
   //default constructor is a null move
   constexpr Move(): value(0){}
+  constexpr Move(uint16_t value): value(value){}
 
   constexpr bool operator ==(const Move move){return value == move.value;}
 
