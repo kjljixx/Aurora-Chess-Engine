@@ -423,8 +423,6 @@ Node* findBestChild(Node* parent){
   return currBestMove;
 }
 
-std::ofstream debug("debug.txt");
-
 float findBestValue(Node* parent){
   assert(parent->children.size() > 0);
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
@@ -432,7 +430,6 @@ float findBestValue(Node* parent){
   for(int i=0; i<parent->children.size(); i++){
     currBestValue = std::min(currBestValue, parent->children[i].value);
   }
-  // debug << currBestValue << std::endl;
 
   return currBestValue;
 }
@@ -583,24 +580,19 @@ void loopHandling(std::vector<std::pair<Edge*, U64>>& edges, int startIdx, int e
   return;
 }
 
-int test = 0;
-
-void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, float bias){
+void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, float bias, bool keepVal){
   //Backpropagate results
   if(edges.size() == 0){return;}
 
   std::pair<Edge*, U64> currEdgeHashPair = edges.back();
   Edge* currEdge = currEdgeHashPair.first;
+  // float originalEdgeVal = currEdge->value;
   U64 hash = currEdgeHashPair.second;
   for(int i=0; i<edges.size()-1; i++){
     if(edges[i].first == currEdge){
-      // std::cout << "HIIIII\n";
       loopHandling(edges, i+1, edges.size()-1);
       loopRepetitionDetection(edges, i+1, edges.size()-1);
     }
-  }
-  for(int i=0; i<edges.size()-1; i++){
-    assert(-1<=edges[i].first->value && 1>=edges[i].first->value);
   }
   edges.pop_back();
 
@@ -610,9 +602,6 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
 
   TTEntry* entry = tree.getTTEntry(hash);
   if(!entry->node || entry->node->visits < currEdge->child->visits){
-    if(!entry->node){
-      test++;
-    }
     entry->hash = hash;
     entry->node = currEdge->child;
   }
@@ -627,7 +616,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   }
   else if(backpropStrat == MINIMAX){
     assert(-1<=currEdge->value && 1>=currEdge->value);
-    currEdge->value = currEdge->child->children.size() > 0 ? -findBestValue(currEdge->child) : currEdge->value;
+    currEdge->value = (currEdge->child->children.size() > 0 && !keepVal) ? -findBestValue(currEdge->child) : currEdge->value;
     if(currEdge->child){
       currEdge->child->iters++;
       float newValWeight = fminf(1.0, fmaxf(0.2, 1.0/currEdge->child->iters));
@@ -639,7 +628,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
     result = -currEdge->value;
   }
 
-  backpropagate(tree, result, edges, visits, bias);
+  backpropagate(tree, result, edges, visits, bias, false);
 }
 
 //Code relating to the time manager
@@ -679,8 +668,6 @@ std::string treeToDOTFormat(search::Tree &tree) {
 //The main search function
 void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   auto start = std::chrono::steady_clock::now();
-
-  std::vector<int16_t> testTraversalPath = {0, 3121, 521, 3177, 586, 2664, 651, 2601, 724, 2672, 1301, 3113, 1366, 2664, 1439, 2608, 2022, 3112, 2469, 2601};
 
   tree.setHash();
   if(!tree.root){tree.push_back(Node()); tree.root = &tree.tree[tree.tree.size()-1];}
@@ -727,6 +714,14 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     tree.root->visits = 1;
     tm.tmType = NODES;
     tm.limit = -1;
+  }
+  for(int i=0; i<tree.root->children.size(); i++){
+    chess::Board board = rootBoard;
+    chess::makeMove(board, tree.root->children[i].edge);
+    chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
+    if(_gameStatus != chess::ONGOING){
+      tree.root->children[i].value = _gameStatus;
+    }
   }
 
   while((tm.tmType == FOREVER) || (elapsed.count()<fminf(tm.limit*bestMoveChangesMultiplier, tm.hardLimit) && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
@@ -794,16 +789,14 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         depth += currDepth;
         #endif
         tree.root->visits += 1;
-        backpropagate(tree, _gameStatus, traversePath, 1, 2);
+        currEdge->value = _gameStatus;
+        backpropagate(tree, _gameStatus, traversePath, 1, 2, true);
         skip = true;
         break;
       }
     }
     //Expand & Backpropagate new values
-    if(skip){
-      continue;
-    }
-    else{
+    if(!skip){
       //Reached a leaf node
       currDepth++;
       chess::MoveList moves(board);
@@ -859,7 +852,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       tree.root->visits += visits;
       tree.root->totalValBias += (std::abs(bias) > 1) ? 0 : bias;
       tree.root->iters += 1;
-      backpropagate(tree, -currBestValue, traversePath, visits, bias);
+      backpropagate(tree, -currBestValue, traversePath, visits, bias, false);
     }
 
     #if DATAGEN == 0
@@ -882,7 +875,6 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     double expectedBestMoveChanges = 0.26061644 * (std::pow(tree.root->visits, 0.54) - std::pow(startNodes, 0.54));
     bestMoveChangesMultiplier = fmaxf(fminf(bestMoveChanges / expectedBestMoveChanges, 2), 0.2);
   }
-  debug << treeToDOTFormat(tree) << std::endl;
   //Output the final result of the search
   #if DATAGEN != 1
     printSearchInfo(tree.root, rootBoard, start, true);

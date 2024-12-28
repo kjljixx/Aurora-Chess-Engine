@@ -20,10 +20,12 @@ std::string treeToDOTFormat(search::Tree &tree) {
 int main() {
   search::init();
 
-  chess::Board board("8/k7/3p4/p2P1p2/P2P1P2/8/8/K7 w - - 0 1");
+  chess::Board board(chess::startPosFen);
 
   Aurora::options["outputLevel"].value = 3;
-  search::timeManagement tm(search::NODES, 5000000);
+  search::timeManagement tm(search::TIME);
+  tm.hardLimit = 1000/1000.0;
+  tm.limit = 25000/1000.0;
 
   search::Tree tree;
   search::search(board, tm, tree);
