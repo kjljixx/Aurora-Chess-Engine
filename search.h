@@ -275,11 +275,11 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
   return newRootNewAddress;
 }
 
-uint8_t selectEdge(Node* parent, bool isRoot){
+uint8_t selectEdge(Node* parent, bool isRoot, float rootExpl, float expl){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = (isRoot ? Aurora::options["rootExplorationFactor"].value : Aurora::options["explorationFactor"].value)*std::log(parent->visits);
+  const float parentVisitsTerm = (isRoot ? rootExpl : expl)*std::log(parent->visits);
 
   //const float parentVisitsTerm = eP[5]*powl(eP[2]*logl(eP[0]*parent->visits+eP[1])+eP[3], eP[4])+eP[6];
 
@@ -334,7 +334,7 @@ float playout(chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
 
   //std::cout << evaluation::evaluate(board, nnue) << " ";
 
-  float eval = std::max(std::min(std::atan(evaluation::evaluate(board, nnue)*Aurora::options["evalScaleFactor"].value/100.0)/1.57079633, 1.0),-1.0)*0.999999;
+  float eval = std::max(std::min(std::atan(evaluation::evaluate(board, nnue)/100.0)/1.57079633, 1.0),-1.0)*0.999999;
   assert(-1<=eval && 1>=eval);
   return eval;
 }
@@ -540,6 +540,9 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     tm.limit = -1;
   }
 
+  float rootExpl = Aurora::options["rootExplorationFactor"].value;
+  float expl = Aurora::options["explorationFactor"].value;
+
   while((tm.tmType == FOREVER) || (elapsed.count()<fminf(tm.limit*bestMoveChangesMultiplier, tm.hardLimit) && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
     int currDepth = 0;
     currNode = tree.root; tree.moveToHead(tree.root);
@@ -563,7 +566,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       }
 
       //Select Child Node to explore
-      uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root);
+      uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root, rootExpl, expl);
 
       currEdge = &currNode->children[currEdgeIndex];
       traversePath.push_back(currEdge);

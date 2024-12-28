@@ -5,8 +5,8 @@
 #define DATAGEN 0
 
 
-#define VERSION_NUM "v1.22.0"
-#define VERSION_NAME "-keep-all-considered"
+#define VERSION_NUM "v1.22.1"
+#define VERSION_NAME "-refactor-options"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
@@ -56,8 +56,6 @@ void initOptions(){
 
   options["explorationFactor"] = Option(0.04609718919, 0.001, 1024, 0);
   options["rootExplorationFactor"] = Option(0.09289019555, 0.001, 1024, 0);
-
-  options["evalScaleFactor"] = Option(1, -1024, 1024, 0);
 
   options["searchTimePortion"] = Option(0.05, 0, 1, 0);
 }
