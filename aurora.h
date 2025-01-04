@@ -15,7 +15,7 @@
 #ifdef GIT_HASH
 #define GIT_HASH_STRING GIT_HASH
 #else
-#define GIT_HASH_STRING ""
+#define GIT_HASH_STRING "N/A"
 #endif
 
 namespace Aurora{
