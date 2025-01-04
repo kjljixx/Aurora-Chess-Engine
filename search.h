@@ -452,6 +452,10 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, floa
       //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
       if(result <= currEdge->value && !runFindBestMove && !forceResult){
         continueBackprop = false;
+        if(currEdge->child){
+          float newValWeight = fminf(1.0, fmaxf(0.03, 1.0/currEdge->child->iters));
+          currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
+        }
         backpropagate(result, edges, visits, bias, false, runFindBestMove, continueBackprop);
         return;
       }
@@ -468,6 +472,12 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, floa
       runFindBestMove = currEdge->value > oldCurrNodeValue; //currEdge(which used to be the best child)'s value got worse from currEdge's parent's perspective
 
       result = -currEdge->value;
+    }
+    else{
+      if(currEdge->child){
+        float newValWeight = fminf(1.0, fmaxf(0.03, 1.0/currEdge->child->iters));
+        currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
+      }
     }
   }
 

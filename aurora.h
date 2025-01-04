@@ -5,8 +5,8 @@
 #define DATAGEN 0
 
 
-#define VERSION_NUM "v1.22.1"
-#define VERSION_NAME "-refactor-options"
+#define VERSION_NUM "v1.22.2"
+#define VERSION_NAME "-fix-avgval-updates"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
