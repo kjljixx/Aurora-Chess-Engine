@@ -386,9 +386,10 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
     #if DATAGEN == 0
     std::cout << " SELDEPTH: " << int(seldepth) <<"\n";
     #endif
+    std::cout.precision(5);
     for(int i=0; i<root->children.size(); i++){
       Edge currEdge = root->children[i];
-      std::cout << currEdge.edge.toStringRep() << ": Q:" << -currEdge.value << " A:" << -(currEdge.child ? currEdge.child->avgValue : -2) << " B:" << (currEdge.child ? currEdge.child->totalValBias : 0) << " N:" << (currEdge.child ? currEdge.child->visits : 1) <<  " PV:";
+      std::cout << "\033[1;4m" << currEdge.edge.toStringRep() << "\033[0m: \033[1;4mQ\033[0m:" << -currEdge.value << " \033[1;4mA\033[0m:" << -(currEdge.child ? currEdge.child->avgValue : -2) << " \033[1;4mB\033[0m:" << (currEdge.child ? currEdge.child->totalValBias : 0) << " \033[1;4mI\033[0m:" << (currEdge.child ? currEdge.child->iters : 0) << " \033[1;4mN\033[0m:" << (currEdge.child ? currEdge.child->visits : 1) <<  " \033[1;4mPV\033[0m:";
       Node* pvNode = root->children[i].child;
       while(pvNode && pvNode->children.size() > 0){
         Edge pvEdge = findBestEdge(pvNode);
@@ -397,6 +398,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
       }
       std::cout << std::endl;
     }
+    std::cout.precision(10);
   }
 
   if(Aurora::options["outputLevel"].value >= 2 || (finalResult && Aurora::options["outputLevel"].value >= 1)){
