@@ -49,8 +49,6 @@ struct Node{
   std::vector<Edge> children;
   uint32_t visits;
   bool isTerminal;
-  float sPriority;
-  bool updatePriority;
   uint8_t index;
   int iters;
   float avgValue;
@@ -66,9 +64,9 @@ struct Node{
 
   Node(Node* parent) :
   parent(parent),
-  visits(0), isTerminal(false), sPriority(-1), updatePriority(true), iters(0), avgValue(-2), totalValBias(0) {}
+  visits(0), isTerminal(false), iters(0), avgValue(-2), totalValBias(0) {}
 
-  Node() : parent(nullptr), visits(0), isTerminal(false), sPriority(-1), updatePriority(true), iters(0), avgValue(-2), totalValBias(0) {}
+  Node() : parent(nullptr), visits(0), isTerminal(false), iters(0), avgValue(-2), totalValBias(0) {}
 };
 
 struct Tree{
@@ -434,7 +432,6 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, floa
   edges.pop_back();
 
   currEdge->child->visits += visits;
-  currEdge->child->updatePriority = true;
   currEdge->child->totalValBias += (std::abs(bias) > 1) ? 0 : bias;
 
   float oldCurrNodeValue = 2;
