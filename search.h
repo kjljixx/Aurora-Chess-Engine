@@ -455,6 +455,7 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, floa
       if(result <= currEdge->value && !runFindBestMove && !forceResult){
         continueBackprop = false;
         if(currEdge->child){
+          currEdge->child->iters++;
           float newValWeight = fminf(1.0, fmaxf(0.03, 1.0/currEdge->child->iters));
           currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
         }
@@ -477,6 +478,7 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, floa
     }
     else{
       if(currEdge->child){
+        currEdge->child->iters++;
         float newValWeight = fminf(1.0, fmaxf(0.03, 1.0/currEdge->child->iters));
         currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
       }
@@ -562,7 +564,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     Edge* currEdge;
     std::vector<Edge*> traversePath;
     float expectedBias = 0;
-    int totalWeight = 120;
+    int totalWeight = 90;
     //Traverse the search tree
     while(currNode->children.size() > 0){
       currDepth++;
