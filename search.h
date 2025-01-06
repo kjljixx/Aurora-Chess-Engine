@@ -35,6 +35,7 @@ void init(){
 
 struct Node;
 
+#pragma pack(push, 1)
 struct Edge{
   Node* child;
   float value;
@@ -43,6 +44,7 @@ struct Edge{
   Edge() : child(nullptr), value(-2), edge(chess::Move()) {}
   Edge(chess::Move move) : child(nullptr), value(-2), edge(move) {}
 };
+#pragma pack(pop)
 
 struct Node{
   std::vector<Edge> children;
