@@ -506,7 +506,6 @@ struct timeManagement{
 
 //The main search function
 void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
-  std::cout << sizeof(Node) << " " << sizeof(Edge) << std::endl;
   auto start = std::chrono::steady_clock::now();
 
   tree.setHash();
