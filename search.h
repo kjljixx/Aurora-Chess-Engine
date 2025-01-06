@@ -37,36 +37,38 @@ struct Node;
 
 struct Edge{
   Node* child;
-  chess::Move edge;
   float value;
+  chess::Move edge;
 
-  Edge() : child(nullptr), edge(chess::Move()), value(-2) {}
-  Edge(chess::Move move) : child(nullptr), edge(move), value(-2) {}
+  Edge() : child(nullptr), value(-2), edge(chess::Move()) {}
+  Edge(chess::Move move) : child(nullptr), value(-2), edge(move) {}
 };
 
 struct Node{
-  Node* parent;
   std::vector<Edge> children;
-  uint32_t visits;
-  bool isTerminal;
-  uint8_t index;
-  int iters;
-  float avgValue;
-  float totalValBias;
+  Node* parent;
 
   //For LRU tree management
   Node* backLink = nullptr; //back = older node
   Node* forwardLink = nullptr; //forward = newer node
-
   //For Tree Reuse
   Node* newAddress = nullptr;
+
+  uint32_t visits;
+  int iters;
+  float avgValue;
+  float totalValBias;
+
+  bool isTerminal;
+  uint8_t index;
+  //For Tree Reuse
   bool mark = false;
 
   Node(Node* parent) :
   parent(parent),
-  visits(0), isTerminal(false), iters(0), avgValue(-2), totalValBias(0) {}
+  visits(0), iters(0), avgValue(-2), totalValBias(0), isTerminal(false) {}
 
-  Node() : parent(nullptr), visits(0), isTerminal(false), iters(0), avgValue(-2), totalValBias(0) {}
+  Node() : parent(nullptr), visits(0), iters(0), avgValue(-2), totalValBias(0), isTerminal(false) {}
 };
 
 struct Tree{
@@ -502,6 +504,7 @@ struct timeManagement{
 
 //The main search function
 void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
+  std::cout << sizeof(Node) << " " << sizeof(Edge) << std::endl;
   auto start = std::chrono::steady_clock::now();
 
   tree.setHash();
