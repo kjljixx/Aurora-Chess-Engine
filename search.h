@@ -382,7 +382,8 @@ float findBestValue(Node* parent){
 int previousVisits = 0;
 int previousElapsed = 0;
 
-void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bool finalResult){
+void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
+  Node* root = tree.root;
   if(Aurora::options["outputLevel"].value==3){
     std::cout << "NODES: " << root->visits;
     #if DATAGEN == 0
@@ -413,6 +414,7 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
       #endif
       std::cout << "nodes " << root->visits <<
       " score cp " << fminf(fmaxf(round(tan(-fminf(fmaxf(findBestValue(root), -0.9999), 0.9999)*1.57079633)*100), -100000), 100000) <<
+      " hashfull " << (tree.sizeLimit > 0 ? int(1000*tree.currSize/tree.sizeLimit) : 0) <<
       " nps " << round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
       " time " << round(elapsed.count()*1000) <<
       " pv ";
@@ -657,7 +659,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     #if DATAGEN != 1
       if(elapsed.count() >= lastNodeCheck*2){
         lastNodeCheck++;
-        printSearchInfo(tree.root, start, false);
+        printSearchInfo(tree, start, false);
       }
     #endif
 
@@ -671,7 +673,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   }
   //Output the final result of the search
   #if DATAGEN != 1
-    printSearchInfo(tree.root, start, true);
+    printSearchInfo(tree, start, true);
     std::cout << "\nbestmove " << findBestEdge(tree.root).edge.toStringRep() << std::endl;
   #endif
 
