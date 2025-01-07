@@ -129,6 +129,7 @@ struct Tree{
         }
       }
       if(currTail->parent){
+        currTail->parent->children[currTail->index].edge.value |= 1 << 15;
         currTail->parent->children[currTail->index].child = nullptr;
       }
       if(currTail->forwardLink){
@@ -292,7 +293,9 @@ uint8_t selectEdge(Node* parent, bool isRoot, float rootExpl, float expl){
     Node* currNode = parent->children[i].child;
     Edge currEdge = parent->children[i];
 
-    float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+(parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*parentVisitsTerm/std::sqrt(currNode ? currNode->visits : 1);
+    float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
+      (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
+      parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (currEdge.edge.value & (1 << 15) ? 4 : 1));
 
     assert(currPriority>=-1);
 

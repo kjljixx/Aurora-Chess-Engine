@@ -5,8 +5,8 @@
 #define DATAGEN 0
 
 
-#define VERSION_NUM "v1.23"
-#define VERSION_NAME "-less-memory"
+#define VERSION_NUM "v1.24.0"
+#define VERSION_NAME "-assume-lru-visits"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
