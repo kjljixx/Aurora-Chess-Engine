@@ -433,7 +433,7 @@ void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bo
   }
 }
 
-void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, float bias, bool forceResult, bool runFindBestMove, bool continueBackprop){
+void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, float bias, bool forceResult, bool runFindBestMove, bool continueBackprop, float valChangedMinWeight, float valSameMinWeight){
   //Backpropagate results
   if(edges.size() == 0){return;}
 
@@ -462,17 +462,17 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, floa
         continueBackprop = false;
         if(currEdge->child){
           currEdge->child->iters++;
-          float newValWeight = fminf(1.0, fmaxf(0.03, 1.0/currEdge->child->iters));
+          float newValWeight = fminf(1.0, fmaxf(valSameMinWeight, 1.0/currEdge->child->iters));
           currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
         }
-        backpropagate(result, edges, visits, bias, false, runFindBestMove, continueBackprop);
+        backpropagate(result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
         return;
       }
 
       currEdge->value = runFindBestMove ? -findBestValue(currEdge->child) : result;
       if(currEdge->child){
         currEdge->child->iters++;
-        float newValWeight = fminf(1.0, fmaxf(0.2, 1.0/currEdge->child->iters));
+        float newValWeight = fminf(1.0, fmaxf(valChangedMinWeight, 1.0/currEdge->child->iters));
         currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
       }
 
@@ -485,13 +485,13 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, floa
     else{
       if(currEdge->child){
         currEdge->child->iters++;
-        float newValWeight = fminf(1.0, fmaxf(0.03, 1.0/currEdge->child->iters));
+        float newValWeight = fminf(1.0, fmaxf(valSameMinWeight, 1.0/currEdge->child->iters));
         currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
       }
     }
   }
 
-  backpropagate(result, edges, visits, bias, false, runFindBestMove, continueBackprop);
+  backpropagate(result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
 }
 
 //Code relating to the time manager
@@ -562,6 +562,9 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
   float rootExpl = Aurora::options["rootExplorationFactor"].value;
   float expl = Aurora::options["explorationFactor"].value;
+  float valChangedMinWeight = Aurora::options["valChangedMinWeight"].value;
+  float valSameMinWeight = Aurora::options["valSameMinWeight"].value;
+  float biasStartingWeight = Aurora::options["biasStartingWeight"].value;
 
   while((tm.tmType == FOREVER) || (elapsed.count()<fminf(tm.limit*bestMoveChangesMultiplier, tm.hardLimit) && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
     int currDepth = 0;
@@ -570,13 +573,13 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     Edge* currEdge;
     std::vector<Edge*> traversePath;
     float expectedBias = 0;
-    int totalWeight = 90;
+    int totalBiasWeight = biasStartingWeight;
     //Traverse the search tree
     while(currNode->children.size() > 0){
       currDepth++;
       //Refine expected bias
       expectedBias += currNode->totalValBias;
-      totalWeight += currNode->iters;
+      totalBiasWeight += currNode->iters;
       
       //Move all children nodes to the front of LRU
       for(int i=0; i<currNode->children.size(); i++){
@@ -610,7 +613,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       depth += currDepth;
       #endif
       tree.root->visits += 1;
-      backpropagate(currEdge->value, traversePath, 1, 2, true, false, true);
+      backpropagate(currEdge->value, traversePath, 1, 2, true, false, true, valChangedMinWeight, valSameMinWeight);
     }
     else{
       //Reached a leaf node
@@ -620,7 +623,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       expand(tree, currNode, moves); //Create new child nodes
       //Simulate for all new nodes
       Node* parentNode = currNode; //This will be the root of the backpropagation
-      expectedBias /= totalWeight;
+      expectedBias /= totalBiasWeight;
       float currBestValue = 2;
       nnue.refreshAccumulator(board);
       std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> currAccumulator = nnue.accumulator;
@@ -651,7 +654,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       tree.root->visits += visits;
       tree.root->totalValBias += (std::abs(bias) > 1) ? 0 : bias;
       tree.root->iters += 1;
-      backpropagate(-currBestValue, traversePath, visits, bias, true, false, true);
+      backpropagate(-currBestValue, traversePath, visits, bias, true, false, true, valChangedMinWeight, valSameMinWeight);
     }
 
     #if DATAGEN == 0
