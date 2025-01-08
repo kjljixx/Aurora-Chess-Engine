@@ -12,10 +12,8 @@ jobs:
         include:
         - os: "ubuntu-22.04"
           os-name: "linux"
-          ext: ""
         - os: "windows-2022"
           os-name: "windows"
-          ext: ".exe"
 
     runs-on: "${{matrix.os}}"
 
@@ -23,10 +21,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
       - name: Build Binary
-        run: "clang++ aurora.cpp external/Fathom-1.0/src/tbprobe.cpp -o aurora-${{github.ref_name}}-${{matrix.os-name}}${{matrix.ext}} -O3 -march=x86-64-v3"
+        run: "make EXE=aurora-${{github.ref_name}}-${{matrix.os-name}}"
       - name: Upload Binary to Release
         uses: alexellis/upload-assets@0.4.0
         env:
           GITHUB_TOKEN: ${{github.token}}
         with:
-          asset_paths: '["aurora-${{github.ref_name}}-${{matrix.os-name}}${{matrix.ext}}"]'
+          asset_paths: '["aurora-${{github.ref_name}}-${{matrix.os-name}}"]'
