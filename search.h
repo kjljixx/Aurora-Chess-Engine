@@ -295,7 +295,7 @@ uint8_t selectEdge(Node* parent, bool isRoot, float rootExpl, float expl){
 
     float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
       (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
-      parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (currEdge.edge.value & (1 << 15) ? 4 : 1));
+      parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (currEdge.edge.value & (1 << 15) ? 14 : 1));
 
     assert(currPriority>=-1);
 

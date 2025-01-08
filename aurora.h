@@ -5,8 +5,8 @@
 #define DATAGEN 0
 
 
-#define VERSION_NUM "v1.24.1"
-#define VERSION_NAME "-spsa"
+#define VERSION_NUM "v1.24.2"
+#define VERSION_NAME "-better-lru-visit-estimate"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
