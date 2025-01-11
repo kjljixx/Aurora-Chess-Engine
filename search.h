@@ -99,7 +99,7 @@ struct Tree{
     sizeLimit = 1000000 * hash * 0.8;
     TT.clear();
     uint32_t ttHash = Aurora::options["TTHash"].value ? Aurora::options["TTHash"].value : hash * 0.2;
-    TT.resize(std::min(1ULL, 1000000 * ttHash / sizeof(TTEntry)));
+    TT.resize(std::max(1ULL, 1000000 * ttHash / sizeof(TTEntry)));
   }
 
   //for debug purposes
