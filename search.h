@@ -99,7 +99,7 @@ struct Tree{
     sizeLimit = 1000000 * hash * 0.8;
     TT.clear();
     uint32_t ttHash = Aurora::options["TTHash"].value ? Aurora::options["TTHash"].value : hash * 0.2;
-    TT.resize(std::max(1ULL, 1000000 * ttHash / sizeof(TTEntry)));
+    TT.resize(std::max(uint32_t(1), uint32_t(1000000 * ttHash / sizeof(TTEntry))));
   }
 
   //for debug purposes
@@ -681,7 +681,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       // std::cout << currBestUnbiasedValue << " " << currBestValue << " " << -parentNode->avgValue << " " << expectedBias << std::endl;
       float visits = 0;
       for(int i=0; i<parentNode->children.size(); i++){
-        visits += std::max(0.0f, 1-std::sqrt(10*(parentNode->children[i].value-currBestValue)));
+        visits += 1.01831563889*(1.0/(1.0+std::exp(100*(parentNode->children[i].value-currBestValue-0.04))));
       }
       assert(visits >= 1);
       //Backpropagate best value
