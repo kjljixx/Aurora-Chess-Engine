@@ -73,17 +73,32 @@ struct Node{
   Node() : parent(nullptr), visits(0), iters(0), avgValue(-2), totalValBias(0), isTerminal(false) {}
 };
 
+struct TTEntry{
+  U64 hash;
+  int visits;
+  float val;
+
+  TTEntry() : hash(0), visits(0), val(-2) {}
+};
+
 struct Tree{
   std::deque<Node> tree;
+  std::vector<TTEntry> TT;
   Node* root = nullptr;
   uint64_t sizeLimit = 0;
   uint64_t currSize = 0;
   Node* tail = nullptr;
   Node* head = nullptr;
 
+  TTEntry* getTTEntry(U64 hash){
+    return &TT[hash % TT.size()];
+  }
+
   void setHash(){
     uint32_t hash = Aurora::options["Hash"].value;
-    sizeLimit = 1000000 * hash;
+    sizeLimit = 1000000 * hash * 0.8;
+    TT.clear();
+    TT.resize(1000000 * hash * 0.2 / sizeof(TTEntry));
   }
 
   //for debug purposes
@@ -325,7 +340,7 @@ void expand(Tree& tree, Node* parent, chess::MoveList& moves){
 }
 
 template<int numHiddenNeurons>
-float playout(chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
+float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){
@@ -335,6 +350,11 @@ float playout(chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
   chess::gameStatus tbResult = chess::probeWdlTb(board);
   if(tbResult != chess::ONGOING){
     return tbResult;
+  }
+
+  TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
+  if(entry->hash == board.history[board.halfmoveClock]){
+    return entry->val;
   }
 
   //std::cout << evaluation::evaluate(board, nnue) << " ";
@@ -433,11 +453,12 @@ void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bo
   }
 }
 
-void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, float bias, bool forceResult, bool runFindBestMove, bool continueBackprop, float valChangedMinWeight, float valSameMinWeight){
+void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, float bias, bool forceResult, bool runFindBestMove, bool continueBackprop, float valChangedMinWeight, float valSameMinWeight){
   //Backpropagate results
   if(edges.size() == 0){return;}
 
-  Edge* currEdge = edges.back();
+  std::pair<Edge*, U64> p = edges.back();
+  Edge* currEdge = p.first; U64 hash = p.second;
   edges.pop_back();
 
   currEdge->child->visits += visits;
@@ -455,7 +476,7 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, floa
     if(continueBackprop){
       //If currEdge is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currEdge
       oldCurrNodeValue = 2;
-      if(currEdge->child->parent && edges.size() > 0 && -currEdge->value == edges.back()->value){oldCurrNodeValue = currEdge->value;}
+      if(currEdge->child->parent && edges.size() > 0 && -currEdge->value == edges.back().first->value){oldCurrNodeValue = currEdge->value;}
 
       //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
       if(result <= currEdge->value && !runFindBestMove && !forceResult){
@@ -465,7 +486,13 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, floa
           float newValWeight = fminf(1.0, fmaxf(valSameMinWeight, 1.0/currEdge->child->iters));
           currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
         }
-        backpropagate(result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
+        TTEntry* entry = tree.getTTEntry(hash);
+        if(currEdge->child->visits > entry->visits){
+          entry->hash = hash;
+          entry->visits = currEdge->child->visits;
+          entry->val = currEdge->value;
+        }
+        backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
         return;
       }
 
@@ -491,7 +518,13 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, floa
     }
   }
 
-  backpropagate(result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
+  TTEntry* entry = tree.getTTEntry(hash);
+  if(currEdge->child->visits > entry->visits){
+    entry->hash = hash;
+    entry->visits = currEdge->child->visits;
+    entry->val = currEdge->value;
+  }
+  backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
 }
 
 //Code relating to the time manager
@@ -571,7 +604,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     currNode = tree.root; tree.moveToHead(tree.root);
     chess::Board board = rootBoard;
     Edge* currEdge;
-    std::vector<Edge*> traversePath;
+    std::vector<std::pair<Edge*, U64>> traversePath;
     float expectedBias = 0;
     int totalBiasWeight = biasStartingWeight;
     //Traverse the search tree
@@ -592,8 +625,8 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root, rootExpl, expl);
 
       currEdge = &currNode->children[currEdgeIndex];
-      traversePath.push_back(currEdge);
       chess::makeMove(board, currEdge->edge);
+      traversePath.push_back({currEdge, board.history[board.halfmoveClock]});
 
       if(currEdge->child == nullptr){
         //If we only had a child edge before, create the corresponding child node
@@ -613,7 +646,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       depth += currDepth;
       #endif
       tree.root->visits += 1;
-      backpropagate(currEdge->value, traversePath, 1, 2, true, false, true, valChangedMinWeight, valSameMinWeight);
+      backpropagate(tree, currEdge->value, traversePath, 1, 2, true, false, true, valChangedMinWeight, valSameMinWeight);
     }
     else{
       //Reached a leaf node
@@ -633,7 +666,8 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         nnue.accumulator = currAccumulator;
 
         nnue.updateAccumulator(movedBoard, currEdge->edge);
-        float result = playout(movedBoard, nnue);
+
+        float result = playout(tree, movedBoard, nnue);
         assert(-1<=result && 1>=result);
         currEdge->value = std::max(std::min(result-expectedBias, 1.0f), -1.0f);
 
@@ -654,7 +688,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       tree.root->visits += visits;
       tree.root->totalValBias += (std::abs(bias) > 1) ? 0 : bias;
       tree.root->iters += 1;
-      backpropagate(-currBestValue, traversePath, visits, bias, true, false, true, valChangedMinWeight, valSameMinWeight);
+      backpropagate(tree, -currBestValue, traversePath, visits, bias, true, false, true, valChangedMinWeight, valSameMinWeight);
     }
 
     #if DATAGEN == 0
