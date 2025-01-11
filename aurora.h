@@ -44,6 +44,7 @@ std::map<std::string, Option> options;
 
 void initOptions(){
   options["Hash"] = Option(0, 0, 65536, 1);
+  options["TTHash"] = Option(16, 0, 65536, 1);
   options["Threads"] = Option(1, 1, 1, 1); //just here to make OpenBench happy
 
   options["SyzygyPath"] = Option("<empty>", 2);

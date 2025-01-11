@@ -98,7 +98,8 @@ struct Tree{
     uint32_t hash = Aurora::options["Hash"].value;
     sizeLimit = 1000000 * hash * 0.8;
     TT.clear();
-    TT.resize(1000000 * hash * 0.2 / sizeof(TTEntry));
+    uint32_t ttHash = Aurora::options["TTHash"].value ? Aurora::options["TTHash"].value : hash * 0.2;
+    TT.resize(1000000 * ttHash / sizeof(TTEntry));
   }
 
   //for debug purposes
