@@ -340,29 +340,30 @@ void expand(Tree& tree, Node* parent, chess::MoveList& moves){
   }
 }
 
+//Returns {eval, where the eval came from}
 template<int numHiddenNeurons>
-float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
+std::pair<float, int> playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){
-    return _gameStatus;
+    return {_gameStatus, 0};
   }
 
   chess::gameStatus tbResult = chess::probeWdlTb(board);
   if(tbResult != chess::ONGOING){
-    return tbResult;
+    return {tbResult, 1};
   }
 
   TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
   if(entry->hash == board.history[board.halfmoveClock]){
-    return entry->val;
+    return {entry->val, 2};
   }
 
   //std::cout << evaluation::evaluate(board, nnue) << " ";
 
   float eval = std::max(std::min(std::atan(evaluation::evaluate(board, nnue)/100.0)/1.57079633, 1.0),-1.0)*0.999999;
   assert(-1<=eval && 1>=eval);
-  return eval;
+  return {eval, 3};
 }
 
 Edge findBestEdge(Node* parent){
@@ -668,9 +669,9 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
         nnue.updateAccumulator(movedBoard, currEdge->edge);
 
-        float result = playout(tree, movedBoard, nnue);
-        assert(-1<=result && 1>=result);
-        currEdge->value = std::max(std::min(result-expectedBias, 1.0f), -1.0f);
+        std::pair<float, int> result = playout(tree, movedBoard, nnue);
+        assert(-1<=result.first && 1>=result.first);
+        currEdge->value = std::max(std::min(result.first-(result.second == 2 ? 0 : expectedBias), 1.0f), -1.0f);
 
         currBestValue = fminf(currBestValue, currEdge->value);
       }
