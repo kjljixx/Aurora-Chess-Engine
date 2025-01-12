@@ -19,6 +19,10 @@
 #undef SP_MSVC
 #endif
 
+namespace search{
+struct Tree;
+}
+
 namespace evaluation{
 
 int mg_value[6] = {42, 184, 207, 261, 642, 10000};
@@ -557,7 +561,11 @@ int mvvLva(chess::Board& board, chess::Move move){
 }
 
 template<int numHiddenNeurons>
-int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int beta){
+int qSearch(search::Tree& tree, chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int beta){
+  search::TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
+  if(entry->hash == board.history[board.halfmoveClock]){
+    return fminf(fmaxf(round(tan(-fminf(fmaxf(entry->val, -0.9999), 0.9999)*1.57079633)*100), -100000), 100000);
+  }
   int eval = nnue.evaluate(board.sideToMove);
   int bestEval = eval;
 
@@ -586,7 +594,7 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
     nnue.accumulator = currAccumulator;
     nnue.updateAccumulator(movedBoard, moves[i]);
 
-    eval = -qSearch(movedBoard, nnue, -beta, -alpha);
+    eval = -qSearch(tree, movedBoard, nnue, -beta, -alpha);
     
     if(eval > bestEval) bestEval = eval;
     if(eval > alpha) alpha = eval;
@@ -597,8 +605,8 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
 }
 
 template<int numHiddenNeurons>
-int evaluate(chess::Board& board, NNUE<numHiddenNeurons>& nnue){
-  int cpEvaluation = qSearch(board, nnue, -999999, 999999);
+int evaluate(search::Tree& tree, chess::Board& board, NNUE<numHiddenNeurons>& nnue){
+  int cpEvaluation = qSearch(tree, board, nnue, -999999, 999999);
 
   return cpEvaluation;
 }

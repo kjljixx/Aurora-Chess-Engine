@@ -360,7 +360,7 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
 
   //std::cout << evaluation::evaluate(board, nnue) << " ";
 
-  float eval = std::max(std::min(std::atan(evaluation::evaluate(board, nnue)/100.0)/1.57079633, 1.0),-1.0)*0.999999;
+  float eval = std::max(std::min(std::atan(evaluation::evaluate(tree, board, nnue)/100.0)/1.57079633, 1.0),-1.0)*0.999999;
   assert(-1<=eval && 1>=eval);
   return eval;
 }
