@@ -59,7 +59,7 @@ void initOptions(){
   options["explorationFactor"] = Option(0.0395545614187926, 0.001, 1024, 0);
   options["valChangedMinWeight"] = Option(0.1560282435642479, 0.001, 1024, 0);
   options["valSameMinWeight"] = Option(0.015277783601196866, 0.001, 1024, 0);
-  options["biasStartingWeight"] = Option(82.28227020619*8, 0.001, 1024, 0);
+  options["biasStartingWeight"] = Option(82.28227020619*1.25*1.25*1.25, 0.001, 1024, 0);
 }
 
 }
