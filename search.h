@@ -612,8 +612,8 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     while(currNode->children.size() > 0){
       currDepth++;
       //Refine expected bias
-      expectedBias += currNode->totalValBias;
-      totalBiasWeight += currNode->iters;
+      expectedBias += currNode->totalValBias*std::pow(2, currDepth-1);
+      totalBiasWeight += currNode->iters*std::pow(2, currDepth-1);
       
       //Move all children nodes to the front of LRU
       for(int i=0; i<currNode->children.size(); i++){
