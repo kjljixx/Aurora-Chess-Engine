@@ -679,11 +679,9 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         bias = currBestValue-(-parentNode->avgValue);
       }
       // std::cout << currBestUnbiasedValue << " " << currBestValue << " " << -parentNode->avgValue << " " << expectedBias << std::endl;
-      float fracVisits = 0;
-      for(int i=0; i<parentNode->children.size(); i++){
-        fracVisits += 1.01831563889*(1.0/(1.0+std::exp(100*(parentNode->children[i].value-currBestValue-0.04))));
-      }
-      int visits = std::max(float(1), std::round(fracVisits));
+      int visits = 0;
+      for(int i=0; i<parentNode->children.size(); i++){if(parentNode->children[i].value <= currBestValue + 0.02){visits++;}}
+      assert(visits >= 1);
       //Backpropagate best value
       #if DATAGEN == 0
       depth += currDepth*visits;
