@@ -313,6 +313,7 @@ uint8_t selectEdge(Node* parent, bool isRoot, float rootExpl, float expl){
     bool isLRUPruned = parent->children[i].edge.value & (1 << 15);
 
     float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
+      (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)* //Crude heuristic to force exploration of barely visited nodes
       parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (isLRUPruned ? 14 : 1));
 
     assert(currPriority>=-1);
@@ -359,7 +360,7 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   }
 
   //Next, do qSearch
-  float eval = std::max(std::min(std::atan(evaluation::evaluate(board, nnue)/100.0)/1.57079633, 1.0),-1.0)*0.999999;
+  float eval = evaluation::cpToVal(evaluation::evaluate(board, nnue));
   assert(-1<=eval && 1>=eval);
   return eval;
 }
