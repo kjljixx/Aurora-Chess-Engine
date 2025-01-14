@@ -37,11 +37,11 @@ char PieceToLetter(Pieces piece){ //mainly for PGN move notation
 }
 
 enum MoveFlags{
-  NONE, CASTLE = 1 << 14, ENPASSANT = 2 << 14, PROMOTION = 3 << 14
+  NONE, CASTLE = 1 << 12, ENPASSANT = 2 << 12, PROMOTION = 1 << 14
 };
 
 struct Move{
-  //the internal value of the move (bits 0-5 end square, bits 6-11 start square, bits 12-13 move flags, bits 14-15 promotion piece type)
+  //the internal value of the move (bits 0-5 end square, bits 6-11 start square, bits 12-14 move flags (including promotion piece type), bit 15 is for search (set to 1 if edge's child was deleted by LRU)
   uint16_t value;
 
   constexpr Move(uint8_t startSquare, uint8_t endSquare, MoveFlags moveFlags = NONE, Pieces promotionPiece = KNIGHT): 
@@ -49,7 +49,7 @@ struct Move{
   //default constructor is a null move
   constexpr Move(): value(0){}
 
-  constexpr bool operator ==(const Move move){return value == move.value;}
+  constexpr bool operator ==(const Move move){return (value | (1 << 15)) == (move.value | (1 << 15));}
 
   constexpr uint8_t getStartSquare(){
     return (value & 0b0000111111000000) >> 6;
@@ -61,7 +61,7 @@ struct Move{
     return Pieces(((value & 0b0011000000000000) >> 12)+KNIGHT);
   }
   constexpr MoveFlags getMoveFlags(){
-    return MoveFlags(value & 0b1100000000000000);
+    return MoveFlags(value & 0b0100000000000000 ? 0b0100000000000000 : value & 0b0011000000000000);
   }
   
   //returns a string representation of the move (Pure Algebraic Coordinate Notation)

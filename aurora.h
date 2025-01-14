@@ -5,12 +5,17 @@
 #define DATAGEN 0
 
 
-#define VERSION_NUM "v1.17.1"
-#define VERSION_NAME "-syzygy"
+#define VERSION_NUM "v1.25.0"
+#define VERSION_NAME "-tt"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
 #define DEV_STRING ""
+#endif
+#ifdef GIT_HASH
+#define GIT_HASH_STRING GIT_HASH
+#else
+#define GIT_HASH_STRING "N/A"
 #endif
 
 namespace Aurora{
@@ -39,6 +44,7 @@ std::map<std::string, Option> options;
 
 void initOptions(){
   options["Hash"] = Option(0, 0, 65536, 1);
+  options["TTHash"] = Option(16, 0, 65536, 1);
   options["Threads"] = Option(1, 1, 1, 1); //just here to make OpenBench happy
 
   options["SyzygyPath"] = Option("<empty>", 2);
@@ -49,12 +55,11 @@ void initOptions(){
   //2: output bestmove and info at end of search and output info every 2 seconds
   //3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 
-  options["explorationFactor"] = Option(0.04609718919, 0.001, 1024, 0);
-  options["rootExplorationFactor"] = Option(0.09289019555, 0.001, 1024, 0);
-
-  options["evalScaleFactor"] = Option(1, -1024, 1024, 0);
-
-  options["searchTimePortion"] = Option(0.05, 0, 1, 0);
+  options["rootExplorationFactor"] = Option(0.06906412698639361, 0.001, 1024, 0);
+  options["explorationFactor"] = Option(0.0395545614187926, 0.001, 1024, 0);
+  options["valChangedMinWeight"] = Option(0.1560282435642479, 0.001, 1024, 0);
+  options["valSameMinWeight"] = Option(0.015277783601196866, 0.001, 1024, 0);
+  options["biasStartingWeight"] = Option(82.28227020619, 0.001, 1024, 0);
 }
 
 }

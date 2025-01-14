@@ -22,6 +22,7 @@ backpropagationStrategy backpropStrat = MINIMAX;
 #if DATAGEN == 0
 uint8_t seldepth = 0;
 uint32_t depth = 0;
+uint32_t startNodes = 0;
 #endif
 
 void init(){
@@ -34,50 +35,71 @@ void init(){
 
 struct Node;
 
+#pragma pack(push, 1)
 struct Edge{
   Node* child;
-  chess::Move edge;
   float value;
+  chess::Move edge;
 
-  Edge() : child(nullptr), edge(chess::Move()), value(-2) {}
-  Edge(chess::Move move) : child(nullptr), edge(move), value(-2) {}
+  Edge() : child(nullptr), value(-2), edge(chess::Move()) {}
+  Edge(chess::Move move) : child(nullptr), value(-2), edge(move) {}
 };
+#pragma pack(pop)
 
 struct Node{
-  Node* parent;
   std::vector<Edge> children;
-  uint32_t visits;
-  bool isTerminal;
-  float sPriority;
-  bool updatePriority;
-  uint8_t index;
+  Node* parent;
 
   //For LRU tree management
-  Node* backLink = nullptr; //back = older node
-  Node* forwardLink = nullptr; //forward = newer node
-
+  Node* backLink = nullptr; //back = node use less recently
+  Node* forwardLink = nullptr; //forward = node used more recently
   //For Tree Reuse
   Node* newAddress = nullptr;
+
+  uint32_t visits;
+  int iters;
+  float avgValue;
+  float totalValBias;
+
+  bool isTerminal;
+  uint8_t index;
+  //For Tree Reuse
   bool mark = false;
 
   Node(Node* parent) :
   parent(parent),
-  visits(0), isTerminal(false), sPriority(-1), updatePriority(true) {}
+  visits(0), iters(0), avgValue(-2), totalValBias(0), isTerminal(false) {}
 
-  Node() : parent(nullptr), visits(0), isTerminal(false), sPriority(-1), updatePriority(true) {}
+  Node() : parent(nullptr), visits(0), iters(0), avgValue(-2), totalValBias(0), isTerminal(false) {}
+};
+
+struct TTEntry{
+  U64 hash;
+  int visits;
+  float val;
+
+  TTEntry() : hash(0), visits(0), val(-2) {}
 };
 
 struct Tree{
   std::deque<Node> tree;
+  std::vector<TTEntry> TT;
   Node* root = nullptr;
   uint64_t sizeLimit = 0;
   uint64_t currSize = 0;
   Node* tail = nullptr;
   Node* head = nullptr;
 
+  TTEntry* getTTEntry(U64 hash){
+    return &TT[hash % TT.size()];
+  }
+
   void setHash(){
     uint32_t hash = Aurora::options["Hash"].value;
-    sizeLimit = 1000000 * hash;
+    sizeLimit = 1000000 * hash * 0.8;
+    TT.clear();
+    uint32_t ttHash = Aurora::options["TTHash"].value ? Aurora::options["TTHash"].value : hash * 0.2;
+    TT.resize(std::max(uint32_t(1), uint32_t(1000000 * ttHash / sizeof(TTEntry))));
   }
 
   //for debug purposes
@@ -123,6 +145,8 @@ struct Tree{
         }
       }
       if(currTail->parent){
+        //Update the 16th bit in the chess::Move to indicate that the child was pruned
+        currTail->parent->children[currTail->index].edge.value |= 1 << 15;
         currTail->parent->children[currTail->index].child = nullptr;
       }
       if(currTail->forwardLink){
@@ -133,7 +157,7 @@ struct Tree{
       tail->backLink = nullptr;
 
       *currTail = node;
-      currTail->children.shrink_to_fit();
+      currTail->children.shrink_to_fit(); //Free Memory
       head->forwardLink = currTail;
       currTail->backLink = head;
       currTail->forwardLink = nullptr;
@@ -183,16 +207,16 @@ uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked = true
 //Returns a pointer to the new root, which is different from the pointer given as a parameter because of the garbage collection
 Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
   //LISP 2 Garbage Collection Algorithm (https://en.wikipedia.org/wiki/Mark%E2%80%93compact_algorithm#LISP_2_algorithm)
+  //Mark all nodes which we want to keep
   uint64_t markedNodes = markSubtree(newRoot);
   bool marked = newRoot->mark;
 
-  //std::cout << "\n" << currRoot << ":" << currRoot->mark << " " << newRoot << ":" << newRoot->mark << " | ";
-
+  //Index of the next unreserved address in tree.tree
   uint64_t freePointer = 0;
 
+  //Reserve addresses for all nodes we want to keep
   for(uint32_t i=0; i<tree.tree.size(); i++){
     Node* livePointer = &tree.tree[i];
-    //std::cout << livePointer << ":" << livePointer->mark << " ";
     if(livePointer->mark == marked){
       livePointer->newAddress = &tree.tree[freePointer];
       freePointer++;
@@ -201,6 +225,7 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
 
   Node* newRootNewAddress = newRoot->newAddress;
 
+  //Update LRU links to not include nodes we're about to discard
   for(Node& node : tree.tree){
     if(node.mark == marked){
       Node* currNode = node.backLink;
@@ -215,6 +240,7 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
         node.backLink = currNode;
         currNode->forwardLink = &node;
       }
+
       currNode = node.forwardLink;
       while(currNode && currNode->mark == !marked){
         currNode = currNode->forwardLink;
@@ -232,6 +258,7 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
 
   tree.currSize = 0;
 
+  //Update pointers to new addresses
   for(Node& node : tree.tree){
     if(node.mark == marked){
       tree.currSize += sizeof(Node);
@@ -258,6 +285,7 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
   tree.head = tree.head->newAddress;
   tree.tail = tree.tail->newAddress;
 
+  //Move nodes to new addresses
   for(uint32_t i=0; i<tree.tree.size(); i++){
     Node* livePointer = &tree.tree[i];
     if(livePointer->mark == marked){
@@ -271,22 +299,22 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
   return newRootNewAddress;
 }
 
-uint8_t selectEdge(Node* parent, bool isRoot){
+uint8_t selectEdge(Node* parent, bool isRoot, float rootExpl, float expl){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = (isRoot ? Aurora::options["rootExplorationFactor"].value : Aurora::options["explorationFactor"].value)*std::log(parent->visits);
+  const float parentVisitsTerm = (isRoot ? rootExpl : expl)*std::log(parent->visits);
 
-  //const float parentVisitsTerm = eP[5]*powl(eP[2]*logl(eP[0]*parent->visits+eP[1])+eP[3], eP[4])+eP[6];
-
-  // while(currNode != nullptr){
-  //   if(true){
-  //     currNode->sPriority = -currNode->value+parentVisitsTerm/(eP[11]*powl(eP[7]*currNode->visits+eP[8], eP[9])+eP[10]);
   for(int i=0; i<parent->children.size(); i++){
     Node* currNode = parent->children[i].child;
     Edge currEdge = parent->children[i];
 
-    float currPriority = -currEdge.value+(parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*parentVisitsTerm/std::sqrt(currNode ? currNode->visits : 1);
+    //We can make a guess about how many visits a node had before it was pruned by LRU
+    bool isLRUPruned = parent->children[i].edge.value & (1 << 15);
+
+    float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
+      (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)* //Crude heuristic to force exploration of barely visited nodes
+      parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (isLRUPruned ? 14 : 1));
 
     assert(currPriority>=-1);
 
@@ -302,11 +330,6 @@ uint8_t selectEdge(Node* parent, bool isRoot){
 void expand(Tree& tree, Node* parent, chess::MoveList& moves){
   if(moves.size()==0){return;}
 
-  // tree.tree.push_back(Node(parent, 0, moves[0], parent->depth+1));
-  // parent->firstChild = &tree.tree[tree.tree.size()-1];
-  // parent->firstChild->mark = parent->mark;
-  // Node* currNode = parent->firstChild;
-
   parent->children.resize(moves.size());
   tree.currSize += moves.size() * sizeof(Edge);
 
@@ -316,21 +339,28 @@ void expand(Tree& tree, Node* parent, chess::MoveList& moves){
 }
 
 template<int numHiddenNeurons>
-float playout(chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
+float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
+  //First, check if position is terminal
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){
     return _gameStatus;
   }
 
+  //Next, check TBs
   chess::gameStatus tbResult = chess::probeWdlTb(board);
   if(tbResult != chess::ONGOING){
     return tbResult;
   }
 
-  //std::cout << evaluation::evaluate(board, nnue) << " ";
+  //Next, check TT
+  TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
+  if(entry->hash == board.history[board.halfmoveClock]){
+    return entry->val;
+  }
 
-  float eval = std::max(std::min(std::atan(evaluation::evaluate(board, nnue)*Aurora::options["evalScaleFactor"].value/100.0)/1.57079633, 1.0),-1.0)*0.999999;
+  //Next, do qSearch
+  float eval = evaluation::cpToVal(evaluation::evaluate(board, nnue));
   assert(-1<=eval && 1>=eval);
   return eval;
 }
@@ -376,15 +406,24 @@ float findBestValue(Node* parent){
 int previousVisits = 0;
 int previousElapsed = 0;
 
-void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bool finalResult){
+void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
+  Node* root = tree.root;
   if(Aurora::options["outputLevel"].value==3){
     std::cout << "NODES: " << root->visits;
     #if DATAGEN == 0
     std::cout << " SELDEPTH: " << int(seldepth) <<"\n";
     #endif
+
+    std::cout.precision(5);
     for(int i=0; i<root->children.size(); i++){
       Edge currEdge = root->children[i];
-      std::cout << currEdge.edge.toStringRep() << ": Q:" << -currEdge.value << " N:" << (currEdge.child ? currEdge.child->visits : 1) <<  " PV:";
+      std::cout << "\033[1;4m" << currEdge.edge.toStringRep() <<
+                  "\033[0m: \033[1;4mQ\033[0m:" << -currEdge.value <<
+                  " \033[1;4mA\033[0m:" << -(currEdge.child ? currEdge.child->avgValue : -2) <<
+                  " \033[1;4mB\033[0m:" << (currEdge.child ? currEdge.child->totalValBias : 0) <<
+                  " \033[1;4mI\033[0m:" << (currEdge.child ? currEdge.child->iters : 0) <<
+                  " \033[1;4mN\033[0m:" << (currEdge.child ? currEdge.child->visits : 1) <<
+                  " \033[1;4mPV\033[0m:";
       Node* pvNode = root->children[i].child;
       while(pvNode && pvNode->children.size() > 0){
         Edge pvEdge = findBestEdge(pvNode);
@@ -393,21 +432,23 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
       }
       std::cout << std::endl;
     }
+    std::cout.precision(10);
   }
 
   if(Aurora::options["outputLevel"].value >= 2 || (finalResult && Aurora::options["outputLevel"].value >= 1)){
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
     std::cout << "info ";
-      #if DATAGEN == 0
-      std::cout << "depth " << int(depth / root->visits) << " ";
-      std::cout << "seldepth " << int(seldepth) << " ";
-      #endif
-      std::cout << "nodes " << root->visits <<
-      " score cp " << fminf(fmaxf(round(tan(-fminf(fmaxf(findBestValue(root), -0.9999), 0.9999)*1.57079633)*100), -100000), 100000) <<
-      " nps " << round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
-      " time " << round(elapsed.count()*1000) <<
-      " pv ";
+    #if DATAGEN == 0
+    std::cout << "depth " << (root->visits == startNodes ? 0 : int(depth / (root->visits - startNodes))) <<
+                " seldepth " << int(seldepth) << " ";
+    #endif
+    std::cout << "nodes " << root->visits <<
+    " score cp " << evaluation::valToCp(-findBestValue(root)) <<
+    " hashfull " << (tree.sizeLimit > 0 ? int(1000*tree.currSize/tree.sizeLimit) : 0) <<
+    " nps " << std::round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
+    " time " << std::round(elapsed.count()*1000) <<
+    " pv ";
     Node* pvNode = root;
     while(pvNode && pvNode->children.size() > 0){
       Edge pvEdge = findBestEdge(pvNode);
@@ -420,15 +461,16 @@ void printSearchInfo(Node* root, std::chrono::steady_clock::time_point start, bo
   }
 }
 
-void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, bool runFindBestMove, bool continueBackprop, bool forceResult){
+void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, float bias, bool forceResult, bool runFindBestMove, bool continueBackprop, float valChangedMinWeight, float valSameMinWeight){
   //Backpropagate results
   if(edges.size() == 0){return;}
 
-  Edge* currEdge = edges.back();
+  std::pair<Edge*, U64> p = edges.back();
+  Edge* currEdge = p.first; U64 hash = p.second;
   edges.pop_back();
 
-  currEdge->child->visits+=visits;
-  currEdge->child->updatePriority = true;
+  currEdge->child->visits += visits;
+  currEdge->child->totalValBias += (std::abs(bias) > 1) ? 0 : bias;
 
   float oldCurrNodeValue = 2;
 
@@ -442,12 +484,24 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, bool
     if(continueBackprop){
       //If currEdge is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currEdge
       oldCurrNodeValue = 2;
-      if(currEdge->child->parent && edges.size() > 0 && -currEdge->value == edges.back()->value){oldCurrNodeValue = currEdge->value;}
+      if(currEdge->child->parent && edges.size() > 0 && -currEdge->value == edges.back().first->value){oldCurrNodeValue = currEdge->value;}
 
       //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
       if(result <= currEdge->value && !runFindBestMove && !forceResult){
         continueBackprop = false;
-        backpropagate(result, edges, visits, runFindBestMove, continueBackprop, false);
+
+        currEdge->child->iters++;
+        float newValWeight = fminf(1.0, fmaxf(valSameMinWeight, 1.0/currEdge->child->iters));
+        currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
+
+        TTEntry* entry = tree.getTTEntry(hash);
+        if(currEdge->child->visits > entry->visits){
+          entry->hash = hash;
+          entry->visits = currEdge->child->visits;
+          entry->val = currEdge->value;
+        }
+
+        backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
         return;
       }
 
@@ -458,10 +512,25 @@ void backpropagate(float result, std::vector<Edge*>& edges, uint8_t visits, bool
       runFindBestMove = currEdge->value > oldCurrNodeValue; //currEdge(which used to be the best child)'s value got worse from currEdge's parent's perspective
 
       result = -currEdge->value;
+
+      currEdge->child->iters++;
+      float newValWeight = fminf(1.0, fmaxf(valChangedMinWeight, 1.0/currEdge->child->iters));
+      currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
+    }
+    else{
+      currEdge->child->iters++;
+      float newValWeight = fminf(1.0, fmaxf(valSameMinWeight, 1.0/currEdge->child->iters));
+      currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
     }
   }
 
-  backpropagate(result, edges, visits, runFindBestMove, continueBackprop, false);
+  TTEntry* entry = tree.getTTEntry(hash);
+  if(currEdge->child->visits > entry->visits){
+    entry->hash = hash;
+    entry->visits = currEdge->child->visits;
+    entry->val = currEdge->value;
+  }
+  backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
 }
 
 //Code relating to the time manager
@@ -473,6 +542,7 @@ enum timeManagementType{
 
 struct timeManagement{
   timeManagementType tmType = FOREVER;
+  float hardLimit;
   float limit; //For FOREVER, this does not matter. For Nodes, this is the amount of nodes. For Time, it is the amount of seconds
   timeManagement(timeManagementType _tmType, uint32_t _limit = 0): tmType(_tmType), limit(_limit) {}
   timeManagement(): tmType(FOREVER), limit(0){}
@@ -488,12 +558,14 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   #if DATAGEN == 0
   seldepth = 0;
   depth = 0;
+  startNodes = tree.root->visits;
   #endif
 
   evaluation::NNUE<NNUEhiddenNeurons> nnue(evaluation::_NNUEparameters);
 
   Node* currNode = tree.root;
   
+  //For Printing Search Info
   int lastNodeCheck = 1;
   std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
   previousVisits = tree.root->visits;
@@ -506,6 +578,12 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     return;
   }
 
+  //For Time Management
+  int bestMoveChanges = 0;
+  float bestMoveChangesMultiplier = 1;
+  chess::Move currBestMove;
+
+  //First, Check TBs
   chess::Move tbMove = chess::probeDtzTb(rootBoard);
   if(tbMove.value){
     chess::gameStatus result = chess::probeWdlTb(rootBoard);
@@ -524,92 +602,163 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     tm.limit = -1;
   }
 
-  while((tm.tmType == FOREVER) || (elapsed.count()<tm.limit && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
+  //Get options
+  float rootExpl = Aurora::options["rootExplorationFactor"].value;
+  float expl = Aurora::options["explorationFactor"].value;
+  float valChangedMinWeight = Aurora::options["valChangedMinWeight"].value;
+  float valSameMinWeight = Aurora::options["valSameMinWeight"].value;
+  float biasStartingWeight = Aurora::options["biasStartingWeight"].value;
+
+  while((tm.tmType == FOREVER) || (elapsed.count()<fminf(tm.limit*bestMoveChangesMultiplier, tm.hardLimit) && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
+    chess::Board board = rootBoard;
+
     int currDepth = 0;
     currNode = tree.root; tree.moveToHead(tree.root);
-    chess::Board board = rootBoard;
     Edge* currEdge;
-    std::vector<Edge*> traversePath;
+    std::vector<std::pair<Edge*, U64>> traversePath;
+
+    float expectedBias = 0;
+    int totalBiasWeight = biasStartingWeight;
+
     //Traverse the search tree
     while(currNode->children.size() > 0){
       currDepth++;
-      uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root);
+
+      //Refine expected bias
+      expectedBias += currNode->totalValBias;
+      totalBiasWeight += currNode->iters;
+      
+      //Move all children nodes to the front of LRU
+      for(int i=0; i<currNode->children.size(); i++){
+        if(currNode->children[i].child != nullptr){
+          tree.moveToHead(currNode->children[i].child);
+        }
+      }
+
+      //Select Child Node to explore
+      uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root, rootExpl, expl);
+
       currEdge = &currNode->children[currEdgeIndex];
-      traversePath.push_back(currEdge);
       chess::makeMove(board, currEdge->edge);
+      traversePath.push_back({currEdge, board.history[board.halfmoveClock]});
+
+      //If we only had a child edge before, create the corresponding child node
       if(currEdge->child == nullptr){
         currEdge->child = tree.push_back(Node(currNode));
         currEdge->child->index = currEdgeIndex;
         currEdge->child->mark = currNode->mark;
         currEdge->child->visits = 1;
+        currEdge->child->iters = 1;
+        currEdge->child->avgValue = currEdge->value;
       }
-      else{
-        tree.moveToHead(currEdge->child);
-      }
+
       currNode = currEdge->child;
     }
+
     //Expand & Backpropagate new values
     if(currNode->isTerminal){
       #if DATAGEN == 0
       depth += currDepth;
       #endif
       tree.root->visits += 1;
-      backpropagate(currEdge->value, traversePath, 1, false, true, true);
+      backpropagate(tree, currEdge->value, traversePath, 1, 2, true, false, true, valChangedMinWeight, valSameMinWeight);
     }
     else{
       //Reached a leaf node
       currDepth++;
+
+      //Make sure game isn't terminal
       chess::MoveList moves(board);
-      if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){assert(currEdge->value>=-1); currNode->isTerminal=true; continue;}
-      expand(tree, currNode, moves); //Create new child nodes
-      //Simulate for all new nodes
-      Node* parentNode = currNode; //This will be the root of the backpropagation
-      float currBestValue = 2; //Find and only backpropagate the best value we end up finding
+      if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){
+        assert(currEdge->value>=-1);
+        currNode->isTerminal=true;
+        continue;
+      }
+
+      //Create new child edges
+      expand(tree, currNode, moves);
+
+      //Get values for all created edges
+      Node* parentNode = currNode; //This will be where the backpropagation starts
+      
+      expectedBias /= totalBiasWeight;
+
+      float currBestValue = 2;
+
       nnue.refreshAccumulator(board);
       std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> currAccumulator = nnue.accumulator;
+
       for(int i=0; i<parentNode->children.size(); i++){
         currEdge = &parentNode->children[i];
+
         chess::Board movedBoard = board;
+
         nnue.accumulator = currAccumulator;
-
         nnue.updateAccumulator(movedBoard, currEdge->edge);
-        float result = playout(movedBoard, nnue);
-        assert(-1<=result && 1>=result);
-        currEdge->value = result;
 
-        currBestValue = fminf(currBestValue, result);
+        float result = playout(tree, movedBoard, nnue);
+        assert(-1<=result && 1>=result);
+        currEdge->value = std::max(std::min(result-expectedBias, 1.0f), -1.0f);
+        currBestValue = fminf(currBestValue, currEdge->value);
       }
+
+      //Find out how much the values were biased towards the side to move
+      float bias = 2;
+      if(abs(parentNode->avgValue) < 2){
+        bias = currBestValue-(-parentNode->avgValue);
+      }
+
       int visits = 0;
-      for(int i=0; i<parentNode->children.size(); i++){if(parentNode->children[i].value <= currBestValue + 0.04){visits++;}}
+      for(int i=0; i<parentNode->children.size(); i++){
+        if(parentNode->children[i].value <= currBestValue + 0.04){visits++;}
+      }
       assert(visits >= 1);
-      //Backpropagate best value
+      
       #if DATAGEN == 0
       depth += currDepth*visits;
       #endif
+
+      //Update root stats, since backpropagation doesn't reach the root
       tree.root->visits += visits;
-      backpropagate(-currBestValue, traversePath, visits, false, true, true);
+      tree.root->totalValBias += (std::abs(bias) > 1) ? 0 : bias;
+      tree.root->iters += 1;
+
+      //Backpropagate best value
+      backpropagate(tree, -currBestValue, traversePath, visits, bias, true, false, true, valChangedMinWeight, valSameMinWeight);
     }
 
     #if DATAGEN == 0
     if(currDepth > seldepth){seldepth = currDepth;}
     #endif
+
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
     #if DATAGEN != 1
       if(elapsed.count() >= lastNodeCheck*2){
         lastNodeCheck++;
-        printSearchInfo(tree.root, start, false);
+        printSearchInfo(tree, start, false);
       }
     #endif
+
+    //Decide if we want to search longer or shorter depending on how much the best move has changed
+    if(findBestEdge(tree.root).edge.value != currBestMove.value){
+      bestMoveChanges++;
+      currBestMove = findBestEdge(tree.root).edge;
+    }
+
+    double expectedBestMoveChanges = 0.26061644 * (std::pow(tree.root->visits, 0.54) - std::pow(startNodes, 0.54));
+    bestMoveChangesMultiplier = fmaxf(fminf(bestMoveChanges / expectedBestMoveChanges, 2), 0.2);
   }
+
   //Output the final result of the search
   #if DATAGEN != 1
-    printSearchInfo(tree.root, start, true);
+    printSearchInfo(tree, start, true);
     std::cout << "\nbestmove " << findBestEdge(tree.root).edge.toStringRep() << std::endl;
   #endif
 
   return;
 }
+
 //Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
 //Parameter "board" must be different than parameter "rootBoard"
 void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Tree& tree){

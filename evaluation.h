@@ -170,6 +170,16 @@ int* eg_table[6] =
     eg_king_table
 };
 
+float cpToVal(int cp){
+  return std::max(std::min(std::atan(cp/100.0)/1.57079633, 1.0),-1.0);
+}
+
+int valToCp(float val){
+  return std::min(std::max(
+            std::round(std::tan(-std::min(std::max(double(val), -0.9999), 0.9999)*1.57079633)*100)
+        , -100000.0), 100000.0);
+}
+
 //A simple 768->N*2->1 NNUE
 #define NNUEhiddenNeurons 256
 
@@ -179,20 +189,23 @@ int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
 
 template<int numHiddenNeurons>
 struct NNUEparameters{
-    alignas(32) std::array<std::array<int16_t, numHiddenNeurons>, 768> hiddenLayerWeights;
-    alignas(32) std::array<int16_t, numHiddenNeurons> hiddenLayerBiases;
-    alignas(32) std::array<int16_t, 2*numHiddenNeurons> outputLayerWeights;
+    alignas(SIMD::Alignment) std::array<std::array<int16_t, numHiddenNeurons>, 768> hiddenLayerWeights;
+    alignas(SIMD::Alignment) std::array<int16_t, numHiddenNeurons> hiddenLayerBiases;
+    alignas(SIMD::Alignment) std::array<int16_t, 2*numHiddenNeurons> outputLayerWeights;
     int16_t outputLayerBias;
 };
 
 extern "C" {
-  INCBIN(networkData, "andromeda-2.nnue");
+  INCBIN(networkData, "andromeda-3.nnue");
 }
-const NNUEparameters<NNUEhiddenNeurons>* _NNUEparameters = reinterpret_cast<const NNUEparameters<NNUEhiddenNeurons>*>(gnetworkDataData);
+
+const NNUEparameters<NNUEhiddenNeurons>* _NNUEparameters = reinterpret_cast<
+                                                           const NNUEparameters<NNUEhiddenNeurons>*
+                                                                           >(gnetworkDataData);
 
 template<int numHiddenNeurons>
 struct NNUE{
-  std::array<std::array<int16_t, numHiddenNeurons>, 2> accumulator = {{{{0}}}};
+  alignas(SIMD::Alignment) std::array<std::array<int16_t, numHiddenNeurons>, 2> accumulator = {{{{0}}}};
   const NNUEparameters<numHiddenNeurons>* parameters;
 
   NNUE(const NNUEparameters<numHiddenNeurons>* parameters) : parameters(parameters) {}
@@ -213,7 +226,8 @@ struct NNUE{
       stmAcc = SIMD::load(reinterpret_cast<const SIMD::Vec *>(&accumulator[sideToMove][i * WeightsPerVec]));
       v0 = SIMD::maxEpi16(stmAcc, vecZero); // clip
       v0 = SIMD::minEpi16(v0, vecQA); // clip
-      v1 = SIMD::mulloEpi16(v0, SIMD::load(reinterpret_cast<const SIMD::Vec *>(&parameters->outputLayerWeights[i * WeightsPerVec]))); // multiply with output layer weights
+      v1 = SIMD::mulloEpi16(v0, SIMD::load( // multiply with output layer weights
+        reinterpret_cast<const SIMD::Vec *>(&parameters->outputLayerWeights[i * WeightsPerVec])));
       v1 = SIMD::maddEpi16(v0, v1); // square
       sum = SIMD::addEpi32(sum, v1); // collect the result
 
@@ -221,13 +235,14 @@ struct NNUE{
       oppAcc = SIMD::load(reinterpret_cast<const SIMD::Vec *>(&accumulator[!sideToMove][i * WeightsPerVec]));
       v0 = SIMD::maxEpi16(oppAcc, vecZero);
       v0 = SIMD::minEpi16(v0, vecQA);
-      v1 = SIMD::mulloEpi16(v0, SIMD::load(reinterpret_cast<const SIMD::Vec *>(&parameters->outputLayerWeights[numHiddenNeurons + i * WeightsPerVec])));
+      v1 = SIMD::mulloEpi16(v0,SIMD::load(
+        reinterpret_cast<const SIMD::Vec *>(&parameters->outputLayerWeights[numHiddenNeurons + i * WeightsPerVec])));
       v1 = SIMD::maddEpi16(v0, v1);
       sum = SIMD::addEpi32(sum, v1);
     }
     int unsquared = SIMD::vecHaddEpi32(sum) / 255 + parameters->outputLayerBias;
 
-    return (unsquared * 400) / (255 * 64);
+    return (unsquared * 400) / (255 * 64) + 13;
   }
 
   void refreshAccumulator(chess::Board& board){
@@ -238,7 +253,8 @@ struct NNUE{
 
     for(int square=0; square<64; square++){
       if(board.mailbox[0][square]!=0){
-        int currFeatureIndex[2] = {64*(board.mailbox[0][square]-1)+square, 64*(switchPieceColor[board.mailbox[0][square]]-1)+(square^56)};
+        int currFeatureIndex[2] = {64*(board.mailbox[0][square]-1)+square,
+                                   64*(switchPieceColor[board.mailbox[0][square]]-1)+(square^56)};
         for(int i=0; i<numHiddenNeurons; i++){
           accumulator[0][i] += parameters->hiddenLayerWeights[currFeatureIndex[0]][i];
           accumulator[1][i] += parameters->hiddenLayerWeights[currFeatureIndex[1]][i];
@@ -247,13 +263,16 @@ struct NNUE{
     }
   }
 
-  void updateSingleFeature(chess::Board& board, uint8_t square, chess::Pieces newPieceType, chess::Colors newPieceColor = chess::WHITE){
+  void updateSingleFeature(chess::Board& board, uint8_t square, chess::Pieces newPieceType,
+                           chess::Colors newPieceColor = chess::WHITE){
     uint8_t squareFromBlackPerspective = square^56;
 
     int newPiece = (newPieceColor == chess::WHITE) || (newPieceType == chess::null) ? newPieceType : newPieceType+6;
 
-    int currFeatureIndex[2] = {64*(board.mailbox[0][square]-1)+square, 64*(board.mailbox[1][squareFromBlackPerspective]-1)+squareFromBlackPerspective};
-    int newFeatureIndex[2] = {64*(newPiece-1)+square, 64*(switchPieceColor[newPiece]-1)+squareFromBlackPerspective};
+    int currFeatureIndex[2] = {64*(board.mailbox[0][square]-1)+square,
+                               64*(board.mailbox[1][squareFromBlackPerspective]-1)+squareFromBlackPerspective};
+    int newFeatureIndex[2] = {64*(newPiece-1)+square,
+                              64*(switchPieceColor[newPiece]-1)+squareFromBlackPerspective};
 
     if(board.mailbox[0][square] != 0){
       for(int i=0; i<numHiddenNeurons; i++){
@@ -325,12 +344,15 @@ struct NNUE{
       }
 
       updateSingleFeature(board, rookStartSquare, chess::null);
-      board.mailbox[0][rookStartSquare] = 0; board.mailbox[1][rookStartSquare^56] = 0;
+      board.mailbox[0][rookStartSquare] = 0;
+      board.mailbox[1][rookStartSquare^56] = 0;
       board.unsetColors(rookStartSquare, board.sideToMove);
       board.unsetPieces(chess::ROOK, rookStartSquare);
 
+
       updateSingleFeature(board, rookEndSquare, chess::ROOK, board.sideToMove);
-      board.mailbox[0][rookEndSquare] = board.sideToMove ? 10 : 4; board.mailbox[1][rookEndSquare^56] = board.sideToMove ? 4 : 10;
+      board.mailbox[0][rookEndSquare] = board.sideToMove ? 10 : 4;
+      board.mailbox[1][rookEndSquare^56] = board.sideToMove ? 4 : 10;
       board.setColors(rookEndSquare, board.sideToMove);
       board.setPieces(chess::ROOK, rookEndSquare);
     }
@@ -442,20 +464,19 @@ int pieceSquareTable(chess::Board& board){
 }
 
 //Static Exchange Evaluation
-//Returns the value in cp from the current board's sideToMove's perspective on how good capturing an enemy piece on targetSquare is
+//Returns the value in cp from the current board's sideToMove's perspective on how good 
+//capturing an enemy piece on targetSquare is
 //Returns 0 if the capture is not good for the current board's sideToMove or if there is no capture
 //Threshold is the highest SEE value we have already found (see the part in evaluate() which runs SEE())
 int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0, int piecePos = 64){
   int values[32];
   int i=0;
 
-  chess::Pieces currPiece = board.findPiece(targetSquare); //The original target piece; piece of the opponent of the current sideToMove
+  chess::Pieces currPiece = board.findPiece(targetSquare); //The original target piece;
+                                                           //piece of the opponent of the current sideToMove
   if(currPiece == chess::null){currPiece = chess::PAWN;} //the move is en passant
   
   values[i] = (mg_value[currPiece-1] * gamePhase + eg_value[currPiece-1] * (24-gamePhase));
-  /*values[i] = (
-    (mg_value[currPiece-1] + mg_table[currPiece-1][board.sideToMove ? targetSquare^56 : targetSquare]) * gamePhase
-   +(eg_value[currPiece-1] + eg_table[currPiece-1][board.sideToMove ? targetSquare^56 : targetSquare]) * (24-gamePhase));*/
 
   chess::Colors us = board.sideToMove;
   U64 white = board.white;
@@ -467,7 +488,8 @@ int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0, int pieceP
   if(piecePos == 64){
     piecePos = board.squareUnderAttack(targetSquare);
   }
-  //See https://www.chessprogramming.org/Alpha-Beta#Negamax_Framework for the recursive implementation this implementation is based on
+  //See https://www.chessprogramming.org/Alpha-Beta#Negamax_Framework for the
+  //recursive implementation this implementation is based on
   int alpha = -999999;
   int beta = -(threshold*24);
 
@@ -481,12 +503,9 @@ int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0, int pieceP
 
     chess::Pieces leastValuableAttacker = board.findPiece(piecePos);
     //The value for the enemy of the side of the leastValuableAttacker if the leastValuableAttacker is captured
-    values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + eg_value[leastValuableAttacker-1] * (24-gamePhase)) - values[i-1];
-    /*uint8_t _piecePos = board.sideToMove ? piecePos^56 : piecePos; //for use in pieceSquareTable calculation below
-    values[i-1] += (-mg_table[leastValuableAttacker-1][_piecePos] + mg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare]) * gamePhase
-                  +(-eg_table[leastValuableAttacker-1][_piecePos] + eg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare]) * (24-gamePhase);
-    values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + eg_value[leastValuableAttacker-1] * (24-gamePhase)) - (values[i-1] - mg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare] * gamePhase - eg_table[leastValuableAttacker-1][board.sideToMove ? targetSquare^56 : targetSquare] * (24-gamePhase));*/
-
+    values[i] = (mg_value[leastValuableAttacker-1] * gamePhase + 
+                 eg_value[leastValuableAttacker-1] * (24-gamePhase)) -
+                values[i-1];
 
     board.sideToMove = chess::Colors(!board.sideToMove); isOurSideToMove = !isOurSideToMove;
     board.unsetColors(1ULL << piecePos, chess::Colors(isOurSideToMove ? us : !us));
@@ -542,7 +561,9 @@ int passedPawns(chess::Board& board){
 std::array<uint8_t, 13> sidedPieceToPiece = {0, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6};
 
 int mvvLva(chess::Board& board, chess::Move move){
-  return 30*mg_value[sidedPieceToPiece[move.getMoveFlags() == chess::ENPASSANT ? 1 : board.mailbox[0][move.getEndSquare()]]-1] - mg_value[sidedPieceToPiece[board.mailbox[0][move.getStartSquare()]]-1];
+  return 30*mg_value[sidedPieceToPiece[move.getMoveFlags() == chess::ENPASSANT ? 1 : 
+                     board.mailbox[0][move.getEndSquare()]]-1] -
+         mg_value[sidedPieceToPiece[board.mailbox[0][move.getStartSquare()]]-1];
 }
 
 template<int numHiddenNeurons>
@@ -563,15 +584,13 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
   std::array<std::array<int16_t, numHiddenNeurons>, 2> currAccumulator = nnue.accumulator;
 
   for(uint32_t i=0; i<moves.size(); i++){
-    //std::cout << "\n";
     for(uint32_t j=i+1; j<moves.size(); j++) {
       if(orderValue[j] > orderValue[i]) {
-          //std::cout << orderValue[j] << ":" << int(sidedPieceToPiece[board.mailbox[0][moves[j].getEndSquare()]]) << ":" << int(sidedPieceToPiece[board.mailbox[0][moves[j].getStartSquare()]]) << " ";
           std::swap(orderValue[j], orderValue[i]);
           std::swap(moves.moveList[j], moves.moveList[i]);
       }
     }
-    if(SEE(board, moves[i].getEndSquare(), 0, moves[i].getStartSquare()) == 0) continue;
+    if(SEE(board, moves[i].getEndSquare(), -1, moves[i].getStartSquare()) == -1) continue;
 
     chess::Board movedBoard = board;
     nnue.accumulator = currAccumulator;
@@ -593,93 +612,4 @@ int evaluate(chess::Board& board, NNUE<numHiddenNeurons>& nnue){
 
   return cpEvaluation;
 }
-
-//Takes in the current board and a list of moves from the current position
-//Then calculates the static evaluation of all children of the node of the current board
-//It incrementally changes the evaluation based on the move, so it is much faster than running evaluate() on each child position
-//Returns a pointer to the start of the array with all of the evaluations
-/*int* evaluateAllChildren(chess::Board& board, chess::MoveList moves){
-  const int parentEval = evaluate(board);
-
-  int results[moves.size()];
-  int* currResult = results;
-
-  for(chess::Move move : moves){
-    *currResult = parentEval;
-    const uint8_t startSquare = move.getStartSquare();
-    const uint8_t endSquare = move.getEndSquare();
-    const chess::Pieces movingPiece = board.findPiece(startSquare);
-    const chess::MoveFlags moveFlags = move.getMoveFlags();
-
-    *currResult -= (mg_value[movingPiece-1] + mg_table[movingPiece-1][startSquare]);
-
-    if(moveFlags == chess::ENPASSANT){
-      hash ^= pieceKeys[2*(chess::PAWN-1)+(board.sideToMove ? 0 : 1)][(board.sideToMove ? endSquare + 8 : endSquare - 8)];
-    }
-    else{
-      if(board.getTheirPieces() & (1ULL << endSquare)){
-        hash ^= pieceKeys[2*(board.findPiece(endSquare)-1)+(board.sideToMove ? 0 : 1)][endSquare];
-      }
-    }
-
-    if(moveFlags == chess::CASTLE){
-      uint8_t rookStartSquare;
-      uint8_t rookEndSquare;
-      //Queenside Castling
-      if(squareIndexToFile(endSquare) == 2){
-        rookStartSquare = board.sideToMove*56;
-        rookEndSquare = 3+board.sideToMove*56;
-      }
-      //Kingside Castling
-      else{
-        rookStartSquare = 7+board.sideToMove*56;
-        rookEndSquare = 5+board.sideToMove*56;
-      }
-      hash ^= pieceKeys[2*(chess::ROOK-1)+(board.sideToMove ? 1 : 0)][rookStartSquare];
-
-      hash ^= pieceKeys[2*(chess::ROOK-1)+(board.sideToMove ? 1 : 0)][rookEndSquare];
-    }
-
-    if(moveFlags == chess::PROMOTION){hash ^= pieceKeys[2*(move.getPromotionPiece()-1)+(board.sideToMove ? 1 : 0)][endSquare];}
-    else{hash ^= pieceKeys[2*(movingPiece-1)+(board.sideToMove ? 1 : 0)][endSquare];}
-
-    if(board.enPassant){
-      hash ^= enPassantKeys[squareIndexToFile(_bitscanForward(board.enPassant))]; //remove en passant from hash
-    }
-    if(movingPiece == chess::PAWN){
-      //double pawn push by white
-      if((1ULL << endSquare) == (1ULL << startSquare) << 16){
-        hash ^= enPassantKeys[squareIndexToFile(endSquare)];
-      }
-      //double pawn push by black
-      else if((1ULL << endSquare) == (1ULL << startSquare) >> 16){
-        hash ^= enPassantKeys[squareIndexToFile(endSquare)];
-      }
-    }
-    bool castlingRightsChanged = false;
-    //Remove castling rights if king moved
-    if(movingPiece == chess::KING){
-      if(board.sideToMove == chess::WHITE && board.castlingRights & (0x1 | 0x2)){
-        hash ^= castlingKeys[board.castlingRights & ~(0x1 | 0x2)];
-        castlingRightsChanged = true;
-      }
-      else if(board.castlingRights & (0x4 | 0x8)){
-        hash ^= castlingKeys[board.castlingRights & ~(0x4 | 0x8)];
-        castlingRightsChanged = true;
-      }
-    }
-    //Remove castling rights if rook moved from starting square or if rook was captured
-    if(((startSquare == 0 && movingPiece == chess::ROOK) || endSquare == 0) && board.castlingRights & ~0x2){hash ^= castlingKeys[board.castlingRights & ~0x2]; castlingRightsChanged = true;}
-    if(((startSquare == 7 && movingPiece == chess::ROOK) || endSquare == 7) && board.castlingRights & ~0x1){hash ^= castlingKeys[board.castlingRights & ~0x1]; castlingRightsChanged = true;}
-    if(((startSquare == 56 && movingPiece == chess::ROOK) || endSquare == 56) && board.castlingRights & ~0x8){hash ^= castlingKeys[board.castlingRights & ~0x8]; castlingRightsChanged = true;}
-    if(((startSquare == 63 && movingPiece == chess::ROOK) || endSquare == 63) && board.castlingRights & ~0x4){hash ^= castlingKeys[board.castlingRights & ~0x4]; castlingRightsChanged = true;}
-
-    if(castlingRightsChanged){hash ^= castlingKeys[board.castlingRights];} //remove original castling rights if castling rights changed
-
-    hash ^= sideToMoveKey;
-
-    return hash;
-  }
-  return 0;
-}*/
 }
