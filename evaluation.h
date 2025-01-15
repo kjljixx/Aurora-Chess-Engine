@@ -176,7 +176,7 @@ float cpToVal(int cp){
 
 int valToCp(float val){
   return std::min(std::max(
-            std::round(std::tan(-std::min(std::max(double(val), -0.9999), 0.9999)*1.57079633)*100)
+            std::round(std::tan(std::min(std::max(double(val), -0.9999), 0.9999)*1.57079633)*100)
         , -100000.0), 100000.0);
 }
 
