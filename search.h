@@ -494,7 +494,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
         currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
 
         TTEntry* entry = tree.getTTEntry(hash);
-        if(currEdge->child->visits > entry->visits){
+        if(currEdge->child->visits > entry->visits*0.5){
           entry->hash = hash;
           entry->visits = currEdge->child->visits;
           entry->val = currEdge->value;
@@ -524,7 +524,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   }
 
   TTEntry* entry = tree.getTTEntry(hash);
-  if(currEdge->child->visits > entry->visits){
+  if(currEdge->child->visits > entry->visits*0.5){
     entry->hash = hash;
     entry->visits = currEdge->child->visits;
     entry->val = currEdge->value;
