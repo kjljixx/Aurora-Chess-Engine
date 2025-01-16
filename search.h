@@ -303,7 +303,7 @@ uint8_t selectEdge(Node* parent, bool isRoot, float rootExpl, float expl){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = (isRoot ? rootExpl : expl)*std::log(parent->visits);
+  const float parentVisitsTerm = (isRoot ? rootExpl : expl)*std::log(parent->visits)*std::sqrt(std::log(parent->visits));
 
   for(int i=0; i<parent->children.size(); i++){
     Node* currNode = parent->children[i].child;
