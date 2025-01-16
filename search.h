@@ -96,7 +96,7 @@ struct Tree{
 
   void setHash(){
     uint32_t hash = Aurora::options["Hash"].value;
-    sizeLimit = 1000000 * hash * 0.8;
+    sizeLimit = 1000000 * hash * (Aurora::options["TTHash"].value ? 1 : 0.8);
     TT.clear();
     uint32_t ttHash = Aurora::options["TTHash"].value ? Aurora::options["TTHash"].value : hash * 0.2;
     TT.resize(std::max(uint32_t(1), uint32_t(1000000 * ttHash / sizeof(TTEntry))));
@@ -553,6 +553,11 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   auto start = std::chrono::steady_clock::now();
 
   tree.setHash();
+  #if DATAGEN != 1
+  std::cout << "info string starting search with max tree size " << (tree.sizeLimit == 0 ? "unlimited" : std::to_string(tree.sizeLimit/1000000)) << " mb "
+            << "and TT size " << tree.TT.size()*sizeof(TTEntry)/1000000 << " mb" << std::endl;
+  #endif
+
   if(!tree.root){tree.push_back(Node()); tree.root = &tree.tree[tree.tree.size()-1];}
 
   #if DATAGEN == 0
