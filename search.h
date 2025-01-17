@@ -74,11 +74,11 @@ struct Node{
 };
 
 struct TTEntry{
-  uint16_t hash;
   int visits;
   float val;
+  uint16_t hash;
 
-  TTEntry() : hash(0), visits(0), val(-2) {}
+  TTEntry() : visits(0), val(-2), hash(0) {}
 };
 
 struct Tree{
