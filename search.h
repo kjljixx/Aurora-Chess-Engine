@@ -339,30 +339,30 @@ void expand(Tree& tree, Node* parent, chess::MoveList& moves){
 }
 
 template<int numHiddenNeurons>
-float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
+std::pair<float, int> playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
   //First, check if position is terminal
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){
-    return _gameStatus;
+    return {_gameStatus, 0};
   }
 
   //Next, check TBs
   chess::gameStatus tbResult = chess::probeWdlTb(board);
   if(tbResult != chess::ONGOING){
-    return tbResult;
+    return {tbResult, 1};
   }
 
   //Next, check TT
   TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
   if(entry->hash == board.history[board.halfmoveClock]){
-    return entry->val;
+    return {entry->val, 2};
   }
 
   //Next, do qSearch
   float eval = evaluation::cpToVal(evaluation::evaluate(board, nnue));
   assert(-1<=eval && 1>=eval);
-  return eval;
+  return {eval, 3};
 }
 
 Edge findBestEdge(Node* parent){
@@ -701,9 +701,12 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         nnue.accumulator = currAccumulator;
         nnue.updateAccumulator(movedBoard, currEdge->edge);
 
-        float result = playout(tree, movedBoard, nnue);
-        assert(-1<=result && 1>=result);
-        currEdge->value = std::max(std::min(result-expectedBias, 1.0f), -1.0f);
+        std::pair<float, int> result = playout(tree, movedBoard, nnue);
+        assert(-1<=result.first && 1>=result.first);
+        currEdge->value = std::max(std::min(result.first-expectedBias, 1.0f), -1.0f);
+        if(result.second == 2){
+          currEdge->edge.value |= 1 << 15;
+        }
         currBestValue = fminf(currBestValue, currEdge->value);
       }
 
