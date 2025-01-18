@@ -355,10 +355,10 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   }
 
   //Next, check TT
-  TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
-  if(entry->hash == board.history[board.halfmoveClock]){
-    return entry->val;
-  }
+  // TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
+  // if(entry->hash == board.history[board.halfmoveClock]){
+  //   return entry->val;
+  // }
 
   //Next, do qSearch
   float eval = evaluation::cpToVal(evaluation::evaluate(board, nnue));
