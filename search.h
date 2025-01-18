@@ -355,7 +355,7 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
 
   //Next, check TT
   TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
-  if(entry->hash == (board.history[board.halfmoveClock] >> 32)){
+  if(entry->hash == (board.history[board.halfmoveClock] >> 32) && entry->val != -2){
     return entry->val;
   }
 
