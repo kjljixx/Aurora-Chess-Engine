@@ -74,11 +74,11 @@ struct Node{
 };
 
 struct TTEntry{
-  U64 hash;
   int visits;
   float val;
+  uint32_t hash;
 
-  TTEntry() : hash(0), visits(0), val(-2) {}
+  TTEntry() : visits(0), val(-2), hash(0) {}
 };
 
 struct Tree{
@@ -355,7 +355,7 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
 
   //Next, check TT
   TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
-  if(entry->hash == board.history[board.halfmoveClock]){
+  if(entry->hash == (board.history[board.halfmoveClock] >> 32) && entry->val != -2){
     return entry->val;
   }
 
@@ -496,7 +496,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
 
         TTEntry* entry = tree.getTTEntry(hash);
         if(currEdge->child->visits > entry->visits){
-          entry->hash = hash;
+          entry->hash = hash >> 32;
           entry->visits = currEdge->child->visits;
           entry->val = currEdge->value;
         }
@@ -526,7 +526,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
 
   TTEntry* entry = tree.getTTEntry(hash);
   if(currEdge->child->visits > entry->visits){
-    entry->hash = hash;
+    entry->hash = hash >> 32;
     entry->visits = currEdge->child->visits;
     entry->val = currEdge->value;
   }
