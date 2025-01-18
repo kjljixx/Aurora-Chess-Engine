@@ -74,7 +74,7 @@ struct Node{
 };
 
 struct TTEntry{
-  uint16_t hash;
+  U64 hash;
   int visits;
   float val;
 
@@ -496,7 +496,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
 
         TTEntry* entry = tree.getTTEntry(hash);
         if(currEdge->child->visits > entry->visits){
-          entry->hash = hash >> 48;
+          entry->hash = hash;
           entry->visits = currEdge->child->visits;
           entry->val = currEdge->value;
         }
@@ -526,7 +526,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
 
   TTEntry* entry = tree.getTTEntry(hash);
   if(currEdge->child->visits > entry->visits){
-    entry->hash = hash >> 48;
+    entry->hash = hash;
     entry->visits = currEdge->child->visits;
     entry->val = currEdge->value;
   }
