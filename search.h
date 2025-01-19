@@ -417,11 +417,10 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
 
   //Next, do qSearch
   float eval = evaluation::cpToVal(evaluation::evaluate(board, nnue));
-  if(entry->visits == 0){
-    entry->hash = (board.history[board.halfmoveClock] >> 32);
-    entry->visits = 1;
-    entry->val = eval;
-  }
+  entry->hash = (board.history[board.halfmoveClock] >> 32);
+  entry->visits = 1;
+  entry->val = eval;
+  
   assert(-1<=eval && 1>=eval);
   return eval;
 }
@@ -460,11 +459,9 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
         currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
 
         TTEntry* entry = tree.getTTEntry(hash);
-        if(currEdge->child->visits > entry->visits){
-          entry->hash = hash >> 32;
-          entry->visits = currEdge->child->visits;
-          entry->val = currEdge->value;
-        }
+        entry->hash = hash >> 32;
+        entry->visits = currEdge->child->visits;
+        entry->val = currEdge->value;
 
         backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
         return;
@@ -490,11 +487,10 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   }
 
   TTEntry* entry = tree.getTTEntry(hash);
-  if(currEdge->child->visits > entry->visits){
-    entry->hash = hash >> 32;
-    entry->visits = currEdge->child->visits;
-    entry->val = currEdge->value;
-  }
+  entry->hash = hash >> 32;
+  entry->visits = currEdge->child->visits;
+  entry->val = currEdge->value;
+
   backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
 }
 
