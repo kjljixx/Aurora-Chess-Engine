@@ -73,6 +73,44 @@ struct Node{
   Node() : parent(nullptr), visits(0), iters(0), avgValue(-2), totalValBias(0), isTerminal(false) {}
 };
 
+Edge findBestEdge(Node* parent){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+  Edge currBestMove = parent->children[0];
+
+  for(int i=0; i<parent->children.size(); i++){
+    if(parent->children[i].value < currBestValue){
+      currBestValue = parent->children[i].value;
+      currBestMove = parent->children[i];
+    }
+  }
+
+  return currBestMove;
+}
+
+Node* findBestChild(Node* parent){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+  Node* currBestMove = parent->children[0].child;
+
+  for(int i=0; i<parent->children.size(); i++){
+    if(parent->children[i].value < currBestValue){
+      currBestValue = parent->children[i].value;
+      currBestMove = parent->children[i].child;
+    }
+  }
+
+  return currBestMove;
+}
+
+float findBestValue(Node* parent){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+
+  for(int i=0; i<parent->children.size(); i++){
+    currBestValue = std::min(currBestValue, parent->children[i].value);
+  }
+
+  return currBestValue;
+}
+
 struct TTEntry{
   int visits;
   float val;
@@ -370,102 +408,6 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   return eval;
 }
 
-Edge findBestEdge(Node* parent){
-  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
-  Edge currBestMove = parent->children[0];
-
-  for(int i=0; i<parent->children.size(); i++){
-    if(parent->children[i].value < currBestValue){
-      currBestValue = parent->children[i].value;
-      currBestMove = parent->children[i];
-    }
-  }
-
-  return currBestMove;
-}
-
-Node* findBestChild(Node* parent){
-  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
-  Node* currBestMove = parent->children[0].child;
-
-  for(int i=0; i<parent->children.size(); i++){
-    if(parent->children[i].value < currBestValue){
-      currBestValue = parent->children[i].value;
-      currBestMove = parent->children[i].child;
-    }
-  }
-
-  return currBestMove;
-}
-
-float findBestValue(Node* parent){
-  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
-
-  for(int i=0; i<parent->children.size(); i++){
-    currBestValue = std::min(currBestValue, parent->children[i].value);
-  }
-
-  return currBestValue;
-}
-
-int previousVisits = 0;
-int previousElapsed = 0;
-
-void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
-  Node* root = tree.root;
-  if(Aurora::options["outputLevel"].value==3){
-    std::cout << "NODES: " << root->visits;
-    #if DATAGEN == 0
-    std::cout << " SELDEPTH: " << int(seldepth) <<"\n";
-    #endif
-
-    std::cout.precision(5);
-    for(int i=0; i<root->children.size(); i++){
-      Edge currEdge = root->children[i];
-      std::cout << "\033[1;4m" << currEdge.edge.toStringRep() <<
-                  "\033[0m: \033[1;4mQ\033[0m:" << -currEdge.value <<
-                  " \033[1;4mA\033[0m:" << -(currEdge.child ? currEdge.child->avgValue : -2) <<
-                  " \033[1;4mB\033[0m:" << (currEdge.child ? currEdge.child->totalValBias : 0) <<
-                  " \033[1;4mI\033[0m:" << (currEdge.child ? currEdge.child->iters : 0) <<
-                  " \033[1;4mN\033[0m:" << (currEdge.child ? currEdge.child->visits : 1) <<
-                  " \033[1;4mPV\033[0m:";
-      Node* pvNode = root->children[i].child;
-      while(pvNode && pvNode->children.size() > 0){
-        Edge pvEdge = findBestEdge(pvNode);
-        std::cout << pvEdge.edge.toStringRep() << " ";
-        pvNode = pvEdge.child;
-      }
-      std::cout << std::endl;
-    }
-    std::cout.precision(10);
-  }
-
-  if(Aurora::options["outputLevel"].value >= 2 || (finalResult && Aurora::options["outputLevel"].value >= 1)){
-    std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
-
-    std::cout << "info ";
-    #if DATAGEN == 0
-    std::cout << "depth " << (root->visits == startNodes ? 0 : int(depth / (root->visits - startNodes))) <<
-                " seldepth " << int(seldepth) << " ";
-    #endif
-    std::cout << "nodes " << root->visits <<
-    " score cp " << evaluation::valToCp(-findBestValue(root)) <<
-    " hashfull " << (tree.sizeLimit > 0 ? int(1000*tree.currSize/tree.sizeLimit) : 0) <<
-    " nps " << std::round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
-    " time " << std::round(elapsed.count()*1000) <<
-    " pv ";
-    Node* pvNode = root;
-    while(pvNode && pvNode->children.size() > 0){
-      Edge pvEdge = findBestEdge(pvNode);
-      std::cout << pvEdge.edge.toStringRep() << " ";
-      pvNode = pvEdge.child;
-    }
-    std::cout << std::endl;
-
-    previousVisits = root->visits; previousElapsed = elapsed.count();
-  }
-}
-
 void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, float bias, bool forceResult, bool runFindBestMove, bool continueBackprop, float valChangedMinWeight, float valSameMinWeight){
   //Backpropagate results
   if(edges.size() == 0){return;}
@@ -536,6 +478,64 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
     entry->val = currEdge->value;
   }
   backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
+}
+
+int previousVisits = 0;
+int previousElapsed = 0;
+
+void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
+  Node* root = tree.root;
+  if(Aurora::options["outputLevel"].value==3){
+    std::cout << "NODES: " << root->visits;
+    #if DATAGEN == 0
+    std::cout << " SELDEPTH: " << int(seldepth) <<"\n";
+    #endif
+
+    std::cout.precision(5);
+    for(int i=0; i<root->children.size(); i++){
+      Edge currEdge = root->children[i];
+      std::cout << "\033[1;4m" << currEdge.edge.toStringRep() <<
+                  "\033[0m: \033[1;4mQ\033[0m:" << -currEdge.value <<
+                  " \033[1;4mA\033[0m:" << -(currEdge.child ? currEdge.child->avgValue : -2) <<
+                  " \033[1;4mB\033[0m:" << (currEdge.child ? currEdge.child->totalValBias : 0) <<
+                  " \033[1;4mI\033[0m:" << (currEdge.child ? currEdge.child->iters : 0) <<
+                  " \033[1;4mN\033[0m:" << (currEdge.child ? currEdge.child->visits : 1) <<
+                  " \033[1;4mPV\033[0m:";
+      Node* pvNode = root->children[i].child;
+      while(pvNode && pvNode->children.size() > 0){
+        Edge pvEdge = findBestEdge(pvNode);
+        std::cout << pvEdge.edge.toStringRep() << " ";
+        pvNode = pvEdge.child;
+      }
+      std::cout << std::endl;
+    }
+    std::cout.precision(10);
+  }
+
+  if(Aurora::options["outputLevel"].value >= 2 || (finalResult && Aurora::options["outputLevel"].value >= 1)){
+    std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
+
+    std::cout << "info ";
+    #if DATAGEN == 0
+    std::cout << "depth " << (root->visits == startNodes ? 0 : int(depth / (root->visits - startNodes))) <<
+                " seldepth " << int(seldepth) << " ";
+    #endif
+    std::cout << "nodes " << root->visits <<
+    " score cp " << evaluation::valToCp(-findBestValue(root)) <<
+    " hashfull " << (tree.sizeLimit > 0 ? int(1000*tree.currSize/tree.sizeLimit) : 0) <<
+    " nps " << std::round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
+    " time " << std::round(elapsed.count()*1000) <<
+    " pv ";
+    Node* pvNode = root;
+    while(pvNode && pvNode->children.size() > 0){
+      Edge pvEdge = findBestEdge(pvNode);
+      std::cout << pvEdge.edge.toStringRep() << " ";
+      pvNode = pvEdge.child;
+    }
+    std::cout << std::endl;
+
+    previousVisits = root->visits; previousElapsed = elapsed.count();
+  }
 }
 
 //Code relating to the time manager
