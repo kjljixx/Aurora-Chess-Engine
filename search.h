@@ -398,9 +398,7 @@ void expand(Tree& tree, Node* parent, chess::MoveList& moves){
 }
 
 template<int numHiddenNeurons>
-float playout(Tree& tree, chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
-  tree.age++;
-
+float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
   //First, check if position is terminal
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   assert(-1<=_gameStatus && 2>=_gameStatus);
