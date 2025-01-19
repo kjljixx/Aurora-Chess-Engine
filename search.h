@@ -463,7 +463,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
         if(currEdge->child->visits > entry->visits){
           entry->hash = hash >> 32;
           entry->visits = currEdge->child->visits;
-          entry->val = currEdge->value;
+          entry->val = currEdge->child->avgValue;
         }
 
         backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
@@ -493,7 +493,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   if(currEdge->child->visits > entry->visits){
     entry->hash = hash >> 32;
     entry->visits = currEdge->child->visits;
-    entry->val = currEdge->value;
+    entry->val = currEdge->child->avgValue;
   }
   backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
 }
