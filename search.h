@@ -73,6 +73,44 @@ struct Node{
   Node() : parent(nullptr), visits(0), iters(0), avgValue(-2), totalValBias(0), isTerminal(false) {}
 };
 
+Edge findBestEdge(Node* parent){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+  Edge currBestMove = parent->children[0];
+
+  for(int i=0; i<parent->children.size(); i++){
+    if(parent->children[i].value < currBestValue){
+      currBestValue = parent->children[i].value;
+      currBestMove = parent->children[i];
+    }
+  }
+
+  return currBestMove;
+}
+
+Node* findBestChild(Node* parent){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+  Node* currBestMove = parent->children[0].child;
+
+  for(int i=0; i<parent->children.size(); i++){
+    if(parent->children[i].value < currBestValue){
+      currBestValue = parent->children[i].value;
+      currBestMove = parent->children[i].child;
+    }
+  }
+
+  return currBestMove;
+}
+
+float findBestValue(Node* parent){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+
+  for(int i=0; i<parent->children.size(); i++){
+    currBestValue = std::min(currBestValue, parent->children[i].value);
+  }
+
+  return currBestValue;
+}
+
 struct TTEntry{
   int visits;
   float val;
@@ -95,11 +133,29 @@ struct Tree{
   }
 
   void setHash(){
-    uint32_t hash = Aurora::options["Hash"].value;
-    sizeLimit = 1000000 * hash * (Aurora::options["TTHash"].value ? 1 : 0.8);
+    uint32_t hashMb = Aurora::options["Hash"].value;
+    sizeLimit = 1000000 * hashMb * (Aurora::options["TTHash"].value ? 1 : 0.8);
     TT.clear();
-    uint32_t ttHash = Aurora::options["TTHash"].value ? Aurora::options["TTHash"].value : hash * 0.2;
-    TT.resize(std::max(uint32_t(1), uint32_t(1000000 * ttHash / sizeof(TTEntry))));
+    uint32_t ttHashBytes = Aurora::options["TTHash"].value
+                              ? Aurora::options["TTHash"].value * 1000000
+                              : hashMb * 1000000 * 0.2;
+    TT.resize(std::max(uint32_t(1), uint32_t(ttHashBytes / sizeof(TTEntry))));
+  }
+
+  float getHashfull(){
+    float treeHashfull = sizeLimit > 0 ? float(currSize) / sizeLimit : 0;
+
+    float ttHashfull = 0;
+    int numTTEntriesToCheck = std::min(1000, int(TT.size()));
+    for(int i=0; i<numTTEntriesToCheck; i++){
+      if(TT[i].visits > 0){
+        ttHashfull += 1;
+      }
+    }
+    ttHashfull /= numTTEntriesToCheck;
+
+    float totalHash = TT.size() * sizeof(TTEntry) + sizeLimit;
+    return treeHashfull * (sizeLimit / totalHash) + ttHashfull * (TT.size()*sizeof(TTEntry) / totalHash);
   }
 
   //for debug purposes
@@ -370,102 +426,6 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   return eval;
 }
 
-Edge findBestEdge(Node* parent){
-  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
-  Edge currBestMove = parent->children[0];
-
-  for(int i=0; i<parent->children.size(); i++){
-    if(parent->children[i].value < currBestValue){
-      currBestValue = parent->children[i].value;
-      currBestMove = parent->children[i];
-    }
-  }
-
-  return currBestMove;
-}
-
-Node* findBestChild(Node* parent){
-  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
-  Node* currBestMove = parent->children[0].child;
-
-  for(int i=0; i<parent->children.size(); i++){
-    if(parent->children[i].value < currBestValue){
-      currBestValue = parent->children[i].value;
-      currBestMove = parent->children[i].child;
-    }
-  }
-
-  return currBestMove;
-}
-
-float findBestValue(Node* parent){
-  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
-
-  for(int i=0; i<parent->children.size(); i++){
-    currBestValue = std::min(currBestValue, parent->children[i].value);
-  }
-
-  return currBestValue;
-}
-
-int previousVisits = 0;
-int previousElapsed = 0;
-
-void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
-  Node* root = tree.root;
-  if(Aurora::options["outputLevel"].value==3){
-    std::cout << "NODES: " << root->visits;
-    #if DATAGEN == 0
-    std::cout << " SELDEPTH: " << int(seldepth) <<"\n";
-    #endif
-
-    std::cout.precision(5);
-    for(int i=0; i<root->children.size(); i++){
-      Edge currEdge = root->children[i];
-      std::cout << "\033[1;4m" << currEdge.edge.toStringRep() <<
-                  "\033[0m: \033[1;4mQ\033[0m:" << -currEdge.value <<
-                  " \033[1;4mA\033[0m:" << -(currEdge.child ? currEdge.child->avgValue : -2) <<
-                  " \033[1;4mB\033[0m:" << (currEdge.child ? currEdge.child->totalValBias : 0) <<
-                  " \033[1;4mI\033[0m:" << (currEdge.child ? currEdge.child->iters : 0) <<
-                  " \033[1;4mN\033[0m:" << (currEdge.child ? currEdge.child->visits : 1) <<
-                  " \033[1;4mPV\033[0m:";
-      Node* pvNode = root->children[i].child;
-      while(pvNode && pvNode->children.size() > 0){
-        Edge pvEdge = findBestEdge(pvNode);
-        std::cout << pvEdge.edge.toStringRep() << " ";
-        pvNode = pvEdge.child;
-      }
-      std::cout << std::endl;
-    }
-    std::cout.precision(10);
-  }
-
-  if(Aurora::options["outputLevel"].value >= 2 || (finalResult && Aurora::options["outputLevel"].value >= 1)){
-    std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
-
-    std::cout << "info ";
-    #if DATAGEN == 0
-    std::cout << "depth " << (root->visits == startNodes ? 0 : int(depth / (root->visits - startNodes))) <<
-                " seldepth " << int(seldepth) << " ";
-    #endif
-    std::cout << "nodes " << root->visits <<
-    " score cp " << evaluation::valToCp(-findBestValue(root)) <<
-    " hashfull " << (tree.sizeLimit > 0 ? int(1000*tree.currSize/tree.sizeLimit) : 0) <<
-    " nps " << std::round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
-    " time " << std::round(elapsed.count()*1000) <<
-    " pv ";
-    Node* pvNode = root;
-    while(pvNode && pvNode->children.size() > 0){
-      Edge pvEdge = findBestEdge(pvNode);
-      std::cout << pvEdge.edge.toStringRep() << " ";
-      pvNode = pvEdge.child;
-    }
-    std::cout << std::endl;
-
-    previousVisits = root->visits; previousElapsed = elapsed.count();
-  }
-}
-
 void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, float bias, bool forceResult, bool runFindBestMove, bool continueBackprop, float valChangedMinWeight, float valSameMinWeight){
   //Backpropagate results
   if(edges.size() == 0){return;}
@@ -538,6 +498,64 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
 }
 
+int previousVisits = 0;
+int previousElapsed = 0;
+
+void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
+  Node* root = tree.root;
+  if(Aurora::options["outputLevel"].value==3){
+    std::cout << "NODES: " << root->visits;
+    #if DATAGEN == 0
+    std::cout << " SELDEPTH: " << int(seldepth) <<"\n";
+    #endif
+
+    std::cout.precision(5);
+    for(int i=0; i<root->children.size(); i++){
+      Edge currEdge = root->children[i];
+      std::cout << "\033[1;4m" << currEdge.edge.toStringRep() <<
+                  "\033[0m: \033[1;4mQ\033[0m:" << -currEdge.value <<
+                  " \033[1;4mA\033[0m:" << -(currEdge.child ? currEdge.child->avgValue : -2) <<
+                  " \033[1;4mB\033[0m:" << (currEdge.child ? currEdge.child->totalValBias : 0) <<
+                  " \033[1;4mI\033[0m:" << (currEdge.child ? currEdge.child->iters : 0) <<
+                  " \033[1;4mN\033[0m:" << (currEdge.child ? currEdge.child->visits : 1) <<
+                  " \033[1;4mPV\033[0m:";
+      Node* pvNode = root->children[i].child;
+      while(pvNode && pvNode->children.size() > 0){
+        Edge pvEdge = findBestEdge(pvNode);
+        std::cout << pvEdge.edge.toStringRep() << " ";
+        pvNode = pvEdge.child;
+      }
+      std::cout << std::endl;
+    }
+    std::cout.precision(10);
+  }
+
+  if(Aurora::options["outputLevel"].value >= 2 || (finalResult && Aurora::options["outputLevel"].value >= 1)){
+    std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
+
+    std::cout << "info ";
+    #if DATAGEN == 0
+    std::cout << "depth " << (root->visits == startNodes ? 0 : int(depth / (root->visits - startNodes))) <<
+                " seldepth " << int(seldepth) << " ";
+    #endif
+    std::cout << "nodes " << root->visits <<
+    " score cp " << evaluation::valToCp(-findBestValue(root)) <<
+    " hashfull " << int(tree.getHashfull()*1000) <<
+    " nps " << std::round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
+    " time " << std::round(elapsed.count()*1000) <<
+    " pv ";
+    Node* pvNode = root;
+    while(pvNode && pvNode->children.size() > 0){
+      Edge pvEdge = findBestEdge(pvNode);
+      std::cout << pvEdge.edge.toStringRep() << " ";
+      pvNode = pvEdge.child;
+    }
+    std::cout << std::endl;
+
+    previousVisits = root->visits; previousElapsed = elapsed.count();
+  }
+}
+
 //Code relating to the time manager
 enum timeManagementType{
   FOREVER,
@@ -559,8 +577,11 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
   tree.setHash();
   #if DATAGEN != 1
-  std::cout << "info string starting search with max tree size " << (tree.sizeLimit == 0 ? "unlimited" : std::to_string(tree.sizeLimit/1000000)) << " mb "
-            << "and TT size " << tree.TT.size()*sizeof(TTEntry)/1000000 << " mb" << std::endl;
+  std::cout << "info string starting search with max tree size " <<
+            (tree.sizeLimit == 0 ? "unlimited" : std::to_string(tree.sizeLimit/1000000.0)) << " mb "
+            << "and TT size " <<
+            (tree.TT.size()*sizeof(TTEntry)/1000000.0) << " mb"
+            << std::endl;
   #endif
 
   if(!tree.root){tree.push_back(Node()); tree.root = &tree.tree[tree.tree.size()-1];}
