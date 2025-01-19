@@ -112,12 +112,11 @@ float findBestValue(Node* parent){
 }
 
 struct TTEntry{
-  U64 lastUsedTreeAge;
   int visits;
   float val;
   uint32_t hash;
 
-  TTEntry() : lastUsedTreeAge(0), visits(0), val(-2), hash(0) {}
+  TTEntry() : visits(0), val(-2), hash(0) {}
 };
 
 struct Tree{
@@ -128,7 +127,6 @@ struct Tree{
   uint64_t currSize = 0;
   Node* tail = nullptr;
   Node* head = nullptr;
-  U64 age = 0;
 
   TTEntry* getTTEntry(U64 hash){
     return &TT[hash % TT.size()];
@@ -244,7 +242,6 @@ void destroyTree(Tree& tree){
   tree.tail = nullptr;
   tree.head = nullptr;
   tree.currSize = 0;
-  tree.age = 0;
 }
 
 uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked = true){
@@ -415,17 +412,15 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   //Next, check TT
   TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
   if(entry->hash == (board.history[board.halfmoveClock] >> 32) && entry->val != -2){
-    entry->lastUsedTreeAge = tree.age;
     return entry->val;
   }
 
   //Next, do qSearch
   float eval = evaluation::cpToVal(evaluation::evaluate(board, nnue));
-  if(1+tree.age*0.01 > entry->visits+entry->lastUsedTreeAge*0.01){
+  if(entry->visits == 0){
     entry->hash = (board.history[board.halfmoveClock] >> 32);
     entry->visits = 1;
     entry->val = eval;
-    entry->lastUsedTreeAge = tree.age;
   }
   assert(-1<=eval && 1>=eval);
   return eval;
@@ -465,11 +460,10 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
         currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
 
         TTEntry* entry = tree.getTTEntry(hash);
-        if(currEdge->child->visits+tree.age*0.01 > entry->visits+entry->lastUsedTreeAge*0.01){
+        if(currEdge->child->visits > entry->visits){
           entry->hash = hash >> 32;
           entry->visits = currEdge->child->visits;
           entry->val = currEdge->value;
-          entry->lastUsedTreeAge = tree.age;
         }
 
         backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
@@ -496,11 +490,10 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   }
 
   TTEntry* entry = tree.getTTEntry(hash);
-  if(currEdge->child->visits+tree.age*0.01 > entry->visits+entry->lastUsedTreeAge*0.01){
+  if(currEdge->child->visits > entry->visits){
     entry->hash = hash >> 32;
     entry->visits = currEdge->child->visits;
     entry->val = currEdge->value;
-    entry->lastUsedTreeAge = tree.age;
   }
   backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
 }
