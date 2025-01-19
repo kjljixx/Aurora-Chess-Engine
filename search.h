@@ -395,7 +395,7 @@ void expand(Tree& tree, Node* parent, chess::MoveList& moves){
 }
 
 template<int numHiddenNeurons>
-float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
+float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue, float expectedBias){
   //First, check if position is terminal
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   assert(-1<=_gameStatus && 2>=_gameStatus);
@@ -416,7 +416,7 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   }
 
   //Next, do qSearch
-  float eval = evaluation::cpToVal(evaluation::evaluate(board, nnue));
+  float eval = evaluation::cpToVal(evaluation::evaluate(board, nnue))-expectedBias;
   if(entry->visits == 0){
     entry->hash = (board.history[board.halfmoveClock] >> 32);
     entry->visits = 1;
@@ -727,9 +727,9 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         nnue.accumulator = currAccumulator;
         nnue.updateAccumulator(movedBoard, currEdge->edge);
 
-        float result = playout(tree, movedBoard, nnue);
+        float result = playout(tree, movedBoard, nnue, expectedBias);
         assert(-1<=result && 1>=result);
-        currEdge->value = std::max(std::min(result-expectedBias, 1.0f), -1.0f);
+        currEdge->value = std::max(std::min(result, 1.0f), -1.0f);
         currBestValue = fminf(currBestValue, currEdge->value);
       }
 
