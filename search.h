@@ -491,7 +491,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
         continueBackprop = false;
 
         currEdge->child->iters++;
-        float newValWeight = std::abs(currEdge->value-currEdge->child->avgValue) > 0.2 ? 1 : fminf(1.0, fmaxf(valSameMinWeight, 1.0/currEdge->child->iters));
+        float newValWeight = std::abs(currEdge->value-currEdge->child->avgValue) > 0.1 ? 1 : fminf(1.0, fmaxf(valSameMinWeight, 1.0/currEdge->child->iters));
         currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
 
         TTEntry* entry = tree.getTTEntry(hash);
@@ -514,12 +514,12 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
       result = -currEdge->value;
 
       currEdge->child->iters++;
-      float newValWeight = std::abs(currEdge->value-currEdge->child->avgValue) > 0.2 ? 1 : fminf(1.0, fmaxf(valChangedMinWeight, 1.0/currEdge->child->iters));
+      float newValWeight = std::abs(currEdge->value-currEdge->child->avgValue) > 0.1 ? 1 : fminf(1.0, fmaxf(valChangedMinWeight, 1.0/currEdge->child->iters));
       currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
     }
     else{
       currEdge->child->iters++;
-      float newValWeight = std::abs(currEdge->value-currEdge->child->avgValue) > 0.2 ? 1 : fminf(1.0, fmaxf(valSameMinWeight, 1.0/currEdge->child->iters));
+      float newValWeight = std::abs(currEdge->value-currEdge->child->avgValue) > 0.1 ? 1 : fminf(1.0, fmaxf(valSameMinWeight, 1.0/currEdge->child->iters));
       currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
     }
   }
