@@ -114,7 +114,7 @@ float findBestValue(Node* parent){
 struct TTEntry{
   int visits;
   float val;
-  uint32_t hash;
+  uint16_t hash;
 
   TTEntry() : visits(0), val(-2), hash(0) {}
 };
@@ -415,14 +415,14 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
 
   //Next, check TT
   TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
-  if(entry->hash == (board.history[board.halfmoveClock] >> 32) && entry->val != -2){
+  if(entry->hash == (board.history[board.halfmoveClock] >> 16) && entry->val != -2){
     return entry->val;
   }
 
   //Next, do qSearch
   float eval = evaluation::cpToVal(evaluation::evaluate(board, nnue));
-  if(entry->visits == 0){
-    entry->hash = (board.history[board.halfmoveClock] >> 32);
+  if(1 > entry->visits){
+    entry->hash = (board.history[board.halfmoveClock] >> 16);
     entry->visits = 1;
     entry->val = eval;
   }
@@ -465,7 +465,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
 
         TTEntry* entry = tree.getTTEntry(hash);
         if(currEdge->child->visits > entry->visits){
-          entry->hash = hash >> 32;
+          entry->hash = hash >> 16;
           entry->visits = currEdge->child->visits;
           entry->val = currEdge->value;
         }
@@ -495,7 +495,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
 
   TTEntry* entry = tree.getTTEntry(hash);
   if(currEdge->child->visits > entry->visits){
-    entry->hash = hash >> 32;
+    entry->hash = hash >> 16;
     entry->visits = currEdge->child->visits;
     entry->val = currEdge->value;
   }
