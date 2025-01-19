@@ -115,8 +115,10 @@ struct TTEntry{
   int visits;
   float val;
   uint32_t hash;
+  uint32_t uses;
+  uint32_t nonUses;
 
-  TTEntry() : visits(0), val(-2), hash(0) {}
+  TTEntry() : visits(0), val(-2), hash(0), uses(0), nonUses(0) {}
 };
 
 struct Tree{
@@ -412,13 +414,21 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   //Next, check TT
   TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
   if(entry->hash == (board.history[board.halfmoveClock] >> 32) && entry->val != -2){
+    entry->uses++;
     return entry->val;
+  }
+  else if(entry->val != -2){
+    entry->nonUses++;
   }
 
   //Next, do qSearch
   float eval = evaluation::cpToVal(evaluation::evaluate(board, nnue));
-  if(entry->visits == 0){
-    entry->hash = (board.history[board.halfmoveClock] >> 32);
+  if(entry->visits == 0 || entry->nonUses-entry->uses > 100){
+    if(entry->hash != board.history[board.halfmoveClock] >> 32){
+      entry->uses = 0;
+      entry->nonUses = 0;
+      entry->hash = board.history[board.halfmoveClock] >> 32;
+    }
     entry->visits = 1;
     entry->val = eval;
   }
@@ -461,7 +471,11 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
 
         TTEntry* entry = tree.getTTEntry(hash);
         if(currEdge->child->visits > entry->visits){
-          entry->hash = hash >> 32;
+          if(entry->hash != hash >> 32){
+            entry->uses = 0;
+            entry->nonUses = 0;
+            entry->hash = hash >> 32;
+          }
           entry->visits = currEdge->child->visits;
           entry->val = currEdge->value;
         }
@@ -491,7 +505,11 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
 
   TTEntry* entry = tree.getTTEntry(hash);
   if(currEdge->child->visits > entry->visits){
-    entry->hash = hash >> 32;
+    if(entry->hash != hash >> 32){
+      entry->uses = 0;
+      entry->nonUses = 0;
+      entry->hash = hash >> 32;
+    }
     entry->visits = currEdge->child->visits;
     entry->val = currEdge->value;
   }
