@@ -352,10 +352,6 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
 
   tree.tree.resize(markedNodes);
 
-  for(int i=0; i<tree.TT.size(); i++){
-    tree.TT[i].visits = (tree.TT[i].visits + 1) / 1.2;
-  }
-
   return newRootNewAddress;
 }
 
