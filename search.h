@@ -416,7 +416,7 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   }
 
   //Next, do qSearch
-  float eval = evaluation::cpToVal(evaluation::evaluate(board, nnue))-expectedBias;
+  float eval = std::max(std::min(evaluation::cpToVal(evaluation::evaluate(board, nnue))-expectedBias, 1.0), -1.0);
   if(entry->visits == 0){
     entry->hash = (board.history[board.halfmoveClock] >> 32);
     entry->visits = 1;
@@ -729,7 +729,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
         float result = playout(tree, movedBoard, nnue, expectedBias);
         assert(-1<=result && 1>=result);
-        currEdge->value = std::max(std::min(result, 1.0f), -1.0f);
+        currEdge->value = result;
         currBestValue = fminf(currBestValue, currEdge->value);
       }
 
