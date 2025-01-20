@@ -721,7 +721,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
         float result = playout(tree, movedBoard, nnue);
         assert(-1<=result && 1>=result);
-        currEdge->value = std::max(std::min(result-expectedBias, 1.0f), -1.0f);
+        currEdge->value = std::max(std::min(result, 1.0f), -1.0f);
         currBestValue = fminf(currBestValue, currEdge->value);
       }
 
