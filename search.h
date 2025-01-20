@@ -112,11 +112,10 @@ float findBestValue(Node* parent){
 }
 
 struct TTEntry{
-  int visits;
   float val;
   uint32_t hash;
 
-  TTEntry() : visits(0), val(-2), hash(0) {}
+  TTEntry() : val(-2), hash(0) {}
 };
 
 struct Tree{
@@ -148,7 +147,7 @@ struct Tree{
     float ttHashfull = 0;
     int numTTEntriesToCheck = std::min(1000, int(TT.size()));
     for(int i=0; i<numTTEntriesToCheck; i++){
-      if(TT[i].visits > 0){
+      if(TT[i].val != -2){
         ttHashfull += 1;
       }
     }
@@ -460,11 +459,8 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
         currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
 
         TTEntry* entry = tree.getTTEntry(hash);
-        if(currEdge->child->visits > entry->visits){
-          entry->hash = hash >> 32;
-          entry->visits = currEdge->child->visits;
-          entry->val = currEdge->value;
-        }
+        entry->hash = hash >> 32;
+        entry->val = currEdge->value;
 
         backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
         return;
@@ -490,11 +486,9 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   }
 
   TTEntry* entry = tree.getTTEntry(hash);
-  if(currEdge->child->visits > entry->visits){
-    entry->hash = hash >> 32;
-    entry->visits = currEdge->child->visits;
-    entry->val = currEdge->value;
-  }
+  entry->hash = hash >> 32;
+  entry->val = currEdge->value;
+
   backpropagate(tree, result, edges, visits, bias, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
 }
 
