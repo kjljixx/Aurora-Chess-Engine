@@ -5,8 +5,8 @@
 #define DATAGEN 0
 
 
-#define VERSION_NUM "v1.25.3"
-#define VERSION_NAME "-always-replace"
+#define VERSION_NUM "v1.25.4"
+#define VERSION_NAME "-no-bias"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
@@ -59,7 +59,6 @@ void initOptions(){
   options["explorationFactor"] = Option(0.015, 0.001, 1024, 0);
   options["valChangedMinWeight"] = Option(0.1560282435642479, 0.001, 1024, 0);
   options["valSameMinWeight"] = Option(0.015277783601196866, 0.001, 1024, 0);
-  options["biasStartingWeight"] = Option(82.28227020619, 0.001, 1024, 0);
 }
 
 }
