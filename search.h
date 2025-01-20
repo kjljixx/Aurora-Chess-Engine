@@ -360,8 +360,13 @@ uint8_t selectEdge(Node* parent, bool isRoot, float rootExpl, float expl){
   const float parentVisitsTerm = (isRoot ? rootExpl : expl)*std::log(parent->visits)*std::sqrt(std::log(parent->visits));
 
   for(int i=0; i<parent->children.size(); i++){
-    Node* currNode = parent->children[i].child;
     Edge currEdge = parent->children[i];
+    Node* currNode = currEdge.child;
+
+    //Avoid exploring terminal nodes
+    if(currNode && currNode->isTerminal){
+      continue;
+    }
 
     //We can make a guess about how many visits a node had before it was pruned by LRU
     bool isLRUPruned = parent->children[i].edge.value & (1 << 15);
