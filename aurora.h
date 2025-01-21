@@ -6,7 +6,7 @@
 
 
 #define VERSION_NUM "v1.25.4"
-#define VERSION_NAME "-no-bias"
+#define VERSION_NAME ""
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
