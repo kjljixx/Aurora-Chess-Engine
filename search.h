@@ -451,7 +451,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
         continueBackprop = false;
 
         currEdge->child->iters++;
-        float newValWeight = fminf(1.0, fmaxf(valSameMinWeight, 1.0/currEdge->child->iters));
+        float newValWeight = std::clamp(1.0/currEdge->child->iters, double(valSameMinWeight), 1.0);
         currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
 
         TTEntry* entry = tree.getTTEntry(hash);
@@ -471,12 +471,12 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
       result = -currEdge->value;
 
       currEdge->child->iters++;
-      float newValWeight = fminf(1.0, fmaxf(valChangedMinWeight, 1.0/currEdge->child->iters));
+      float newValWeight = std::clamp(1.0/currEdge->child->iters, double(valChangedMinWeight), 1.0);
       currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
     }
     else{
       currEdge->child->iters++;
-      float newValWeight = fminf(1.0, fmaxf(valSameMinWeight, 1.0/currEdge->child->iters));
+      float newValWeight = std::clamp(1.0/currEdge->child->iters, double(valSameMinWeight), 1.0);
       currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
     }
   }
@@ -628,7 +628,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   float valChangedMinWeight = Aurora::options["valChangedMinWeight"].value;
   float valSameMinWeight = Aurora::options["valSameMinWeight"].value;
 
-  while((tm.tmType == FOREVER) || (elapsed.count()<fminf(tm.limit*bestMoveChangesMultiplier, tm.hardLimit) && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
+  while((tm.tmType == FOREVER) || (elapsed.count()<std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit) && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
     chess::Board board = rootBoard;
 
     int currDepth = 0;
@@ -706,10 +706,10 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         nnue.accumulator = currAccumulator;
         nnue.updateAccumulator(movedBoard, currEdge->edge);
 
-        float result = playout(tree, movedBoard, nnue);
-        assert(-1<=result && 1>=result);
-        currEdge->value = std::max(std::min(result, 1.0f), -1.0f);
-        currBestValue = fminf(currBestValue, currEdge->value);
+        currEdge->value = playout(tree, movedBoard, nnue);
+        assert(-1<=currEdge->value && 1>=currEdge->value);
+        
+        currBestValue = std::min(currBestValue, currEdge->value);
       }
 
       int visits = 0;
@@ -750,7 +750,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     }
 
     double expectedBestMoveChanges = 0.26061644 * (std::pow(tree.root->visits, 0.54) - std::pow(startNodes, 0.54));
-    bestMoveChangesMultiplier = fmaxf(fminf(bestMoveChanges / expectedBestMoveChanges, 2), 0.2);
+    bestMoveChangesMultiplier = std::clamp(bestMoveChanges / expectedBestMoveChanges, 0.2, 2.0);
   }
 
   //Output the final result of the search

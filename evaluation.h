@@ -171,13 +171,13 @@ int* eg_table[6] =
 };
 
 float cpToVal(int cp){
-  return std::max(std::min(std::atan(cp/100.0)/1.57079633, 1.0),-1.0);
+  return std::clamp(std::atan(cp/100.0)/1.57079633, -1.0, 1.0);
 }
 
 int valToCp(float val){
-  return std::min(std::max(
+  return std::clamp(
             std::round(std::tan(std::min(std::max(double(val), -0.9999), 0.9999)*1.57079633)*100)
-        , -100000.0), 100000.0);
+        , -100000.0, 100000.0);
 }
 
 //A simple 768->N*2->1 NNUE
