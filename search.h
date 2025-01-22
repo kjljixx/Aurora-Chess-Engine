@@ -372,7 +372,8 @@ uint8_t selectEdge(Node* parent, bool isRoot, float rootExpl, float expl){
     bool isLRUPruned = currEdge.edge.value & (1 << 15);
 
     float varianceScale = currNode ?
-                          std::clamp(0.9+16*std::sqrt(std::max(currNode->variance(), float(0))), 0.9, 1.1) :
+                          (1.0/currNode->iters)*1.0+
+                          (1.0-1.0/currNode->iters)*std::clamp(0.8+32*std::sqrt(std::max(currNode->variance(), float(0))), 0.8, 1.2) :
                           1.0;
 
     float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
