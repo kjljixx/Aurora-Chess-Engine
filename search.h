@@ -422,7 +422,7 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   return eval;
 }
 
-void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, bool forceResult, bool runFindBestMove, bool continueBackprop, float valChangedMinWeight, float valSameMinWeight){
+void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, bool forceResult, bool runFindBestMove, bool continueBackprop, float valChangedMinWeight, float valSameWeightMulti){
   //Backpropagate results
   if(edges.size() == 0){return;}
 
@@ -451,14 +451,14 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
         continueBackprop = false;
 
         currEdge->child->iters++;
-        float newValWeight = std::clamp(1.0/currEdge->child->iters, double(valSameMinWeight), 1.0);
+        float newValWeight = valSameWeightMulti*std::clamp(1.0/currEdge->child->iters, double(valChangedMinWeight), 1.0);
         currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
 
         TTEntry* entry = tree.getTTEntry(hash);
         entry->hash = hash >> 32;
         entry->val = currEdge->value;
 
-        backpropagate(tree, result, edges, visits, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
+        backpropagate(tree, result, edges, visits, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameWeightMulti);
         return;
       }
 
@@ -476,7 +476,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
     }
     else{
       currEdge->child->iters++;
-      float newValWeight = std::clamp(1.0/currEdge->child->iters, double(valSameMinWeight), 1.0);
+      float newValWeight = valSameWeightMulti*std::clamp(1.0/currEdge->child->iters, double(valChangedMinWeight), 1.0);
       currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
     }
   }
@@ -485,7 +485,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   entry->hash = hash >> 32;
   entry->val = currEdge->value;
 
-  backpropagate(tree, result, edges, visits, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
+  backpropagate(tree, result, edges, visits, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameWeightMulti);
 }
 
 int previousVisits = 0;
@@ -626,7 +626,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   float rootExpl = Aurora::options["rootExplorationFactor"].value;
   float expl = Aurora::options["explorationFactor"].value;
   float valChangedMinWeight = Aurora::options["valChangedMinWeight"].value;
-  float valSameMinWeight = Aurora::options["valSameMinWeight"].value;
+  float valSameWeightMulti = Aurora::options["valSameWeightMulti"].value;
 
   while((tm.tmType == FOREVER) || (elapsed.count()<std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit) && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
     chess::Board board = rootBoard;
@@ -673,7 +673,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       depth += currDepth;
       #endif
       tree.root->visits += 1;
-      backpropagate(tree, currEdge->value, traversePath, 1, true, false, true, valChangedMinWeight, valSameMinWeight);
+      backpropagate(tree, currEdge->value, traversePath, 1, true, false, true, valChangedMinWeight, valSameWeightMulti);
     }
     else{
       //Reached a leaf node
@@ -727,7 +727,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       tree.root->iters += 1;
 
       //Backpropagate best value
-      backpropagate(tree, -currBestValue, traversePath, visits, true, false, true, valChangedMinWeight, valSameMinWeight);
+      backpropagate(tree, -currBestValue, traversePath, visits, true, false, true, valChangedMinWeight, valSameWeightMulti);
     }
 
     #if DATAGEN == 0
