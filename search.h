@@ -364,6 +364,11 @@ uint8_t selectEdge(Node* parent, bool isRoot, float rootExpl, float expl){
 
   const float parentVisitsTerm = (isRoot ? rootExpl : expl)*std::log(parent->visits)*std::sqrt(std::log(parent->visits));
 
+  float varianceScale = parent ?
+                        (1.0/parent->iters)*1.0+
+                        (1.0-1.0/parent->iters)*std::clamp(0.8+32*std::sqrt(std::max(parent->variance(), float(0))), 0.8, 1.2) :
+                        1.0;
+
   for(int i=0; i<parent->children.size(); i++){
     Node* currNode = parent->children[i].child;
     Edge currEdge = parent->children[i];
@@ -371,10 +376,6 @@ uint8_t selectEdge(Node* parent, bool isRoot, float rootExpl, float expl){
     //We can make a guess about how many visits a node had before it was pruned by LRU
     bool isLRUPruned = currEdge.edge.value & (1 << 15);
 
-    float varianceScale = currNode ?
-                          (1.0/currNode->iters)*1.0+
-                          (1.0-1.0/currNode->iters)*std::clamp(0.8+32*std::sqrt(std::max(currNode->variance(), float(0))), 0.8, 1.2) :
-                          1.0;
 
     float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
       (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
