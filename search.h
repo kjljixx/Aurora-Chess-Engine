@@ -565,7 +565,8 @@ void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bo
 enum timeManagementType{
   FOREVER,
   TIME,
-  NODES
+  NODES,
+  ITERS
 };
 
 struct timeManagement{
@@ -644,7 +645,10 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   float valChangedMinWeight = Aurora::options["valChangedMinWeight"].value;
   float valSameMinWeight = Aurora::options["valSameMinWeight"].value;
 
-  while((tm.tmType == FOREVER) || (elapsed.count()<std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit) && tm.tmType == TIME) || (tree.root->visits<tm.limit && tm.tmType == NODES)){
+  while((tm.tmType == FOREVER) ||
+        (tm.tmType == TIME && elapsed.count()<std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit)) ||
+        (tm.tmType == NODES && tree.root->visits<tm.limit) ||
+        (tm.tmType == ITERS && tree.root->iters<tm.limit)){
     chess::Board board = rootBoard;
 
     int currDepth = 0;
@@ -690,6 +694,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       depth += currDepth;
       #endif
       tree.root->visits += 1;
+      tree.root->iters += 1;
       backpropagate(tree, currEdge->value, traversePath, 1, true, false, true, valChangedMinWeight, valSameMinWeight);
     }
     else{
@@ -797,7 +802,9 @@ void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Tr
 
   tree.root = moveRootToChild(tree, newRoot, tree.root);
 
-  tree.root->parent = nullptr; tree.root->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
+  tree.root->parent = nullptr;
+  tree.root->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
+  tree.root->iters--;//Same logic for iters
 
   chess::makeMove(rootBoard, move);
 }
