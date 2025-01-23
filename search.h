@@ -59,6 +59,7 @@ struct Node{
   uint32_t visits;
   int iters;
   float avgValue;
+  float sumSquaredVals = 0;
 
   bool isTerminal;
   uint8_t index;
@@ -70,6 +71,10 @@ struct Node{
   visits(0), iters(0), avgValue(-2), isTerminal(false) {}
 
   Node() : parent(nullptr), visits(0), iters(0), avgValue(-2), isTerminal(false) {}
+
+  float variance(){
+    return (sumSquaredVals-avgValue*avgValue);
+  }
 };
 
 Edge findBestEdge(Node* parent){
@@ -359,6 +364,13 @@ uint8_t selectEdge(Node* parent, bool isRoot, float rootExpl, float expl){
 
   const float parentVisitsTerm = (isRoot ? rootExpl : expl)*std::log(parent->visits)*std::sqrt(std::log(parent->visits));
 
+  float varianceScale = 
+    (1.0/parent->iters)*1.0+
+    (1.0-1.0/parent->iters)*
+      std::clamp(1.0+16*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 1.0, 2.0);
+  
+  // std::cout << std::clamp(1.0+32*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 0.2, 2.0) << " ";
+
   for(int i=0; i<parent->children.size(); i++){
     Node* currNode = parent->children[i].child;
     Edge currEdge = parent->children[i];
@@ -368,6 +380,7 @@ uint8_t selectEdge(Node* parent, bool isRoot, float rootExpl, float expl){
 
     float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
       (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
+      varianceScale*
       parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (isLRUPruned ? 14 : 1));
 
     assert(currPriority>=-1);
@@ -453,6 +466,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
         currEdge->child->iters++;
         float newValWeight = std::clamp(1.0/currEdge->child->iters, double(valSameMinWeight), 1.0);
         currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
+        currEdge->child->sumSquaredVals = currEdge->child->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
 
         TTEntry* entry = tree.getTTEntry(hash);
         entry->hash = hash >> 32;
@@ -473,11 +487,13 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
       currEdge->child->iters++;
       float newValWeight = std::clamp(1.0/currEdge->child->iters, double(valChangedMinWeight), 1.0);
       currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
+      currEdge->child->sumSquaredVals = currEdge->child->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
     }
     else{
       currEdge->child->iters++;
       float newValWeight = std::clamp(1.0/currEdge->child->iters, double(valSameMinWeight), 1.0);
       currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
+      currEdge->child->sumSquaredVals = currEdge->child->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
     }
   }
 
@@ -507,6 +523,7 @@ void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bo
                   " \033[1;4mA\033[0m:" << -(currEdge.child ? currEdge.child->avgValue : -2) <<
                   " \033[1;4mI\033[0m:" << (currEdge.child ? currEdge.child->iters : 0) <<
                   " \033[1;4mN\033[0m:" << (currEdge.child ? currEdge.child->visits : 1) <<
+                  " \033[1;4mV\033[0m:" << (currEdge.child ? std::sqrt(currEdge.child->variance()) : -1) <<
                   " \033[1;4mPV\033[0m:";
       Node* pvNode = root->children[i].child;
       while(pvNode && pvNode->children.size() > 0){
@@ -666,6 +683,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         currEdge->child->visits = 1;
         currEdge->child->iters = 1;
         currEdge->child->avgValue = currEdge->value;
+        currEdge->child->sumSquaredVals = currEdge->value*currEdge->value;
       }
 
       currNode = currEdge->child;
