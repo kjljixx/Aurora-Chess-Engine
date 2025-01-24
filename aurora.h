@@ -49,7 +49,8 @@ void initOptions(){
 
   options["SyzygyPath"] = Option("<empty>", 2);
 
-  options["outputLevel"] = Option(2, 0, 3, 1);
+  options["outputLevel"] = Option(2, -1, 3, 1);
+  //-1: just search, don't output anything
   //0: only output bestmove at end of search
   //1: ouput bestmove and info at end of search
   //2: output bestmove and info at end of search and output info every 2 seconds

@@ -17,8 +17,6 @@ namespace search{
 enum backpropagationStrategy{AVERAGE, MINIMAX};
 backpropagationStrategy backpropStrat = MINIMAX;
 
-//float eP[12] = {1.6301532566281178, 0.3415019889631426, 1.462459315326555, 0.09830134955092976, 0.3670339438501686, 0.5028838849947221, 0.28917477475978387, 1.581231015213, 0.2747746463404976, 0.9214915071600298, 0.14796697203232123, 1.2260899419271722}; //exploration parameters
-
 #if DATAGEN == 0
 uint8_t seldepth = 0;
 uint32_t depth = 0;
@@ -509,7 +507,7 @@ int previousElapsed = 0;
 
 void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
   Node* root = tree.root;
-  if(Aurora::options["outputLevel"].value==3){
+  if(Aurora::options["outputLevel"].value >= 3){
     std::cout << "NODES: " << root->visits;
     #if DATAGEN == 0
     std::cout << " SELDEPTH: " << int(seldepth) <<"\n";
@@ -583,13 +581,13 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   auto start = std::chrono::steady_clock::now();
 
   tree.setHash();
-  #if DATAGEN != 1
-  std::cout << "info string starting search with max tree size " <<
-            (tree.sizeLimit == 0 ? "unlimited" : std::to_string(tree.sizeLimit/1000000.0)) << " mb "
-            << "and TT size " <<
-            (tree.TT.size()*sizeof(TTEntry)/1000000.0) << " mb"
-            << std::endl;
-  #endif
+  if(Aurora::options["outputLevel"].value >= 1){
+    std::cout << "info string starting search with max tree size " <<
+              (tree.sizeLimit == 0 ? "unlimited" : std::to_string(tree.sizeLimit/1000000.0)) << " mb "
+              << "and TT size " <<
+              (tree.TT.size()*sizeof(TTEntry)/1000000.0) << " mb"
+              << std::endl;
+  }
 
   if(!tree.root){tree.push_back(Node()); tree.root = &tree.tree[tree.tree.size()-1];}
 
@@ -610,9 +608,9 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   previousElapsed = 0;
 
   if(chess::getGameStatus(rootBoard, chess::isLegalMoves(rootBoard)) != chess::ONGOING){
-    #if DATAGEN != 1
+    if(Aurora::options["outputLevel"].value >= 0){
       std::cout << "bestmove a1a1" << std::endl;
-    #endif
+    }
     return;
   }
 
@@ -759,12 +757,10 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
-    #if DATAGEN != 1
-      if(elapsed.count() >= lastNodeCheck*2){
-        lastNodeCheck++;
-        printSearchInfo(tree, start, false);
-      }
-    #endif
+    if(elapsed.count() >= lastNodeCheck*2){
+      lastNodeCheck++;
+      printSearchInfo(tree, start, false);
+    }
 
     //Decide if we want to search longer or shorter depending on how much the best move has changed
     if(findBestEdge(tree.root).edge.value != currBestMove.value){
@@ -777,10 +773,10 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   }
 
   //Output the final result of the search
-  #if DATAGEN != 1
-    printSearchInfo(tree, start, true);
+  printSearchInfo(tree, start, true);
+  if(Aurora::options["outputLevel"].value >= 0){
     std::cout << "\nbestmove " << findBestEdge(tree.root).edge.toStringRep() << std::endl;
-  #endif
+  }
 
   return;
 }

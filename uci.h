@@ -43,7 +43,7 @@ std::string benchFens[AMOUNT_OF_FENS] = { //From Alexandria
 
 void bench(){
   int nodes = 0;
-  Aurora::options["outputLevel"].value = 0;
+  Aurora::options["outputLevel"].value = -1;
 
   float totalElapsed = 0;
 
