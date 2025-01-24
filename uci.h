@@ -68,8 +68,36 @@ void bench(){
   std::cout << "\n" << nodes << " nodes " << int(nodes/totalElapsed) << " nps" << std::endl;
 }
 
-//The "position" command
-chess::Board position(std::istringstream input){
+chess::Move getMoveFromString(chess::Board &board, std::string token){
+  chess::Move move;
+  //En Passant
+  if((1ULL << squareNotationToIndex(token.substr(2, 2))) & board.enPassant && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::PAWN){
+    move = chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::ENPASSANT);
+  }
+  //Castling
+  else if((squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 2 || squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 6) && squareIndexToFile(squareNotationToIndex(token.substr(0, 2))) == 4 && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::KING){
+    move = chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::CASTLE);
+  }
+  //Promotion
+  else if(token.size() == 5){
+    move = chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::PROMOTION, chess::letterToPiece(token[4]));
+  }
+  //Normal
+  else{
+    move = chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)));
+  }
+  return move;
+}
+
+chess::Board makeMoves(chess::Board &board, std::istringstream& input){
+  std::string token;
+  while(input >> token){
+    search::makeMove(board, getMoveFromString(board, token), rootBoard, tree);
+  }
+  return board;
+}
+
+chess::Board position(std::istringstream& input){
   std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   std::string token;
 
@@ -88,24 +116,7 @@ chess::Board position(std::istringstream input){
 
   chess::Board board(fen);
 
-  while(input >> token){
-    //En Passant
-    if((1ULL << squareNotationToIndex(token.substr(2, 2))) & board.enPassant && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::PAWN){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::ENPASSANT), rootBoard, tree);
-    }
-    //Castling
-    else if((squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 2 || squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 6) && squareIndexToFile(squareNotationToIndex(token.substr(0, 2))) == 4 && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::KING){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::CASTLE), rootBoard, tree);
-    }
-    //Promotion
-    else if(token.size() == 5){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::PROMOTION, chess::letterToPiece(token[4])), rootBoard, tree);
-    }
-    //Normal
-    else{
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))), rootBoard, tree);
-    }
-  }
+  makeMoves(board, input);
 
   std::cout << "info string position set to " << board.getFen() << std::endl;
 
@@ -134,6 +145,7 @@ uint64_t perft(chess::Board &board, int depth, bool printResults){
 
   return nodes;
 }
+
 uint64_t perftDiv(chess::Board &board, int depth){
   chess::Board movedBoard;
   uint64_t nodes = 0;
@@ -153,7 +165,7 @@ uint64_t perftDiv(chess::Board &board, int depth){
   return nodes;
 }
 
-void go(std::istringstream input, chess::Board board){
+void go(std::istringstream& input, chess::Board board){
   std::string token;
 
   input >> token;
@@ -182,17 +194,26 @@ void go(std::istringstream input, chess::Board board){
     int theirTime = 0;
     int theirInc = 0;
 
-    if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){ourTime = time;}else{theirTime = time;}}
-    else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){ourTime = time;}else{theirTime = time;}}
-    else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){ourInc = time;}else{theirInc = time;}}
-    else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){ourInc = time;}else{theirInc = time;}}
+    do{
+      input >> time;
+      if(token == "wtime"){
+        if(board.sideToMove == chess::WHITE){ourTime = time;}
+        else{theirTime = time;}
+      }
+      else if(token == "btime"){
+        if(board.sideToMove == chess::BLACK){ourTime = time;}
+        else{theirTime = time;}
+      }
+      else if(token == "winc"){
+        if(board.sideToMove == chess::WHITE){ourInc = time;}
+        else{theirInc = time;}
+      }
+      else if(token == "binc"){
+        if(board.sideToMove == chess::BLACK){ourInc = time;}
+        else{theirInc = time;}
+      }
+    } while(input >> token);
 
-    while(input >> token){
-      if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){ourTime = time;}else{theirTime = time;}}
-      else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){ourTime = time;}else{theirTime = time;}}
-      else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){ourInc = time;}else{theirInc = time;}}
-      else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){ourInc = time;}else{theirInc = time;}}
-    }
     int movesLeft = 30;
     int allocatedTime = fminf(0.05*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
     tm.limit = allocatedTime/1000.0;
@@ -204,6 +225,7 @@ void go(std::istringstream input, chess::Board board){
   rootBoard = board;
   root = tree.root;
 }
+
 void respondUci(){
   std::cout <<  "id name Aurora " << VERSION_NUM DEV_STRING << "\n"
                 "id author kjljixx\n"
@@ -224,7 +246,8 @@ void respondUci(){
                 }
                 std::cout << "\nuciok" << std::endl;
 }
-void setOption(std::istringstream input){
+
+void setOption(std::istringstream& input){
   std::string token;
 
   input >> token; //input the "name" token
@@ -256,74 +279,28 @@ void setOption(std::istringstream input){
     Aurora::options[optionName].value = optionValue;
     std::cout << "info string option " << optionName << " set to " << optionValue << std::endl;
   }
-
 }
-//Custom commands
-chess::Board makeMoves(chess::Board &board, std::istringstream input){
-  std::string token;
-  while(input >> token){
-    //En Passant
-    if((1ULL << squareNotationToIndex(token.substr(2, 2))) & board.enPassant && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::PAWN){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::ENPASSANT), rootBoard, tree);
-    }
-    //Castling
-    else if((squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 2 || squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 6) && squareIndexToFile(squareNotationToIndex(token.substr(0, 2))) == 4 && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::KING){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::CASTLE), rootBoard, tree);
-    }
-    //Promotion
-    else if(token.size() == 5){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::PROMOTION, chess::letterToPiece(token[4])), rootBoard, tree);
-    }
-    //Normal
-    else{
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))), rootBoard, tree);
-    }
-  }
-  return board;
-}
-chess::Move getMoveFromString(chess::Board &board, std::string token){
-  chess::Move move;
-  //En Passant
-  if((1ULL << squareNotationToIndex(token.substr(2, 2))) & board.enPassant && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::PAWN){
-    move = chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::ENPASSANT);
-  }
-  //Castling
-  else if((squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 2 || squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 6) && squareIndexToFile(squareNotationToIndex(token.substr(0, 2))) == 4 && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::KING){
-    move = chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::CASTLE);
-  }
-  //Promotion
-  else if(token.size() == 5){
-    move = chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::PROMOTION, chess::letterToPiece(token[4]));
-  }
-  //Normal
-  else{
-    move = chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)));
-  }
-  return move;
-}
-
 
 //The main UCI loop which detects input and runs other functions based on it
 void loop(chess::Board board){
-
   std::string token;
 
   while(true){
     std::cin >> token;
     if(token == "uci"){respondUci();}
     if(token == "build"){std::cout << GIT_HASH_STRING << std::endl;}
-    if(token == "setoption"){std::getline(std::cin, token); setOption(std::istringstream(token));}
+    if(token == "setoption"){std::getline(std::cin, token); auto stream = std::istringstream(token); setOption(stream);}
     if(token == "isready"){std::cout << "readyok" << std::endl;} //TODO: make sure we are actually ready before printing readyok
     if(token == "perft"){int depth; std::cin >> depth; perftDiv(board, depth);}
-    if(token == "position"){std::getline(std::cin, token); board = position(std::istringstream(token));}
-    if(token == "go"){std::getline(std::cin, token); go(std::istringstream(token), board);}
+    if(token == "position"){std::getline(std::cin, token); auto stream = std::istringstream(token); board = position(stream);}
+    if(token == "go"){std::getline(std::cin, token); auto stream = std::istringstream(token); go(stream, board);}
     if(token == "quit"){break;}
     if(token == "ucinewgame"){search::destroyTree(tree); root = nullptr; std::cout << "info string search tree destroyed" << std::endl;}
     //non-uci, custom commands
-    if(token == "moves"){std::getline(std::cin, token); board = makeMoves(board, std::istringstream(token));}
+    if(token == "moves"){std::getline(std::cin, token); auto stream = std::istringstream(token); board = makeMoves(board, stream);}
     //bwlow are mostly for debugging purposes
-    if(token == "debug"){setOption(std::istringstream("name outputLevel value 3"));}
-    if(token == "fen"){std::getline(std::cin, token);board = position(std::istringstream("fen " + token));}
+    if(token == "debug"){auto stream = std::istringstream("name outputLevel value 3"); setOption(stream);}
+    if(token == "fen"){std::getline(std::cin, token); auto stream = std::istringstream("fen " + token); board = position(stream);}
 
     if(token == "board"){board.printBoard(); std::cout << std::endl;}
 
