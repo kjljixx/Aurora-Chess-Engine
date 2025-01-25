@@ -17,12 +17,6 @@ namespace search{
 enum backpropagationStrategy{AVERAGE, MINIMAX};
 backpropagationStrategy backpropStrat = MINIMAX;
 
-#if DATAGEN == 0
-uint8_t seldepth = 0;
-uint32_t depth = 0;
-uint32_t startNodes = 0;
-#endif
-
 void init(){
   Aurora::initOptions();
   evaluation::init();
@@ -128,6 +122,16 @@ struct Tree{
   uint64_t currSize = 0;
   Node* tail = nullptr;
   Node* head = nullptr;
+
+  //Used for nps calculations in printing search info
+  int previousVisits = 0;
+  int previousElapsed = 0;
+
+  uint8_t seldepth = 0;
+  uint32_t depth = 0;
+
+  //Nodes at the start of a search
+  uint32_t startNodes = 0;
 
   TTEntry* getTTEntry(U64 hash){
     return &TT[hash % TT.size()];
@@ -502,16 +506,11 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   backpropagate(tree, result, edges, visits, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
 }
 
-int previousVisits = 0;
-int previousElapsed = 0;
-
 void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
   Node* root = tree.root;
   if(Aurora::options["outputLevel"].value >= 3){
     std::cout << "NODES: " << root->visits;
-    #if DATAGEN == 0
-    std::cout << " SELDEPTH: " << int(seldepth) <<"\n";
-    #endif
+    std::cout << " SELDEPTH: " << int(tree.seldepth) <<"\n";
 
     std::cout.precision(5);
     for(int i=0; i<root->children.size(); i++){
@@ -537,15 +536,13 @@ void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bo
   if(Aurora::options["outputLevel"].value >= 2 || (finalResult && Aurora::options["outputLevel"].value >= 1)){
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
-    std::cout << "info ";
-    #if DATAGEN == 0
-    std::cout << "depth " << (root->visits == startNodes ? 0 : int(depth / (root->visits - startNodes))) <<
-                " seldepth " << int(seldepth) << " ";
-    #endif
-    std::cout << "nodes " << root->visits <<
+    std::cout <<
+    "info depth " << (root->visits == tree.startNodes ? 0 : int(tree.depth / (root->visits - tree.startNodes))) <<
+    " seldepth " << int(tree.seldepth) <<
+    " nodes " << root->visits <<
     " score cp " << evaluation::valToCp(-findBestValue(root)) <<
     " hashfull " << int(tree.getHashfull()*1000) <<
-    " nps " << std::round((root->visits-previousVisits)/(elapsed.count()-previousElapsed)) <<
+    " nps " << std::round((root->visits-tree.previousVisits)/(elapsed.count()-tree.previousElapsed)) <<
     " time " << std::round(elapsed.count()*1000) <<
     " pv ";
     Node* pvNode = root;
@@ -556,7 +553,7 @@ void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bo
     }
     std::cout << std::endl;
 
-    previousVisits = root->visits; previousElapsed = elapsed.count();
+    tree.previousVisits = root->visits; tree.previousElapsed = elapsed.count();
   }
 }
 
@@ -591,11 +588,8 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
   if(!tree.root){tree.push_back(Node()); tree.root = &tree.tree[tree.tree.size()-1];}
 
-  #if DATAGEN == 0
-  seldepth = 0;
-  depth = 0;
-  startNodes = tree.root->visits;
-  #endif
+  tree.seldepth = 0;
+  tree.depth = 0;
 
   evaluation::NNUE<NNUEhiddenNeurons> nnue(evaluation::_NNUEparameters);
 
@@ -604,8 +598,8 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   //For Printing Search Info
   int lastNodeCheck = 1;
   std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
-  previousVisits = tree.root->visits;
-  previousElapsed = 0;
+  tree.previousVisits = tree.root->visits;
+  tree.previousElapsed = 0;
 
   if(chess::getGameStatus(rootBoard, chess::isLegalMoves(rootBoard)) != chess::ONGOING){
     if(Aurora::options["outputLevel"].value >= 0){
@@ -615,6 +609,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   }
 
   //For Time Management
+  tree.startNodes = tree.root->visits;
   int bestMoveChanges = 0;
   float bestMoveChangesMultiplier = 1;
   chess::Move currBestMove;
@@ -689,9 +684,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
     //Expand & Backpropagate new values
     if(currNode->isTerminal){
-      #if DATAGEN == 0
-      depth += currDepth;
-      #endif
+      tree.depth += currDepth;
       tree.root->visits += 1;
       tree.root->iters += 1;
       backpropagate(tree, currEdge->value, traversePath, 1, true, false, true, valChangedMinWeight, valSameMinWeight);
@@ -738,10 +731,8 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         if(parentNode->children[i].value <= currBestValue + 0.04){visits++;}
       }
       assert(visits >= 1);
-      
-      #if DATAGEN == 0
-      depth += currDepth*visits;
-      #endif
+
+      tree.depth += currDepth*visits;
 
       //Update root stats, since backpropagation doesn't reach the root
       tree.root->visits += visits;
@@ -751,9 +742,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       backpropagate(tree, -currBestValue, traversePath, visits, true, false, true, valChangedMinWeight, valSameMinWeight);
     }
 
-    #if DATAGEN == 0
-    if(currDepth > seldepth){seldepth = currDepth;}
-    #endif
+    if(currDepth > tree.seldepth){tree.seldepth = currDepth;}
 
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
@@ -768,7 +757,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       currBestMove = findBestEdge(tree.root).edge;
     }
 
-    double expectedBestMoveChanges = 0.26061644 * (std::pow(tree.root->visits, 0.54) - std::pow(startNodes, 0.54));
+    double expectedBestMoveChanges = 0.26061644 * (std::pow(tree.root->visits, 0.54) - std::pow(tree.startNodes, 0.54));
     bestMoveChangesMultiplier = std::clamp(bestMoveChanges / expectedBestMoveChanges, 0.2, 2.0);
   }
 
