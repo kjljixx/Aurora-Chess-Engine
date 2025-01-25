@@ -43,7 +43,7 @@ std::string benchFens[AMOUNT_OF_FENS] = { //From Alexandria
 
 void bench(){
   int nodes = 0;
-  Aurora::options["outputLevel"].value = -1;
+  Aurora::outputLevel.value = -1;
 
   float totalElapsed = 0;
 
@@ -231,17 +231,17 @@ void respondUci(){
                 "id author kjljixx\n"
                 "\n";
                 for(auto option : Aurora::options){
-                  if(option.second.type == 2){
-                    std::cout << "option name " << option.first << " "
+                  if(option->type == 2){
+                    std::cout << "option name " << option->name << " "
                                         "type " << "string" << " "
-                                        "default " << option.second.sDefaultValue << "\n";                  
+                                        "default " << option->sDefaultValue << "\n";                  
                   }
                   else{
-                    std::cout << "option name " << option.first << " "
-                                        "type " << (option.second.type == 1 ? "spin" : "string") << " "
-                                        "default " << option.second.defaultValue << " "
-                                        "min " << option.second.minValue << " "
-                                        "max " << option.second.maxValue << "\n";
+                    std::cout << "option name " << option->name << " "
+                                        "type " << (option->type == 1 ? "spin" : "string") << " "
+                                        "default " << option->defaultValue << " "
+                                        "min " << option->minValue << " "
+                                        "max " << option->maxValue << "\n";
                   }
                 }
                 std::cout << "\nuciok" << std::endl;
@@ -255,18 +255,18 @@ void setOption(std::istringstream& input){
   std::string optionName;
   input >> optionName;
 
-  if(Aurora::options.find(optionName) == Aurora::options.end()){
+  if(Aurora::getOption(optionName) == nullptr){
     std::cout << "info string could not find option " << optionName << std::endl;
     return;
   }
 
   input >> token; //input the "value" token
 
-  if (Aurora::options[optionName].type == 2){
+  if (Aurora::getOption(optionName)->type == 2){
     std::string optionValue;
     input >> optionValue;
-    Aurora::options[optionName].sValue = optionValue;
-    if(optionName != "SyzygyPath" || (tb_init(Aurora::options[optionName].sValue.c_str()) && TB_LARGEST > 0)){
+    Aurora::getOption(optionName)->sValue = optionValue;
+    if(optionName != "SyzygyPath" || (tb_init(Aurora::getOption(optionName)->sValue.c_str()) && TB_LARGEST > 0)){
       std::cout << "info string option " << optionName << " set to " << optionValue << std::endl;
     }
     else{
@@ -276,7 +276,7 @@ void setOption(std::istringstream& input){
   else{
     float optionValue;
     input >> optionValue;
-    Aurora::options[optionName].value = optionValue;
+    Aurora::getOption(optionName)->value = optionValue;
     std::cout << "info string option " << optionName << " set to " << optionValue << std::endl;
   }
 }

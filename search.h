@@ -18,7 +18,6 @@ enum backpropagationStrategy{AVERAGE, MINIMAX};
 backpropagationStrategy backpropStrat = MINIMAX;
 
 void init(){
-  Aurora::initOptions();
   evaluation::init();
   zobrist::init();
   srand(time(NULL));
@@ -138,11 +137,11 @@ struct Tree{
   }
 
   void setHash(){
-    uint32_t hashMb = Aurora::options["Hash"].value;
-    sizeLimit = 1000000 * hashMb * (Aurora::options["TTHash"].value ? 1 : 0.8);
+    uint32_t hashMb = Aurora::hash.value;
+    sizeLimit = 1000000 * hashMb * (Aurora::ttHash.value ? 1 : 0.8);
     TT.clear();
-    uint32_t ttHashBytes = Aurora::options["TTHash"].value
-                              ? Aurora::options["TTHash"].value * 1000000
+    uint32_t ttHashBytes = Aurora::ttHash.value
+                              ? Aurora::ttHash.value * 1000000
                               : hashMb * 1000000 * 0.2;
     TT.resize(std::max(uint32_t(1), uint32_t(ttHashBytes / sizeof(TTEntry))));
   }
@@ -360,11 +359,11 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
   return newRootNewAddress;
 }
 
-uint8_t selectEdge(Node* parent, bool isRoot, float rootExpl, float expl){
+uint8_t selectEdge(Node* parent, bool isRoot){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = (isRoot ? rootExpl : expl)*std::log(parent->visits)*std::sqrt(std::log(parent->visits));
+  const float parentVisitsTerm = (isRoot ? Aurora::rootExplorationFactor.value : Aurora::explorationFactor.value)*std::log(parent->visits)*std::sqrt(std::log(parent->visits));
 
   float varianceScale = 
     (1.0/parent->iters)*1.0+
@@ -437,7 +436,7 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   return eval;
 }
 
-void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, bool forceResult, bool runFindBestMove, bool continueBackprop, float valChangedMinWeight, float valSameMinWeight){
+void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, bool forceResult, bool runFindBestMove, bool continueBackprop){
   //Backpropagate results
   if(edges.size() == 0){return;}
 
@@ -466,7 +465,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
         continueBackprop = false;
 
         currEdge->child->iters++;
-        float newValWeight = std::clamp(1.0/currEdge->child->iters, double(valSameMinWeight), 1.0);
+        float newValWeight = std::clamp(1.0/currEdge->child->iters, double(Aurora::valSameMinWeight.value), 1.0);
         currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
         currEdge->child->sumSquaredVals = currEdge->child->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
 
@@ -474,7 +473,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
         entry->hash = hash >> 32;
         entry->val = currEdge->value;
 
-        backpropagate(tree, result, edges, visits, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
+        backpropagate(tree, result, edges, visits, false, runFindBestMove, continueBackprop);
         return;
       }
 
@@ -487,13 +486,13 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
       result = -currEdge->value;
 
       currEdge->child->iters++;
-      float newValWeight = std::clamp(1.0/currEdge->child->iters, double(valChangedMinWeight), 1.0);
+      float newValWeight = std::clamp(1.0/currEdge->child->iters, double(Aurora::valChangedMinWeight.value), 1.0);
       currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
       currEdge->child->sumSquaredVals = currEdge->child->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
     }
     else{
       currEdge->child->iters++;
-      float newValWeight = std::clamp(1.0/currEdge->child->iters, double(valSameMinWeight), 1.0);
+      float newValWeight = std::clamp(1.0/currEdge->child->iters, double(Aurora::valSameMinWeight.value), 1.0);
       currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
       currEdge->child->sumSquaredVals = currEdge->child->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
     }
@@ -503,12 +502,12 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   entry->hash = hash >> 32;
   entry->val = currEdge->value;
 
-  backpropagate(tree, result, edges, visits, false, runFindBestMove, continueBackprop, valChangedMinWeight, valSameMinWeight);
+  backpropagate(tree, result, edges, visits, false, runFindBestMove, continueBackprop);
 }
 
 void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
   Node* root = tree.root;
-  if(Aurora::options["outputLevel"].value >= 3){
+  if(Aurora::outputLevel.value >= 3){
     std::cout << "NODES: " << root->visits;
     std::cout << " SELDEPTH: " << int(tree.seldepth) <<"\n";
 
@@ -533,7 +532,7 @@ void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bo
     std::cout.precision(10);
   }
 
-  if(Aurora::options["outputLevel"].value >= 2 || (finalResult && Aurora::options["outputLevel"].value >= 1)){
+  if(Aurora::outputLevel.value >= 2 || (finalResult && Aurora::outputLevel.value >= 1)){
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
     std::cout <<
@@ -578,7 +577,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   auto start = std::chrono::steady_clock::now();
 
   tree.setHash();
-  if(Aurora::options["outputLevel"].value >= 1){
+  if(Aurora::outputLevel.value >= 1){
     std::cout << "info string starting search with max tree size " <<
               (tree.sizeLimit == 0 ? "unlimited" : std::to_string(tree.sizeLimit/1000000.0)) << " mb "
               << "and TT size " <<
@@ -602,7 +601,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   tree.previousElapsed = 0;
 
   if(chess::getGameStatus(rootBoard, chess::isLegalMoves(rootBoard)) != chess::ONGOING){
-    if(Aurora::options["outputLevel"].value >= 0){
+    if(Aurora::outputLevel.value >= 0){
       std::cout << "bestmove a1a1" << std::endl;
     }
     return;
@@ -633,12 +632,6 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     tm.limit = -1;
   }
 
-  //Get options
-  float rootExpl = Aurora::options["rootExplorationFactor"].value;
-  float expl = Aurora::options["explorationFactor"].value;
-  float valChangedMinWeight = Aurora::options["valChangedMinWeight"].value;
-  float valSameMinWeight = Aurora::options["valSameMinWeight"].value;
-
   while((tm.tmType == FOREVER) ||
         (tm.tmType == TIME && elapsed.count()<std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit)) ||
         (tm.tmType == NODES && tree.root->visits<tm.limit) ||
@@ -662,7 +655,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       }
 
       //Select Child Node to explore
-      uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root, rootExpl, expl);
+      uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root);
 
       currEdge = &currNode->children[currEdgeIndex];
       chess::makeMove(board, currEdge->edge);
@@ -687,7 +680,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       tree.depth += currDepth;
       tree.root->visits += 1;
       tree.root->iters += 1;
-      backpropagate(tree, currEdge->value, traversePath, 1, true, false, true, valChangedMinWeight, valSameMinWeight);
+      backpropagate(tree, currEdge->value, traversePath, 1, true, false, true);
     }
     else{
       //Reached a leaf node
@@ -739,7 +732,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       tree.root->iters += 1;
 
       //Backpropagate best value
-      backpropagate(tree, -currBestValue, traversePath, visits, true, false, true, valChangedMinWeight, valSameMinWeight);
+      backpropagate(tree, -currBestValue, traversePath, visits, true, false, true);
     }
 
     if(currDepth > tree.seldepth){tree.seldepth = currDepth;}
@@ -763,7 +756,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
   //Output the final result of the search
   printSearchInfo(tree, start, true);
-  if(Aurora::options["outputLevel"].value >= 0){
+  if(Aurora::outputLevel.value >= 0){
     std::cout << "\nbestmove " << findBestEdge(tree.root).edge.toStringRep() << std::endl;
   }
 
