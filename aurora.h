@@ -42,7 +42,10 @@ struct Option{
       options.push_back(this);
     }
   Option(std::string name, std::string defaultValue, int type) :
-    name(name), sDefaultValue(defaultValue), minValue(-1), maxValue(-1), sValue(defaultValue), type(type) {}
+    name(name), sDefaultValue(defaultValue), minValue(-1), maxValue(-1), sValue(defaultValue), type(type)
+    {
+      options.push_back(this);
+    }
 };
 
 Option hash("Hash", 0, 0, 65536, 1);
