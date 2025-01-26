@@ -67,8 +67,8 @@ Option explorationFactor("explorationFactor", 0.014287830341288369, 0.001, 1024,
 Option valChangedMinWeight("valChangedMinWeight", 0.13585709255550085, 0.001, 1024, 0);
 Option valSameMinWeight("valSameMinWeight", 0.01259766370393513, 0.001, 1024, 0);
 
-Option varianceMin("varianceMin", 0.9760041603043348, 0.001, 1024, 0);
-Option varianceMax("varianceMax", 1.9859684817671288, 0.001, 1024, 0);
+Option varianceMin("varianceMin", 1.0, 0.001, 1024, 0);
+Option varianceMax("varianceMax", 2.0, 0.001, 1024, 0);
 Option varianceScale("varianceScale", 15.073066174160404, 0.001, 1024, 0);
 Option varianceShift("varianceShift", 0.007791932723980379, 0.001, 1024, 0);
 
