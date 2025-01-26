@@ -596,7 +596,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   
   //For Printing Search Info
   int lastNodeCheck = 1;
-  std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
+  std::chrono::duration<float> elapsed = start - start;
   tree.previousVisits = tree.root->visits;
   tree.previousElapsed = 0;
 

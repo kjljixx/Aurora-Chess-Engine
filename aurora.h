@@ -5,7 +5,7 @@
 #define DATAGEN 0
 
 #define VERSION_NUM "v1.26.0"
-#define VERSION_NAME "-variance-scaling"
+#define VERSION_NAME ""
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
