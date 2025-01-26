@@ -290,7 +290,7 @@ void loop(chess::Board board){
     if(token == "uci"){respondUci();}
     if(token == "build"){std::cout << GIT_HASH_STRING << std::endl;}
     if(token == "setoption"){std::getline(std::cin, token); auto stream = std::istringstream(token); setOption(stream);}
-    if(token == "isready"){std::cout << "readyok" << std::endl;} //TODO: make sure we are actually ready before printing readyok
+    if(token == "isready"){std::cout << "readyok" << std::endl;}
     if(token == "perft"){int depth; std::cin >> depth; perftDiv(board, depth);}
     if(token == "position"){std::getline(std::cin, token); auto stream = std::istringstream(token); board = position(stream);}
     if(token == "go"){std::getline(std::cin, token); auto stream = std::istringstream(token); go(stream, board);}
