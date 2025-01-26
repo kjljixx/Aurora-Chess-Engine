@@ -63,8 +63,10 @@ Option outputLevel("outputLevel", 2, -1, 3, 1);
 
 Option rootExplorationFactor("rootExplorationFactor", 0.020653166714688035, 0.001, 1024, 0);
 Option explorationFactor("explorationFactor", 0.014287830341288369, 0.001, 1024, 0);
+
 Option valChangedMinWeight("valChangedMinWeight", 0.13585709255550085, 0.001, 1024, 0);
 Option valSameMinWeight("valSameMinWeight", 0.01259766370393513, 0.001, 1024, 0);
+
 Option varianceMin("varianceMin", 0.9760041603043348, 0.001, 1024, 0);
 Option varianceMax("varianceMax", 1.9859684817671288, 0.001, 1024, 0);
 Option varianceScale("varianceScale", 15.073066174160404, 0.001, 1024, 0);
