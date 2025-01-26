@@ -61,14 +61,14 @@ Option outputLevel("outputLevel", 2, -1, 3, 1);
 //  2: output bestmove and info at end of search and output info every 2 seconds
 //  3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 
-Option rootExplorationFactor("rootExplorationFactor", 0.026, 0.001, 1024, 0);
-Option explorationFactor("explorationFactor", 0.015, 0.001, 1024, 0);
-Option valChangedMinWeight("valChangedMinWeight", 0.1560282435642479, 0.001, 1024, 0);
-Option valSameMinWeight("valSameMinWeight", 0.015277783601196866, 0.001, 1024, 0);
-Option varianceMin("varianceMin", 1.0, 0.001, 1024, 0);
-Option varianceMax("varianceMax", 2.0, 0.001, 1024, 0);
-Option varianceScale("varianceScale", 16.0, 0.001, 1024, 0);
-Option varianceShift("varianceShift", 0.00625, 0.001, 1024, 0);
+Option rootExplorationFactor("rootExplorationFactor", 0.020653166714688035, 0.001, 1024, 0);
+Option explorationFactor("explorationFactor", 0.014287830341288369, 0.001, 1024, 0);
+Option valChangedMinWeight("valChangedMinWeight", 0.13585709255550085, 0.001, 1024, 0);
+Option valSameMinWeight("valSameMinWeight", 0.01259766370393513, 0.001, 1024, 0);
+Option varianceMin("varianceMin", 0.9760041603043348, 0.001, 1024, 0);
+Option varianceMax("varianceMax", 1.9859684817671288, 0.001, 1024, 0);
+Option varianceScale("varianceScale", 15.073066174160404, 0.001, 1024, 0);
+Option varianceShift("varianceShift", 0.007791932723980379, 0.001, 1024, 0);
 
 Option* getOption(std::string name){
   for(Option* option : options){

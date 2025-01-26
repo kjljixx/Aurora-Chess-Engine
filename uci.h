@@ -315,6 +315,13 @@ void loop(chess::Board board){
     
     if(token == "zobrist"){std::cout << zobrist::getHash(board) << std::endl;}
     if(token == "bench"){bench();}
+
+    if(token == "spsa"){
+      for(auto option : Aurora::options){
+        if(option->type != 0) continue;
+        std::cout << option->name << ", float, " << option->defaultValue << ", " << option->minValue << ", " << option->maxValue << ", [c], 0.002\n"; 
+      }
+    }
   }
 }
 }
