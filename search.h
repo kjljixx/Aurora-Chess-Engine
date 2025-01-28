@@ -48,6 +48,7 @@ struct Node{
   Node* newAddress = nullptr;
 
   uint32_t visits;
+  double discountedVisits = 0;
   int iters;
   float avgValue;
   float sumSquaredVals = 0;
@@ -363,7 +364,18 @@ uint8_t selectEdge(Node* parent, bool isRoot){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = (isRoot ? Aurora::rootExplorationFactor.value : Aurora::explorationFactor.value)*std::log(parent->visits)*std::sqrt(std::log(parent->visits));
+  double sumDiscountedVisits = 0;
+  for(int i=0; i<parent->children.size(); i++){
+    if(!parent->children[i].child) continue;
+    sumDiscountedVisits += parent->children[i].child->discountedVisits;
+  }
+  float parentVisitsTerm = 0;
+  if(isRoot){
+    parentVisitsTerm = 0.15*std::sqrt(std::log(std::max(sumDiscountedVisits, 2.0)));
+  }
+  else{
+    parentVisitsTerm = Aurora::explorationFactor.value*std::log(parent->visits)*std::sqrt(std::log(parent->visits));
+  }
 
   float varianceScale = 
     (1.0/parent->iters)*1.0+
@@ -379,10 +391,19 @@ uint8_t selectEdge(Node* parent, bool isRoot){
     //We can make a guess about how many visits a node had before it was pruned by LRU
     bool isLRUPruned = parent->children[i].edge.value & (1 << 15);
 
-    float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
-      (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
-      varianceScale*
-      parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (isLRUPruned ? 14 : 1));
+    float currPriority = 0;
+    if(isRoot){
+      currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
+        (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
+        varianceScale*
+        parentVisitsTerm/std::sqrt(std::max(currNode ? currNode->discountedVisits : (isLRUPruned ? 14 : 0.001), 0.001));
+    }
+    else{
+      currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
+        (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
+        varianceScale*
+        parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (isLRUPruned ? 14 : 1));
+    }
 
     assert(currPriority>=-1);
 
@@ -445,6 +466,13 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   edges.pop_back();
 
   currEdge->child->visits += visits;
+  Node* parent = currEdge->child->parent;
+  for(int i=0; i<parent->children.size(); i++){
+    if(parent->children[i].child){
+      parent->children[i].child->discountedVisits *= 0.99999;
+    }
+  }
+  currEdge->child->discountedVisits += visits;
 
   float oldCurrNodeValue = 2;
 
@@ -520,6 +548,7 @@ void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bo
                   " \033[1;4mI\033[0m:" << (currEdge.child ? currEdge.child->iters : 0) <<
                   " \033[1;4mN\033[0m:" << (currEdge.child ? currEdge.child->visits : 1) <<
                   " \033[1;4mV\033[0m:" << (currEdge.child ? std::sqrt(currEdge.child->variance()) : -1) <<
+                  " \033[1;4mD\033[0m:" << (currEdge.child ? currEdge.child->discountedVisits : -1) <<
                   " \033[1;4mPV\033[0m:";
       Node* pvNode = root->children[i].child;
       while(pvNode && pvNode->children.size() > 0){
