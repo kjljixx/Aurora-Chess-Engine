@@ -65,7 +65,7 @@ Option rootExplorationFactor("rootExplorationFactor", 0.026, 0.001, 1024, 0);
 Option explorationFactor("explorationFactor", 0.015, 0.001, 1024, 0);
 Option valChangedMinWeight("valChangedMinWeight", 0.1560282435642479, 0.001, 1024, 0);
 Option valSameMinWeight("valSameMinWeight", 0.015277783601196866, 0.001, 1024, 0);
-
+ 
 Option* getOption(std::string name){
   for(Option* option : options){
     if(option->name == name) return option;
