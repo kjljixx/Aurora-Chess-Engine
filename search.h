@@ -369,6 +369,7 @@ uint8_t selectEdge(Node* parent, bool isRoot){
     if(!parent->children[i].child) continue;
     sumDiscountedVisits += parent->children[i].child->discountedVisits;
   }
+  
   float parentVisitsTerm = 0;
   if(isRoot){
     parentVisitsTerm = 0.15*std::sqrt(std::log(std::max(sumDiscountedVisits, 2.0)));
