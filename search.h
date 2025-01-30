@@ -379,7 +379,7 @@ uint8_t selectEdge(Node* parent, bool isRoot){
     parentVisitsTerm = Aurora::rootExplorationFactor.value*std::log(sumDiscountedVisits)*std::sqrt(std::log(sumDiscountedVisits));
   }
   else{
-    parentVisitsTerm = Aurora::explorationFactor.value*std::log(parent->visits)*std::sqrt(std::log(parent->visits));
+    parentVisitsTerm = Aurora::explorationFactor.value*std::log(sumDiscountedVisits)*std::sqrt(std::log(sumDiscountedVisits));
   }
 
   float varianceScale = 
@@ -407,7 +407,7 @@ uint8_t selectEdge(Node* parent, bool isRoot){
       currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
         (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
         varianceScale*
-        parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (isLRUPruned ? 14 : 1));
+        parentVisitsTerm/std::max(std::sqrt(currNode ? currNode->discountedVisits : (isLRUPruned ? 14 : 1)), 1.0);
     }
 
     assert(currPriority>=-1);
@@ -474,7 +474,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   Node* parent = currEdge->child->parent;
   for(int i=0; i<parent->children.size(); i++){
     if(parent->children[i].child){
-      parent->children[i].child->discountedVisits *= 0.9999;
+      parent->children[i].child->discountedVisits *= 0.99997;
     }
   }
   currEdge->child->discountedVisits += visits;
@@ -701,6 +701,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         currEdge->child->index = currEdgeIndex;
         currEdge->child->mark = currNode->mark;
         currEdge->child->visits = 1;
+        currEdge->child->discountedVisits = 1;
         currEdge->child->iters = 1;
         currEdge->child->avgValue = currEdge->value;
         currEdge->child->sumSquaredVals = currEdge->value*currEdge->value;
