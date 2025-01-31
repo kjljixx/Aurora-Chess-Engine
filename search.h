@@ -31,6 +31,7 @@ struct Edge{
   Node* child;
   float value;
   chess::Move edge;
+  bool originalVisit = false;
 
   Edge() : child(nullptr), value(-2), edge(chess::Move()) {}
   Edge(chess::Move move) : child(nullptr), value(-2), edge(move) {}
@@ -367,12 +368,13 @@ uint8_t selectEdge(Node* parent, bool isRoot){
   double sumDiscountedVisits = 0;
   for(int i=0; i<parent->children.size(); i++){
     if(!parent->children[i].child){
-      sumDiscountedVisits += 1.0;
+      sumDiscountedVisits += parent->children[i].originalVisit;
     }
     else{
       sumDiscountedVisits += parent->children[i].child->discountedVisits;
     }
   }
+  sumDiscountedVisits = std::max(sumDiscountedVisits, 1.0);
   
   float parentVisitsTerm = 0;
   if(isRoot){
@@ -756,7 +758,10 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
       int visits = 0;
       for(int i=0; i<parentNode->children.size(); i++){
-        if(parentNode->children[i].value <= currBestValue + 0.04){visits++;}
+        if(parentNode->children[i].value <= currBestValue + 0.04){
+          parentNode->children[i].originalVisit = true;
+          visits++;
+        }
       }
       assert(visits >= 1);
 
