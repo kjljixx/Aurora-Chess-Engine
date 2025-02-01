@@ -371,7 +371,7 @@ uint8_t selectEdge(Node* parent, bool isRoot){
       sumDiscountedVisits += 0;
     }
     else{
-      sumDiscountedVisits += parent->children[i].child->discountedVisits;
+      sumDiscountedVisits += parent->children[i].child->discountedVisits-1;
     }
   }
   sumDiscountedVisits = std::max(sumDiscountedVisits, 1.0);
