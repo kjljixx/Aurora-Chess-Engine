@@ -31,7 +31,6 @@ struct Edge{
   Node* child;
   float value;
   chess::Move edge;
-  bool originalVisit = false;
 
   Edge() : child(nullptr), value(-2), edge(chess::Move()) {}
   Edge(chess::Move move) : child(nullptr), value(-2), edge(move) {}
@@ -56,6 +55,7 @@ struct Node{
 
   bool isTerminal;
   uint8_t index;
+  uint8_t numOriginalVisits;
   //For Tree Reuse
   bool mark = false;
 
@@ -365,13 +365,13 @@ uint8_t selectEdge(Node* parent, bool isRoot){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  double sumDiscountedVisits = !isRoot;
+  double sumDiscountedVisits = !isRoot+parent->numOriginalVisits;
   for(int i=0; i<parent->children.size(); i++){
     if(!parent->children[i].child){
-      sumDiscountedVisits += parent->children[i].originalVisit;
+      sumDiscountedVisits += 0;
     }
     else{
-      sumDiscountedVisits += parent->children[i].child->discountedVisits-!parent->children[i].originalVisit;
+      sumDiscountedVisits += parent->children[i].child->discountedVisits;
     }
   }
   sumDiscountedVisits = std::max(sumDiscountedVisits, 1.0);
@@ -759,7 +759,6 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       int visits = 0;
       for(int i=0; i<parentNode->children.size(); i++){
         if(parentNode->children[i].value <= currBestValue + 0.04){
-          parentNode->children[i].originalVisit = true;
           visits++;
         }
       }
@@ -768,6 +767,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       tree.depth += currDepth*visits;
 
       //Update root stats, since backpropagation doesn't reach the root
+      parentNode->numOriginalVisits = visits;
       tree.root->visits += visits;
       tree.root->iters += 1;
 
