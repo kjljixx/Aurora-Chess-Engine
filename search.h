@@ -387,7 +387,7 @@ uint8_t selectEdge(Node* parent, bool isRoot){
   float varianceScale = 
     (1.0/parent->iters)*1.0+
     (1.0-1.0/parent->iters)*
-      std::clamp(1.0+16*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 1.0, 2.0);
+    std::clamp(1.0+16*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 1.0, 2.0);
   
   // std::cout << std::clamp(1.0+32*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 0.2, 2.0) << " ";
 
