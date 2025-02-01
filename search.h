@@ -378,10 +378,10 @@ uint8_t selectEdge(Node* parent, bool isRoot){
   
   float parentVisitsTerm = 0;
   if(isRoot){
-    parentVisitsTerm = Aurora::rootExplorationFactor.value*std::log(sumDiscountedVisits)*std::sqrt(std::log(sumDiscountedVisits));
+    parentVisitsTerm = Aurora::rootExplorationFactor.value*std::log(sumDiscountedVisits);
   }
   else{
-    parentVisitsTerm = Aurora::explorationFactor.value*std::log(sumDiscountedVisits)*std::sqrt(std::log(sumDiscountedVisits));
+    parentVisitsTerm = Aurora::explorationFactor.value*std::log(sumDiscountedVisits);
   }
 
   float varianceScale = 
