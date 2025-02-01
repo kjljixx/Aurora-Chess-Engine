@@ -365,13 +365,13 @@ uint8_t selectEdge(Node* parent, bool isRoot){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  double sumDiscountedVisits = 0;
+  double sumDiscountedVisits = !isRoot;
   for(int i=0; i<parent->children.size(); i++){
     if(!parent->children[i].child){
       sumDiscountedVisits += parent->children[i].originalVisit;
     }
     else{
-      sumDiscountedVisits += parent->children[i].child->discountedVisits;
+      sumDiscountedVisits += parent->children[i].child->discountedVisits-!parent->children[i].originalVisit;
     }
   }
   sumDiscountedVisits = std::max(sumDiscountedVisits, 1.0);
