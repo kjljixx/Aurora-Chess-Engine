@@ -476,7 +476,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   Node* parent = currEdge->child->parent;
   for(int i=0; i<parent->children.size(); i++){
     if(parent->children[i].child){
-      parent->children[i].child->discountedVisits *= 0.99998;
+      parent->children[i].child->discountedVisits *= 0.99999;
     }
   }
   currEdge->child->discountedVisits += visits;
