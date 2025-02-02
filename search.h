@@ -378,13 +378,16 @@ uint8_t selectEdge(Node* parent, bool isRoot){
   
   float parentVisitsTerm = 0;
   if(isRoot){
-    parentVisitsTerm = Aurora::rootExplorationFactor.value*std::sqrt(std::log(sumDiscountedVisits));
+    parentVisitsTerm = Aurora::rootExplorationFactor.value*std::sqrt(std::log(sumDiscountedVisits))*std::log(sumDiscountedVisits);
   }
   else{
-    parentVisitsTerm = Aurora::explorationFactor.value*std::sqrt(std::log(sumDiscountedVisits));
+    parentVisitsTerm = Aurora::explorationFactor.value*std::sqrt(std::log(sumDiscountedVisits))*std::log(sumDiscountedVisits);
   }
 
-  float varianceScale = 1.0;
+  float varianceScale = 
+    (1.0/parent->iters)*1.0+
+    (1.0-1.0/parent->iters)*
+    std::clamp(1.0+16*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 1.0, 2.0);
   
   // std::cout << std::clamp(1.0+32*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 0.2, 2.0) << " ";
 
@@ -473,7 +476,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   Node* parent = currEdge->child->parent;
   for(int i=0; i<parent->children.size(); i++){
     if(parent->children[i].child){
-      parent->children[i].child->discountedVisits *= 0.99998;
+      parent->children[i].child->discountedVisits *= 1.0-1.0/500000.0;
     }
   }
   currEdge->child->discountedVisits += visits;
