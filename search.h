@@ -792,6 +792,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
     double expectedBestMoveChanges = 0.26061644 * (std::pow(tree.root->visits, 0.54) - std::pow(tree.startNodes, 0.54));
     bestMoveChangesMultiplier = std::clamp(bestMoveChanges / expectedBestMoveChanges, 0.2, 2.0);
+    bestMoveChangesMultiplier = 1.0;
   }
 
   //Output the final result of the search
