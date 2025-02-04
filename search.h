@@ -476,7 +476,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   Node* parent = currEdge->child->parent;
   for(int i=0; i<parent->children.size(); i++){
     if(parent->children[i].child){
-      parent->children[i].child->discountedVisits *= 1.0-1.0/500000.0;
+      parent->children[i].child->discountedVisits *= 1.0-1.0/100000.0;
     }
   }
   currEdge->child->discountedVisits += visits;
@@ -790,7 +790,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       currBestMove = findBestEdge(tree.root).edge;
     }
 
-    double expectedBestMoveChanges = 0.172658392 * (std::pow(tree.root->visits, 0.54) - std::pow(tree.startNodes, 0.54));
+    double expectedBestMoveChanges = 0.26061644 * (std::pow(tree.root->visits, 0.54) - std::pow(tree.startNodes, 0.54));
     bestMoveChangesMultiplier = std::clamp(bestMoveChanges / expectedBestMoveChanges, 0.2, 2.0);
   }
 
