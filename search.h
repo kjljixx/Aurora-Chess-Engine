@@ -363,14 +363,7 @@ uint8_t selectEdge(Node* parent, bool isRoot){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = (isRoot ? Aurora::rootExplorationFactor.value : Aurora::explorationFactor.value)*std::log(parent->visits)*std::sqrt(std::log(parent->visits));
-
-  float varianceScale = 
-    (1.0/parent->iters)*1.0+
-    (1.0-1.0/parent->iters)*
-      std::clamp(1.0+16*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 1.0, 2.0);
-  
-  // std::cout << std::clamp(1.0+32*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 0.2, 2.0) << " ";
+  const float parentVisitsTerm = (isRoot ? rootExpl : expl)*std::log(parent->visits);
 
   for(int i=0; i<parent->children.size(); i++){
     Node* currNode = parent->children[i].child;
