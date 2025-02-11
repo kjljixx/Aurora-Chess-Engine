@@ -55,8 +55,8 @@ void initOptions(){
   //2: output bestmove and info at end of search and output info every 2 seconds
   //3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 
-  options["rootExplorationFactor"] = Option(0.026, 0.001, 1024, 0);
-  options["explorationFactor"] = Option(0.015, 0.001, 1024, 0);
+  options["rootExplorationFactor"] = Option(0.06906412698639361, 0.001, 1024, 0);
+  options["explorationFactor"] = Option(0.0395545614187926, 0.001, 1024, 0);
   options["valChangedMinWeight"] = Option(0.1560282435642479, 0.001, 1024, 0);
   options["valSameMinWeight"] = Option(0.015277783601196866, 0.001, 1024, 0);
   options["biasStartingWeight"] = Option(82.28227020619, 0.001, 1024, 0);
