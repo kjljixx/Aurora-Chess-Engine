@@ -6,6 +6,7 @@
 #include <memory>
 #include <chrono>
 #include <deque>
+#include <iomanip>
 
 #if DATAGEN >= 1
   std::string dataFolderPath = "C:/Users/kjlji/OneDrive/Documents/VSCode/C++/AuroraChessEngine-main/data";
@@ -512,23 +513,49 @@ void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bo
     std::cout << " SELDEPTH: " << int(tree.seldepth) <<"\n";
 
     std::cout.precision(5);
-    for(int i=0; i<root->children.size(); i++){
-      Edge currEdge = root->children[i];
-      std::cout << "\033[1;4m" << currEdge.edge.toStringRep() <<
-                  "\033[0m: \033[1;4mQ\033[0m:" << -currEdge.value <<
-                  " \033[1;4mA\033[0m:" << -(currEdge.child ? currEdge.child->avgValue : -2) <<
-                  " \033[1;4mI\033[0m:" << (currEdge.child ? currEdge.child->iters : 0) <<
-                  " \033[1;4mN\033[0m:" << (currEdge.child ? currEdge.child->visits : 1) <<
-                  " \033[1;4mV\033[0m:" << (currEdge.child ? std::sqrt(currEdge.child->variance()) : -1) <<
-                  " \033[1;4mPV\033[0m:";
-      Node* pvNode = root->children[i].child;
-      while(pvNode && pvNode->children.size() > 0){
-        Edge pvEdge = findBestEdge(pvNode);
-        std::cout << pvEdge.edge.toStringRep() << " ";
-        pvNode = pvEdge.child;
-      }
-      std::cout << std::endl;
+
+    std::cout << std::left
+              << std::setw(8) << "Move"
+              << std::setw(12) << "Q"
+              << std::setw(12) << "A"
+              << std::setw(12) << "I"
+              << std::setw(12) << "N"
+              << std::setw(12) << "V"
+              << "PV" << std::endl;
+
+    std::cout << std::string(80, '-') << std::endl;
+
+    std::vector<Edge> sortedEdges;
+    for(const auto& edge : root->children) {
+        sortedEdges.push_back(edge);
     }
+
+    std::sort(sortedEdges.begin(), sortedEdges.end(), 
+        [](const Edge& a, const Edge& b) {
+            return a.value < b.value;
+        });
+
+    for(int i = 0; i < sortedEdges.size(); i++) {
+        Edge currEdge = sortedEdges[i];
+
+        std::cout << std::left
+                  << std::setw(8) << currEdge.edge.toStringRep()
+                  << std::setw(12) << -currEdge.value
+                  << std::setw(12) << -(currEdge.child ? currEdge.child->avgValue : -2)
+                  << std::setw(12) << (currEdge.child ? currEdge.child->iters : 0)
+                  << std::setw(12) << (currEdge.child ? currEdge.child->visits : 1)
+                  << std::setw(12) << (currEdge.child ? std::sqrt(currEdge.child->variance()) : -1);
+        
+        // Print PV sequence
+        Node* pvNode = sortedEdges[i].child;
+        while(pvNode && pvNode->children.size() > 0) {
+            Edge pvEdge = findBestEdge(pvNode);
+            std::cout << pvEdge.edge.toStringRep() << " ";
+            pvNode = pvEdge.child;
+        }
+        std::cout << std::endl;
+    }
+
     std::cout.precision(10);
   }
 
