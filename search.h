@@ -402,7 +402,6 @@ uint8_t selectEdge(Node* parent, bool isRoot){
     float currPriority = 0;
     if(isRoot){
       currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
-        (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
         varianceScale*
         parentVisitsTerm/std::sqrt(std::max(currNode ? currNode->discountedVisits : (isLRUPruned ? 14 : 1), 1.0));
     }
@@ -477,7 +476,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   Node* parent = currEdge->child->parent;
   for(int i=0; i<parent->children.size(); i++){
     if(parent->children[i].child){
-      parent->children[i].child->discountedVisits *= 1.0-1.0/200000.0;
+      parent->children[i].child->discountedVisits *= std::pow(1.0-1.0/160000.0, visits);
     }
   }
   currEdge->child->discountedVisits += visits;
