@@ -185,6 +185,14 @@ void go(std::istringstream& input, chess::Board board){
     if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
     search::search(board, search::timeManagement(search::ITERS, maxIters), tree);
   }
+  else if(token == "movetime"){
+    int time;
+    input >> time;
+    if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
+    search::timeManagement limit = search::timeManagement(search::TIME, 1000000000.0);
+    limit.hardLimit = time/1000.0;
+    search::search(board, limit, tree); 
+  }
   else{
     search::timeManagement tm(search::TIME);
     int time;
