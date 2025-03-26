@@ -140,7 +140,7 @@ uint64_t perft(chess::Board &board, int depth, bool printResults){
 
     uint64_t result = perft(movedBoard, depth-1, false);
     if(printResults){std::cout << move.toStringRep() << ": " << result << "\n";}
-    nodes+=result;
+    nodes += result;
   }
 
   return nodes;
