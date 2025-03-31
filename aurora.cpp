@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
       uci::bench();
       return 1;
     }
-    if(std::string(argv[1]).starts_with("genfens")){
+    else if(std::string(argv[1]).starts_with("genfens")){
       std::istringstream stream(argv[1]);
       std::string token;
       
