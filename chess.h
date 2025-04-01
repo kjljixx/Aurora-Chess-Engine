@@ -259,7 +259,7 @@ struct Board{
 
     fen += " ";
     fen += std::to_string(halfmoveClock);
-    
+
     //Give a fake fullmove counter to satisfy some fen parsers
     fen += " ";
     fen += std::to_string(halfmoveClock);
