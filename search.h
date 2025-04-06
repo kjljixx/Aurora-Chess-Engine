@@ -563,13 +563,13 @@ void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bo
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
 
     std::cout <<
-    "info depth " << (root->visits == tree.startNodes ? 0 : int(tree.depth / (root->visits - tree.startNodes))) <<
-    " seldepth " << int(tree.seldepth) <<
+    "info depth " << (root->visits == tree.startNodes ? 1 : int(tree.depth / (root->visits - tree.startNodes))) <<
+    " seldepth " << std::max(1, int(tree.seldepth)) <<
     " nodes " << root->visits <<
     " score cp " << evaluation::valToCp(-findBestValue(root)) <<
     " hashfull " << int(tree.getHashfull()*1000) <<
-    " nps " << std::round((root->visits-tree.previousVisits)/(elapsed.count()-tree.previousElapsed)) <<
-    " time " << std::round(elapsed.count()*1000) <<
+    " nps " << std::round((std::max(1, int(root->visits-tree.previousVisits)))/std::max(1, int(std::round(elapsed.count()*1000)))) <<
+    " time " << std::max(1, int(std::round(elapsed.count()*1000))) <<
     " pv ";
     Node* pvNode = root;
     while(pvNode && pvNode->children.size() > 0){
