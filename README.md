@@ -1,5 +1,10 @@
-# Aurora
-<img src="Aurora.svg" height="280" width="280">
+<p align="center">
+  <img src="aurora-logo.svg" width="100">
+</p>
+<p align="center">
+  <img src="aurora-wordmark.svg">
+</p>
+<h3 align="center">An open-source chess engine with an MCTS-Minimax hybrid search and an NNUE evaluation</h3>
 
 # General
 
@@ -27,7 +32,7 @@ Aurora uses a UCT (Upper Confidence Bounds applied to Trees) search with an NNUE
 Here are some details about the search:
 * Builds a search tree with nodes
 * Nodes to expand are selected with UCT
-* Values backpropagated up the tree are done so with minimax
+* Values backpropagated up the tree are done so with minimax (rather than averaging the values, as with traditional UCT)
 
 ## Evaluation
 A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```andromeda-3.nnue```):
