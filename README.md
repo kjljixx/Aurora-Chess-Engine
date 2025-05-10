@@ -1,5 +1,5 @@
 # Aurora
-<img src="Aurora.svg" width="400" height="400">
+<img src="Aurora.svg" height="280" width="280">
 
 # General
 
