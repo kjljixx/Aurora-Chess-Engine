@@ -12,7 +12,7 @@ namespace chess{
 enum Colors{WHITE, BLACK};
 enum Pieces{null, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, UNKNOWN};
 
-Pieces letterToPiece(char letter){
+inline Pieces letterToPiece(char letter){
   switch (letter){
     case 'p': return PAWN;
     case 'n': return KNIGHT;
@@ -23,7 +23,7 @@ Pieces letterToPiece(char letter){
   }
   return null;
 }
-char PieceToLetter(Pieces piece){ //mainly for PGN move notation
+inline char PieceToLetter(Pieces piece){ //mainly for PGN move notation
   switch (piece){
     case PAWN : return 'P';
     case KNIGHT: return 'N';
@@ -159,17 +159,17 @@ const int bishopIndexBits[64] = {
 };
 
 //the bitboard lookup tables
-U64 pawnAttackTable[2][64] = {{}}; //need a table for white and black
-U64 pawnPushTable[2][64] = {{}};
-U64 knightTable[64] = {};
-U64 kingTable[64] = {};
+inline U64 pawnAttackTable[2][64] = {{}}; //need a table for white and black
+inline U64 pawnPushTable[2][64] = {{}};
+inline U64 knightTable[64] = {};
+inline U64 kingTable[64] = {};
 //rook & bishop need to take other pieces("blockers") into account
-U64 rookTable[64][4096] = {}; 
-U64 bishopTable[64][1024] = {};
+inline U64 rookTable[64][4096] = {};
+inline U64 bishopTable[64][1024] = {};
 
 //rook & bishop need a preliminary mask array which doesn't take blockers into account
-U64 rookMasks[64] = {0};
-U64 bishopMasks[64] = {0};
+inline U64 rookMasks[64] = {0};
+inline U64 bishopMasks[64] = {0};
 
 
 //functions which initialize lookup tables for all pieces other than queen; queen simple uses both rook and bishop lookup tables
@@ -181,14 +181,14 @@ void initBishopTable();
 
 //Lookup tables for evaluation
 void initPassedPawnTable();
-U64 passedPawnTable[2][64];
+inline U64 passedPawnTable[2][64];
 
 //used to pregenerate moves to initialize lookup tables
 U64 pregenerateRookMoves(int square, U64 blockers);
 U64 pregenerateBishopMoves(int square, U64 blockers);
 
 //initialize lookup tables
-void init(){
+inline void init(){
   rays::init();
   initPawnTable();
   initKnightTable();
@@ -199,7 +199,7 @@ void init(){
   initPassedPawnTable();
 }
 
-void initPawnTable(){
+inline void initPawnTable(){
   for (int i = 0; i < 64; i++) {
   U64 pawnSquare = 1ULL << i;
 
@@ -214,7 +214,7 @@ void initPawnTable(){
   pawnAttackTable[1][i] = blackPawnAttackBb;
   }
 }
-void initKnightTable(){
+inline void initKnightTable(){
   for (int i = 0; i < 64; i++) {
   U64 knightSquare = 1ULL << i;
   U64 knightBb = (((knightSquare << 15) | (knightSquare >> 17)) & ~bitboards::fileH) | 
@@ -224,7 +224,7 @@ void initKnightTable(){
   knightTable[i] = knightBb;
   }
 }
-void initKingTable(){
+inline void initKingTable(){
   for (int i = 0; i < 64; i++) {
   U64 kingSquare = 1ULL << i;
 
@@ -235,7 +235,7 @@ void initKingTable(){
   }
 }
 
-U64 getBlockersFromIndex(int index, U64 mask) {
+inline U64 getBlockersFromIndex(int index, U64 mask) {
   U64 blockers = 0;
   int bits = _popCount(mask);
   for (int i = 0; i < bits; i++) {
@@ -247,7 +247,7 @@ U64 getBlockersFromIndex(int index, U64 mask) {
   return blockers;
 }
 
-void initRookTable() {
+inline void initRookTable() {
   for (int square = 0; square < 64; square++) {
     rookMasks[square] = (rays::rays[0][square] & ~bitboards::rank8) |
     (rays::rays[1][square] & ~bitboards::rank1) |
@@ -266,7 +266,7 @@ void initRookTable() {
   }
 }
 
-void initBishopTable() {
+inline void initBishopTable() {
   U64 edgeSquares = bitboards::fileA | bitboards::fileH | bitboards::rank1 | bitboards::rank8;
   for (int square = 0; square < 64; square++) {
     bishopMasks[square] = (rays::rays[4][square] | rays::rays[5][square] |
@@ -284,7 +284,7 @@ void initBishopTable() {
   }
 }
 
-U64 pregenerateBishopMoves(int square, U64 blockers) {
+inline U64 pregenerateBishopMoves(int square, U64 blockers) {
   U64 attacks = 0;
 
   // North West
@@ -314,7 +314,7 @@ U64 pregenerateBishopMoves(int square, U64 blockers) {
   return attacks;
 }
 
-U64 pregenerateRookMoves(int square, U64 blockers) {
+inline U64 pregenerateRookMoves(int square, U64 blockers) {
   U64 attacks = 0;
 
   // North
@@ -351,7 +351,7 @@ inline U64 getRookAttacks(uint8_t square, U64 blockers) {
   return rookTable[square][((blockers & rookMasks[square]) * rookMagics[square]) >> (64 - rookIndexBits[square])];
 }
 
-void initPassedPawnTable(){
+inline void initPassedPawnTable(){
   for(int i=0; i<64; i++){
     passedPawnTable[0][i] = rays::rays[0][i] | ((rays::rays[0][i] << 1) & ~bitboards::fileA) | ((rays::rays[0][i] >> 1) & ~bitboards::fileH);
     passedPawnTable[1][i] = rays::rays[1][i] | ((rays::rays[1][i] << 1) & ~bitboards::fileA) | ((rays::rays[1][i] >> 1) & ~bitboards::fileH);

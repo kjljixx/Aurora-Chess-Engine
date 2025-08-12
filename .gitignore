@@ -23,3 +23,4 @@ auroramini.exe
 auroraminidev.exe
 /.vs
 /debug
+.clangd

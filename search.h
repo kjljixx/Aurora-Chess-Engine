@@ -16,9 +16,9 @@ namespace search{
 
 //parameters for search
 enum backpropagationStrategy{AVERAGE, MINIMAX};
-backpropagationStrategy backpropStrat = MINIMAX;
+inline backpropagationStrategy backpropStrat = MINIMAX;
 
-void init(){
+inline void init(){
   evaluation::init();
   zobrist::init();
   srand(time(NULL));
@@ -69,7 +69,7 @@ struct Node{
   }
 };
 
-Edge findBestEdge(Node* parent){
+inline Edge findBestEdge(Node* parent){
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
   Edge currBestMove = parent->children[0];
 
@@ -83,7 +83,7 @@ Edge findBestEdge(Node* parent){
   return currBestMove;
 }
 
-Node* findBestChild(Node* parent){
+inline Node* findBestChild(Node* parent){
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
   Node* currBestMove = parent->children[0].child;
 
@@ -97,7 +97,7 @@ Node* findBestChild(Node* parent){
   return currBestMove;
 }
 
-float findBestValue(Node* parent){
+inline float findBestValue(Node* parent){
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
 
   for(int i=0; i<parent->children.size(); i++){
@@ -241,7 +241,7 @@ struct Tree{
   }
 };
 
-void destroyTree(Tree& tree){
+inline void destroyTree(Tree& tree){
   tree.tree.clear();
   tree.root = nullptr;
   tree.tail = nullptr;
@@ -249,7 +249,7 @@ void destroyTree(Tree& tree){
   tree.currSize = 0;
 }
 
-uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked = true){
+inline uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked = true){
   uint64_t markedNodes = 0;
 
   if(isSubtreeRoot){
@@ -266,7 +266,7 @@ uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked = true
 }
 
 //Returns a pointer to the new root, which is different from the pointer given as a parameter because of the garbage collection
-Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
+inline Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
   //LISP 2 Garbage Collection Algorithm (https://en.wikipedia.org/wiki/Mark%E2%80%93compact_algorithm#LISP_2_algorithm)
   //Mark all nodes which we want to keep
   uint64_t markedNodes = markSubtree(newRoot);
@@ -360,7 +360,7 @@ Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
   return newRootNewAddress;
 }
 
-uint8_t selectEdge(Node* parent, bool isRoot){
+inline uint8_t selectEdge(Node* parent, bool isRoot){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
@@ -396,7 +396,7 @@ uint8_t selectEdge(Node* parent, bool isRoot){
   return maxPriorityNodeIndex;
 }
 
-void expand(Tree& tree, Node* parent, chess::MoveList& moves){
+inline void expand(Tree& tree, Node* parent, chess::MoveList& moves){
   if(moves.size()==0){return;}
 
   parent->children.resize(moves.size());
@@ -437,7 +437,7 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   return eval;
 }
 
-void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, bool forceResult, bool runFindBestMove, bool continueBackprop){
+inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, bool forceResult, bool runFindBestMove, bool continueBackprop){
   //Backpropagate results
   if(edges.size() == 0){return;}
 
@@ -506,7 +506,7 @@ void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>&
   backpropagate(tree, result, edges, visits, false, runFindBestMove, continueBackprop);
 }
 
-void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
+inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
   Node* root = tree.root;
   if(Aurora::outputLevel.value >= 3){
     std::cout << "NODES: " << root->visits;
@@ -600,7 +600,7 @@ struct timeManagement{
 };
 
 //The main search function
-void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
+inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   auto start = std::chrono::steady_clock::now();
 
   tree.setHash();
@@ -792,7 +792,7 @@ void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
 //Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
 //Parameter "board" must be different than parameter "rootBoard"
-void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Tree& tree){
+inline void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Tree& tree){
   if(tree.root == nullptr || zobrist::getHash(board) != zobrist::getHash(rootBoard)){chess::makeMove(board, move); return;}
 
   chess::makeMove(board, move);

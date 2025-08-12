@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include <vector>
 
 //Set to 1 if you want to build a version of Aurora which generates data, 2 for generating data while playing (cutechess), 0 for the normal version.
@@ -21,7 +22,7 @@ namespace Aurora{
 
 struct Option;
 
-std::vector<Option*> options;
+inline std::vector<Option*> options;
 
 struct Option{
   std::string name;
@@ -48,25 +49,25 @@ struct Option{
     }
 };
 
-Option hash("Hash", 0, 0, 65536, 1);
-Option ttHash("TTHash", 0, 0, 65536, 1);
-Option threads("Threads", 1, 1, 1, 1); // just here to make OpenBench happy
+inline Option hash("Hash", 0, 0, 65536, 1);
+inline Option ttHash("TTHash", 0, 0, 65536, 1);
+inline Option threads("Threads", 1, 1, 1, 1); // just here to make OpenBench happy
 
-Option syzygyPath("SyzygyPath", "<empty>", 2);
+inline Option syzygyPath("SyzygyPath", "<empty>", 2);
 
-Option outputLevel("outputLevel", 2, -1, 3, 1);
+inline Option outputLevel("outputLevel", 2, -1, 3, 1);
 // -1: just search, don't output anything
 //  0: only output bestmove at end of search
 //  1: output bestmove and info at end of search
 //  2: output bestmove and info at end of search and output info every 2 seconds
 //  3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 
-Option rootExplorationFactor("rootExplorationFactor", 0.026, 0.001, 1024, 0);
-Option explorationFactor("explorationFactor", 0.015, 0.001, 1024, 0);
-Option valChangedMinWeight("valChangedMinWeight", 0.1560282435642479, 0.001, 1024, 0);
-Option valSameMinWeight("valSameMinWeight", 0.015277783601196866, 0.001, 1024, 0);
+inline Option rootExplorationFactor("rootExplorationFactor", 0.026, 0.001, 1024, 0);
+inline Option explorationFactor("explorationFactor", 0.015, 0.001, 1024, 0);
+inline Option valChangedMinWeight("valChangedMinWeight", 0.1560282435642479, 0.001, 1024, 0);
+inline Option valSameMinWeight("valSameMinWeight", 0.015277783601196866, 0.001, 1024, 0);
 
-Option* getOption(std::string name){
+inline Option* getOption(std::string name){
   for(Option* option : options){
     if(option->name == name) return option;
   }

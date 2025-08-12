@@ -6,14 +6,14 @@
 //See https://backscattering.de/chess/uci/ for information on the Universal Chess Interface, which this file implements
 namespace uci{
 
-search::Node* root;
-chess::Board rootBoard;
-search::Tree tree;
+inline search::Node* root;
+inline chess::Board rootBoard;
+inline search::Tree tree;
 
 //bench stuff
 const int AMOUNT_OF_FENS = 25;
 
-std::string benchFens[AMOUNT_OF_FENS] = { //From Alexandria
+inline std::string benchFens[AMOUNT_OF_FENS] = { //From Alexandria
 			"r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14",
 			"4rrk1/2p1b1p1/p1p3q1/4p3/2P2n1p/1P1NR2P/PB3PP1/3R1QK1 b - - 2 24",
 			"r3qbrk/6p1/2b2pPp/p3pP1Q/PpPpP2P/3P1B2/2PB3K/R5R1 w - - 16 42",
@@ -41,7 +41,7 @@ std::string benchFens[AMOUNT_OF_FENS] = { //From Alexandria
 			"r4qk1/6r1/1p4p1/2ppBbN1/1p5Q/P7/2P3PP/5RK1 w - - 2 25",
 };
 
-void bench(){
+inline void bench(){
   int nodes = 0;
   Aurora::outputLevel.value = -1;
 
@@ -68,7 +68,7 @@ void bench(){
   std::cout << "\n" << nodes << " nodes " << int(nodes/totalElapsed) << " nps" << std::endl;
 }
 
-chess::Move getMoveFromString(chess::Board &board, std::string token){
+inline chess::Move getMoveFromString(chess::Board &board, std::string token){
   chess::Move move;
   //En Passant
   if((1ULL << squareNotationToIndex(token.substr(2, 2))) & board.enPassant && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::PAWN){
@@ -89,7 +89,7 @@ chess::Move getMoveFromString(chess::Board &board, std::string token){
   return move;
 }
 
-chess::Board makeMoves(chess::Board &board, std::istringstream& input){
+inline chess::Board makeMoves(chess::Board &board, std::istringstream& input){
   std::string token;
   while(input >> token){
     search::makeMove(board, getMoveFromString(board, token), rootBoard, tree);
@@ -97,7 +97,7 @@ chess::Board makeMoves(chess::Board &board, std::istringstream& input){
   return board;
 }
 
-chess::Board position(std::istringstream& input){
+inline chess::Board position(std::istringstream& input){
   std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   std::string token;
 
@@ -123,7 +123,7 @@ chess::Board position(std::istringstream& input){
   return board;
 }
 //The "perft" command
-uint64_t perft(chess::Board &board, int depth, bool printResults){
+inline uint64_t perft(chess::Board &board, int depth, bool printResults){
   uint64_t nodes = 0;
 
   if(depth == 1 && !printResults){
@@ -146,7 +146,7 @@ uint64_t perft(chess::Board &board, int depth, bool printResults){
   return nodes;
 }
 
-uint64_t perftDiv(chess::Board &board, int depth){
+inline uint64_t perftDiv(chess::Board &board, int depth){
   chess::Board movedBoard;
   uint64_t nodes = 0;
 
@@ -165,7 +165,7 @@ uint64_t perftDiv(chess::Board &board, int depth){
   return nodes;
 }
 
-void go(std::istringstream& input, chess::Board board){
+inline void go(std::istringstream& input, chess::Board board){
   std::string token;
 
   input >> token;
@@ -234,7 +234,7 @@ void go(std::istringstream& input, chess::Board board){
   root = tree.root;
 }
 
-void respondUci(){
+inline void respondUci(){
   std::cout <<  "id name Aurora " << VERSION_NUM DEV_STRING << "\n"
                 "id author kjljixx\n"
                 "\n";
@@ -255,7 +255,7 @@ void respondUci(){
                 std::cout << "\nuciok" << std::endl;
 }
 
-void setOption(std::istringstream& input){
+inline void setOption(std::istringstream& input){
   std::string token;
 
   input >> token; //input the "name" token
@@ -290,7 +290,7 @@ void setOption(std::istringstream& input){
 }
 
 //The main UCI loop which detects input and runs other functions based on it
-void loop(chess::Board board){
+inline void loop(chess::Board board){
   std::string token;
 
   while(true){

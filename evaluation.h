@@ -21,10 +21,10 @@
 
 namespace evaluation{
 
-int mg_value[6] = {42, 184, 207, 261, 642, 10000};
-int eg_value[6] = {71, 242, 265, 538, 1067, 10000};
+inline int mg_value[6] = {42, 184, 207, 261, 642, 10000};
+inline int eg_value[6] = {71, 242, 265, 538, 1067, 10000};
 
-int mg_pawn_table[64] = {
+inline int mg_pawn_table[64] = {
   0, 0, 0, 0, 0, 0, 0, 0,
   89, 98, 71, 89, 64, 75, -35, -10,
   62, 66, 81, 94, 113, 103, 62, 51,
@@ -34,7 +34,7 @@ int mg_pawn_table[64] = {
   36, 61, 43, 41, 50, 82, 96, 49,
   0, 0, 0, 0, 0, 0, 0, 0
 };
-int eg_pawn_table[64] = {
+inline int eg_pawn_table[64] = {
   0, 0, 0, 0, 0, 0, 0, 0,
   193, 190, 167, 132, 149, 165, 210, 208,
   194, 197, 172, 147, 142, 154, 180, 183,
@@ -44,7 +44,7 @@ int eg_pawn_table[64] = {
   120, 116, 115, 110, 118, 109, 111, 102,
   0, 0, 0, 0, 0, 0, 0, 0
 };
-int mg_knight_table[64] = {
+inline int mg_knight_table[64] = {
   128, 176, 214, 218, 259, 244, 218, 163,
   194, 197, 226, 204, 219, 249, 205, 194,
   183, 222, 210, 235, 239, 265, 225, 218,
@@ -54,7 +54,7 @@ int mg_knight_table[64] = {
   162, 147, 166, 176, 180, 191, 168, 173,
   129, 159, 157, 154, 163, 171, 158, 160
 };
-int eg_knight_table[64] = {
+inline int eg_knight_table[64] = {
   274, 316, 327, 323, 314, 318, 326, 279,
   309, 332, 332, 352, 351, 327, 327, 331,
   315, 330, 352, 352, 346, 345, 338, 319,
@@ -64,7 +64,7 @@ int eg_knight_table[64] = {
   303, 329, 333, 336, 334, 322, 327, 304,
   296, 298, 317, 326, 321, 314, 307, 273
 };
-int mg_bishop_table[64] = {
+inline int mg_bishop_table[64] = {
   193, 219, 199, 202, 215, 219, 246, 219,
   188, 220, 221, 221, 225, 256, 220, 217,
   209, 235, 234, 233, 234, 236, 233, 223,
@@ -74,7 +74,7 @@ int mg_bishop_table[64] = {
   206, 214, 216, 201, 209, 220, 230, 209,
   183, 203, 192, 195, 195, 190, 185, 198
 };
-int eg_bishop_table[64] = {
+inline int eg_bishop_table[64] = {
   355, 348, 352, 354, 355, 351, 344, 353,
   355, 353, 357, 352, 355, 349, 351, 343,
   351, 353, 355, 360, 353, 362, 356, 351,
@@ -84,7 +84,7 @@ int eg_bishop_table[64] = {
   344, 340, 349, 356, 357, 348, 340, 327,
   342, 345, 337, 350, 349, 348, 347, 340
 };
-int mg_rook_table[64] = {
+inline int mg_rook_table[64] = {
   305, 312, 299, 293, 305, 307, 326, 334,
   295, 302, 322, 329, 328, 341, 338, 334,
   278, 293, 297, 311, 306, 314, 323, 298,
@@ -94,7 +94,7 @@ int mg_rook_table[64] = {
   245, 260, 256, 266, 268, 279, 269, 238,
   264, 267, 274, 283, 282, 275, 256, 263
 };
-int eg_rook_table[64] = {
+inline int eg_rook_table[64] = {
   600, 600, 605, 606, 604, 603, 599, 593,
   605, 606, 601, 599, 596, 593, 594, 591,
   602, 599, 602, 594, 595, 593, 594, 592,
@@ -104,7 +104,7 @@ int eg_rook_table[64] = {
   580, 581, 586, 584, 576, 576, 575, 576,
   573, 580, 583, 580, 576, 572, 581, 562
 };
-int mg_queen_table[64] = {
+inline int mg_queen_table[64] = {
   682, 706, 706, 679, 718, 771, 784, 764,
   659, 657, 669, 678, 678, 723, 698, 719,
   665, 667, 674, 678, 697, 715, 706, 705,
@@ -114,7 +114,7 @@ int mg_queen_table[64] = {
   662, 662, 677, 671, 672, 681, 670, 672,
   661, 658, 661, 670, 660, 657, 660, 655
 };
-int eg_queen_table[64] = {
+inline int eg_queen_table[64] = {
   1059, 1057, 1072, 1100, 1087, 1056, 1024, 1038,
   1054, 1082, 1096, 1097, 1109, 1090, 1087, 1051,
   1043, 1063, 1073, 1089, 1091, 1087, 1083, 1062,
@@ -124,7 +124,7 @@ int eg_queen_table[64] = {
   1017, 1033, 1020, 1031, 1034, 1023, 1023, 1000,
   1015, 1020, 1026, 1015, 1026, 1009, 1005, 1002
 };
-int mg_king_table[64] = {
+inline int mg_king_table[64] = {
   17, 77, 6, -130, -28, -20, -38, 17,
   -6, -12, -27, -44, -41, -33, -70, -48,
   -24, -41, -32, -41, -40, -24, -28, -48,
@@ -134,7 +134,7 @@ int mg_king_table[64] = {
   10, 10, -1, -42, -31, -9, 15, 14,
   -7, 35, 19, -44, 11, -13, 27, 18
 };
-int eg_king_table[64] = {
+inline int eg_king_table[64] = {
   -67, -52, -6, 33, 14, 16, 18, -20,
   -1, 19, 26, 29, 36, 38, 43, 16, 
   6, 30, 28, 30, 36, 45, 45, 21,
@@ -144,13 +144,13 @@ int eg_king_table[64] = {
   -40, -22, -12, -3, -2, -10, -17, -28,
   -64, -45, -38, -25, -44, -30, -35, -55
 };
-int mg_passedPawnBonus[8] = {0, 2, 3, 6, 14, 8, 71, 0};
-int eg_passedPawnBonus[8] = {0, 24, 16, 32, 59, 72, 187, 0};
+inline int mg_passedPawnBonus[8] = {0, 2, 3, 6, 14, 8, 71, 0};
+inline int eg_passedPawnBonus[8] = {0, 24, 16, 32, 59, 72, 187, 0};
 // [238s] Epoch 2800 (13.6639 eps), error 0.00876295, LR 0.762343
 
-int* passedPawnBonuses[2] = {mg_passedPawnBonus, eg_passedPawnBonus};
+inline int* passedPawnBonuses[2] = {mg_passedPawnBonus, eg_passedPawnBonus};
 
-int* mg_table[6] =
+inline int* mg_table[6] =
 {
     mg_pawn_table,
     mg_knight_table,
@@ -160,7 +160,7 @@ int* mg_table[6] =
     mg_king_table
 };
 
-int* eg_table[6] =
+inline int* eg_table[6] =
 {
     eg_pawn_table,
     eg_knight_table,
@@ -170,11 +170,11 @@ int* eg_table[6] =
     eg_king_table
 };
 
-float cpToVal(int cp){
+inline float cpToVal(int cp){
   return std::clamp(std::atan(cp/100.0)/1.57079633, -1.0, 1.0);
 }
 
-int valToCp(float val){
+inline int valToCp(float val){
   return std::clamp(
             std::round(std::tan(std::min(std::max(double(val), -0.9999), 0.9999)*1.57079633)*100)
         , -100000.0, 100000.0);
@@ -185,7 +185,7 @@ int valToCp(float val){
 
 const int WeightsPerVec = sizeof(SIMD::Vec) / sizeof(int16_t);
 
-int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
+inline int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
 
 template<int numHiddenNeurons>
 struct NNUEparameters{
@@ -199,7 +199,7 @@ extern "C" {
   INCBIN(networkData, "andromeda-3.nnue");
 }
 
-const NNUEparameters<NNUEhiddenNeurons>* _NNUEparameters = reinterpret_cast<
+inline const NNUEparameters<NNUEhiddenNeurons>* _NNUEparameters = reinterpret_cast<
                                                            const NNUEparameters<NNUEhiddenNeurons>*
                                                                            >(gnetworkDataData);
 
@@ -413,17 +413,17 @@ struct NNUE{
   }
 };
 
-void init(){
+inline void init(){
   lookupTables::init();
 }
 
-int gamephaseInc[6] = {0, 1, 1, 2, 4, 0};
+inline int gamephaseInc[6] = {0, 1, 1, 2, 4, 0};
 
-int gamePhase = 24;
+inline int gamePhase = 24;
 
-int currentPieceSquareTableEval = 0;
+inline int currentPieceSquareTableEval = 0;
 
-int pieceSquareTable(chess::Board& board){
+inline int pieceSquareTable(chess::Board& board){
   gamePhase = 0;
 
   int mgScore = 0;
@@ -468,7 +468,7 @@ int pieceSquareTable(chess::Board& board){
 //capturing an enemy piece on targetSquare is
 //Returns 0 if the capture is not good for the current board's sideToMove or if there is no capture
 //Threshold is the highest SEE value we have already found (see the part in evaluate() which runs SEE())
-int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0, int piecePos = 64){
+inline int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0, int piecePos = 64){
   int values[32];
   int i=0;
 
@@ -520,7 +520,7 @@ int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0, int pieceP
   return (isOurSideToMove ? beta : -beta)/24;
 }
 
-int passedPawns(chess::Board& board){
+inline int passedPawns(chess::Board& board){
   int mg_score = 0;
   int eg_score = 0;
   U64 pieceBitboard = board.getOurPieces(chess::PAWN);
@@ -558,9 +558,9 @@ int passedPawns(chess::Board& board){
   return (gamePhase*mg_score+(24-gamePhase)*eg_score)/24;
 }
 
-std::array<uint8_t, 13> sidedPieceToPiece = {0, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6};
+inline std::array<uint8_t, 13> sidedPieceToPiece = {0, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6};
 
-int mvvLva(chess::Board& board, chess::Move move){
+inline int mvvLva(chess::Board& board, chess::Move move){
   return 30*mg_value[sidedPieceToPiece[move.getMoveFlags() == chess::ENPASSANT ? 1 : 
                      board.mailbox[0][move.getEndSquare()]]-1] -
          mg_value[sidedPieceToPiece[board.mailbox[0][move.getStartSquare()]]-1];

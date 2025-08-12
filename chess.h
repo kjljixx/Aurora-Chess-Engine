@@ -613,7 +613,7 @@ struct Board{
   }
 };
 
-Move* generateLegalMoves(Board &board, Move* legalMoves){
+inline Move* generateLegalMoves(Board &board, Move* legalMoves){
   //Extremely useful source on how pointers/arrays work: https://cplusplus.com/doc/tutorial/pointers/
   Move* legalMovesPtr = legalMoves; //A pointer to the spot in memory where the next move will go
   uint8_t piecePos;
@@ -762,7 +762,7 @@ Move* generateLegalMoves(Board &board, Move* legalMoves){
   return legalMovesPtr;
 }
 
-Move* generateLegalCaptures(Board &board, Move* legalMoves){
+inline Move* generateLegalCaptures(Board &board, Move* legalMoves){
   //Extremely useful source on how pointers/arrays work: https://cplusplus.com/doc/tutorial/pointers/
   Move* legalMovesPtr = legalMoves; //A pointer to the spot in memory where the next move will go
   uint8_t piecePos;
@@ -895,7 +895,7 @@ Move* generateLegalCaptures(Board &board, Move* legalMoves){
 
 //Returns whether or not there is a legal move on the given board
 //Used for stalemate and checkmate detection in calls for the getGameStatus() function below
-bool isLegalMoves(Board& board){
+inline bool isLegalMoves(Board& board){
   //Extremely useful source on how pointers/arrays work: https://cplusplus.com/doc/tutorial/pointers/
   uint8_t piecePos;
 
@@ -1072,7 +1072,7 @@ struct MoveList{
 
 enum gameStatus{WIN = 1, DRAW = 0, LOSS = -1, ONGOING = 2};
 
-gameStatus probeWdlTb(Board& board){
+inline gameStatus probeWdlTb(Board& board){
   if(TB_LARGEST == 0){return ONGOING;}
   if(_popCount(board.occupied) > TB_LARGEST){return ONGOING;}
   
@@ -1084,7 +1084,7 @@ gameStatus probeWdlTb(Board& board){
   else{return DRAW;}
 }
 
-Move probeDtzTb(Board& board){
+inline Move probeDtzTb(Board& board){
   if(TB_LARGEST == 0){return Move();}
   if(_popCount(board.occupied) > TB_LARGEST){return Move();}
   
@@ -1106,7 +1106,7 @@ Move probeDtzTb(Board& board){
   }
 }
 
-gameStatus getGameStatus(Board& board, bool isLegalMoves){
+inline gameStatus getGameStatus(Board& board, bool isLegalMoves){
   /*if(_popCount(board.occupied)<=5){
     auto tbProbeResult = tb_probe_wdl(board.white, board.black, board.kings, board.queens, board.rooks, board.bishops, board.knights, board.pawns, board.halfmoveClock, board.castlingRights, board.enPassant ? _bitscanForward(board.enPassant) : 0, board.sideToMove==WHITE);
     if(tbProbeResult==TB_RESULT_FAILED){board.printBoard(); assert(0);}

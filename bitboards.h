@@ -34,11 +34,11 @@ inline U64 _flipBoard(U64 &board){
 }
 
 //functions for transferring back and forth between notation(ex. a8) and index(ex. 56)
-uint8_t squareNotationToIndex(std::string notation){
+inline uint8_t squareNotationToIndex(std::string notation){
   return (notation[1] - '1')*8+(notation[0] - 'a');
 }
 
-std::string squareIndexToNotation(int index){
+inline std::string squareIndexToNotation(int index){
   return std::string(1, ('a' + index % 8))+std::string(1, ('1' + index / 8));
 }
 
@@ -72,7 +72,7 @@ const U64 fileA = 0x101010101010101ULL;
 
 const U64 files[8] = {fileA, fileB, fileC, fileD, fileE, fileF, fileG, fileH};
 
-void printBoard(U64 board){
+inline void printBoard(U64 board){
   U64 mask = 0;
   for(int i=8; i>0; i--){
     std::cout << "\n" << i << " ";
