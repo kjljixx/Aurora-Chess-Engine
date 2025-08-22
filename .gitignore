@@ -24,3 +24,4 @@ auroraminidev.exe
 /.vs
 /debug
 .clangd
+*.log

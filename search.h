@@ -430,11 +430,15 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
 
   //Next, do qSearch
   float eval = evaluation::cpToVal(evaluation::evaluate(board, nnue));
+  float a = 2.14;
+  float b = std::log(2*a/(2+a)-1);
+  float c = -a/2;
+  float adjustedEval = a/(1+std::exp(b*eval))+c;
   entry->hash = (board.history[board.halfmoveClock] >> 32);
-  entry->val = eval;
+  entry->val = adjustedEval;
 
-  assert(-1<=eval && 1>=eval);
-  return eval;
+  assert(-1<=adjustedEval && 1>=adjustedEval);
+  return adjustedEval;
 }
 
 inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, bool forceResult, bool runFindBestMove, bool continueBackprop){
