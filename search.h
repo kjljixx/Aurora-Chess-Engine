@@ -97,7 +97,7 @@ inline Node* findBestChild(Node* parent){
   return currBestMove;
 }
 
-inline float findBestValue(Node* parent){
+inline float findBestQValue(Node* parent){
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
 
   for(int i=0; i<parent->children.size(); i++){
@@ -107,12 +107,12 @@ inline float findBestValue(Node* parent){
   return currBestValue;
 }
 
-inline float findSecondBestValue(Node* parent){
+inline float findSecondBestAValue(Node* parent){
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
   float secondBestValue = 2;
 
   for(int i=0; i<parent->children.size(); i++){
-    float childValue = parent->children[i].value;
+    float childValue = parent->children[i].child ? parent->children[i].child->avgValue : parent->children[i].value;
     if(childValue < currBestValue){
       secondBestValue = currBestValue;
       currBestValue = childValue;
@@ -390,7 +390,7 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
       std::clamp(1.0+16*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 1.0, 2.0);
   
   // std::cout << std::clamp(1.0+32*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 0.2, 2.0) << " ";
-  float secondBestValue = parent->children.size() > 1 ? findSecondBestValue(parent) : -2;
+  float secondBestAValue = parent->children.size() > 1 ? findSecondBestAValue(parent) : -2;
 
   for(int i=0; i<parent->children.size(); i++){
     Node* currNode = parent->children[i].child;
@@ -399,7 +399,7 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
     //We can make a guess about how many visits a node had before it was pruned by LRU
     bool isLRUPruned = parent->children[i].edge.value & (1 << 15);
 
-    float currPriority = -std::max(currNode ? currNode->avgValue : currEdge.value, secondBestValue)+
+    float currPriority = -std::max(currNode ? currNode->avgValue : currEdge.value, secondBestAValue)+
       (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
       varianceScale*
       parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (isLRUPruned ? 14 : 1));
@@ -476,7 +476,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
   else if(backpropStrat == MINIMAX){
     //We only need to backpropagate two types of results here: the current best child becomes worse, or there is a new best child
     if(continueBackprop){
-      //If currEdge is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currEdge
+      //If currEdge is the best move and is backpropagated to become worse, we need to run findBestQValue for the parent of currEdge
       oldCurrNodeValue = 2;
       if(currEdge->child->parent && edges.size() > 0 && -currEdge->value == edges.back().first->value){oldCurrNodeValue = currEdge->value;}
 
@@ -497,7 +497,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
         return;
       }
 
-      currEdge->value = runFindBestMove ? -findBestValue(currEdge->child) : result;
+      currEdge->value = runFindBestMove ? -findBestQValue(currEdge->child) : result;
 
       assert(-1<=currEdge->value && 1>=currEdge->value);
 
@@ -585,7 +585,7 @@ inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point st
     "info depth " << (root->visits == tree.startNodes ? 0 : int(tree.depth / (root->visits - tree.startNodes))) <<
     " seldepth " << int(tree.seldepth) <<
     " nodes " << root->visits <<
-    " score cp " << evaluation::valToCp(-findBestValue(root)) <<
+    " score cp " << evaluation::valToCp(-findBestQValue(root)) <<
     " hashfull " << int(tree.getHashfull()*1000) <<
     " nps " << std::round((root->visits-tree.previousVisits)/(elapsed.count()-tree.previousElapsed)) <<
     " time " << std::round(elapsed.count()*1000) <<
