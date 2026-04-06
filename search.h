@@ -107,6 +107,24 @@ inline float findBestValue(Node* parent){
   return currBestValue;
 }
 
+inline float findSecondBestValue(Node* parent){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+  float secondBestValue = 2;
+
+  for(int i=0; i<parent->children.size(); i++){
+    float childValue = parent->children[i].value;
+    if(childValue < currBestValue){
+      secondBestValue = currBestValue;
+      currBestValue = childValue;
+    }
+    else if(childValue < secondBestValue){
+      secondBestValue = childValue;
+    }
+  }
+
+  return secondBestValue;
+}
+
 struct TTEntry{
   float val;
   uint32_t hash;
@@ -372,6 +390,7 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
       std::clamp(1.0+16*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 1.0, 2.0);
   
   // std::cout << std::clamp(1.0+32*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 0.2, 2.0) << " ";
+  float secondBestValue = parent->children.size() > 1 ? findSecondBestValue(parent) : -2;
 
   for(int i=0; i<parent->children.size(); i++){
     Node* currNode = parent->children[i].child;
@@ -380,7 +399,7 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
     //We can make a guess about how many visits a node had before it was pruned by LRU
     bool isLRUPruned = parent->children[i].edge.value & (1 << 15);
 
-    float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
+    float currPriority = -std::max(currNode ? currNode->avgValue : currEdge.value, secondBestValue)+
       (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
       varianceScale*
       parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (isLRUPruned ? 14 : 1));
