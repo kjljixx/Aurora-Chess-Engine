@@ -413,7 +413,7 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
     bool isLRUPruned = parent->children[i].edge.value & (1 << 15);
 
     float q = currNode ? currNode->avgValue : currEdge.value;
-    if(q == secondBestAValue && !secondBestBoostUsed){
+    if(q == secondBestAValue && !secondBestBoostUsed && isRoot){
       q = bestAValue;
       secondBestBoostUsed = true;
     }
