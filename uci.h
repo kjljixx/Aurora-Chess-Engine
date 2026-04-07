@@ -6,15 +6,14 @@
 //See https://backscattering.de/chess/uci/ for information on the Universal Chess Interface, which this file implements
 namespace uci{
 
-search::Node* root;
-chess::Board rootBoard;
-search::Tree tree;
+inline search::Node* root;
+inline chess::Board rootBoard;
+inline search::Tree tree;
 
 //bench stuff
-const int AMOUNT_OF_FENS = 50;
-const int SECONDS_PER_POSITION = 1;
+const int AMOUNT_OF_FENS = 25;
 
-std::string benchFens[AMOUNT_OF_FENS] = { //From Alexandria
+inline std::string benchFens[AMOUNT_OF_FENS] = { //From Alexandria
 			"r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14",
 			"4rrk1/2p1b1p1/p1p3q1/4p3/2P2n1p/1P1NR2P/PB3PP1/3R1QK1 b - - 2 24",
 			"r3qbrk/6p1/2b2pPp/p3pP1Q/PpPpP2P/3P1B2/2PB3K/R5R1 w - - 16 42",
@@ -40,235 +39,36 @@ std::string benchFens[AMOUNT_OF_FENS] = { //From Alexandria
 			"r1bqr1k1/pp1p1ppp/2p5/8/3N1Q2/P2BB3/1PP2PPP/R3K2n b Q - 1 12",
 			"r1bq2k1/p4r1p/1pp2pp1/3p4/1P1B3Q/P2B1N2/2P3PP/4R1K1 b - - 2 19",
 			"r4qk1/6r1/1p4p1/2ppBbN1/1p5Q/P7/2P3PP/5RK1 w - - 2 25",
-			"r7/6k1/1p6/2pp1p2/7Q/8/p1P2K1P/8 w - - 0 32",
-			"r3k2r/ppp1pp1p/2nqb1pn/3p4/4P3/2PP4/PP1NBPPP/R2QK1NR w KQkq - 1 5",
-			"3r1rk1/1pp1pn1p/p1n1q1p1/3p4/Q3P3/2P5/PP1NBPPP/4RRK1 w - - 0 12",
-			"5rk1/1pp1pn1p/p3Brp1/8/1n6/5N2/PP3PPP/2R2RK1 w - - 2 20",
-			"8/1p2pk1p/p1p1r1p1/3n4/8/5R2/PP3PPP/4R1K1 b - - 3 27",
-			"8/4pk2/1p1r2p1/p1p4p/Pn5P/3R4/1P3PP1/4RK2 w - - 1 33",
-			"8/5k2/1pnrp1p1/p1p4p/P6P/4R1PK/1P3P2/4R3 b - - 1 38",
-			"8/8/1p1kp1p1/p1pr1n1p/P6P/1R4P1/1P3PK1/1R6 b - - 15 45",
-			"8/8/1p1k2p1/p1prp2p/P2n3P/6P1/1P1R1PK1/4R3 b - - 5 49",
-			"8/8/1p4p1/p1p2k1p/P2npP1P/4K1P1/1P6/3R4 w - - 6 54",
-			"8/8/1p4p1/p1p2k1p/P2n1P1P/4K1P1/1P6/6R1 b - - 6 59",
-			"8/5k2/1p4p1/p1pK3p/P2n1P1P/6P1/1P6/4R3 b - - 14 63",
-			"8/1R6/1p1K1kp1/p6p/P1p2P1P/6P1/1Pn5/8 w - - 0 67",
-			"1rb1rn1k/p3q1bp/2p3p1/2p1p3/2P1P2N/PP1RQNP1/1B3P2/4R1K1 b - - 4 23",
-			"4rrk1/pp1n1pp1/q5p1/P1pP4/2n3P1/7P/1P3PB1/R1BQ1RK1 w - - 3 22",
-			"r2qr1k1/pb1nbppp/1pn1p3/2ppP3/3P4/2PB1NN1/PP3PPP/R1BQR1K1 w - - 4 12",
-			"2r2k2/8/4P1R1/1p6/8/P4K1N/7b/2B5 b - - 0 55",
-			"6k1/5pp1/8/2bKP2P/2P5/p4PNb/B7/8 b - - 1 44",
-			"2rqr1k1/1p3p1p/p2p2p1/P1nPb3/2B1P3/5P2/1PQ2NPP/R1R4K w - - 3 25",
-			"r1b2rk1/p1q1ppbp/6p1/2Q5/8/4BP2/PPP3PP/2KR1B1R b - - 2 14",
-			"6r1/5k2/p1b1r2p/1pB1p1p1/1Pp3PP/2P1R1K1/2P2P2/3R4 w - - 1 36",
-			"rnbqkb1r/pppppppp/5n2/8/2PP4/8/PP2PPPP/RNBQKBNR b KQkq c3 0 2",
-			"2rr2k1/1p4bp/p1q1p1p1/4Pp1n/2PB4/1PN3P1/P3Q2P/2RR2K1 w - f6 0 20",
-			"3br1k1/p1pn3p/1p3n2/5pNq/2P1p3/1PN3PP/P2Q1PB1/4R1K1 w - - 0 23",
-			"2r2b2/5p2/5k2/p1r1pP2/P2pB3/1P3P2/K1P3R1/7R w - - 23 93"
-	};
+};
 
-//The "position" command
-chess::Board position(std::istringstream input){
-  std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-  std::string token;
+inline void bench(){
+  int nodes = 0;
+  Aurora::outputLevel.value = -1;
 
-  input >> token;
+  float totalElapsed = 0;
 
-  if(token == "fen"){
-    input >> fen;
-    while(input >> token && token != "moves"){
-      fen += " " + token;
-    }
-  }
-  else{
-    //input the moves token, if there is one
-    input >> token;
+  for(std::string fen : benchFens){
+    chess::Board board(fen);
+
+    auto start = std::chrono::steady_clock::now();
+
+    search::search(board, search::timeManagement(search::ITERS, 10000), tree);
+
+    std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
+    totalElapsed += elapsed.count();
+
+    search::Node* root = tree.root;
+
+    nodes += root->visits;
+
+    search::destroyTree(tree); root = nullptr;
   }
 
-  chess::Board board(fen);
 
-  while(input >> token){
-    //En Passant
-    if((1ULL << squareNotationToIndex(token.substr(2, 2))) & board.enPassant && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::PAWN){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::ENPASSANT), rootBoard, tree);
-    }
-    //Castling
-    else if((squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 2 || squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 6) && squareIndexToFile(squareNotationToIndex(token.substr(0, 2))) == 4 && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::KING){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::CASTLE), rootBoard, tree);
-    }
-    //Promotion
-    else if(token.size() == 5){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::PROMOTION, chess::letterToPiece(token[4])), rootBoard, tree);
-    }
-    //Normal
-    else{
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))), rootBoard, tree);
-    }
-  }
-
-  return board;
+  std::cout << "\n" << nodes << " nodes " << int(nodes/totalElapsed) << " nps" << std::endl;
 }
-//The "perft" command
-uint64_t perft(chess::Board &board, int depth, bool printResults){
-  uint64_t nodes = 0;
 
-  if(depth == 1 && !printResults){
-    return chess::MoveList(board).size();
-  }
-
-  if(depth == 0){
-    return 1;
-  }
-
-  for(chess::Move move : chess::MoveList(board)){
-    chess::Board movedBoard = board;
-    movedBoard.makeMove(move);
-
-    uint64_t result = perft(movedBoard, depth-1, false);
-    if(printResults){std::cout << move.toStringRep() << ": " << result << "\n";}
-    nodes+=result;
-  }
-
-  return nodes;
-}
-uint64_t perftDiv(chess::Board &board, int depth){
-  chess::Board movedBoard;
-  uint64_t nodes = 0;
-
-  auto start = std::chrono::steady_clock::now();
-
-  nodes = perft(board, depth, true);
-
-  auto end = std::chrono::steady_clock::now();
-  std::chrono::duration<double> elapsed = end - start;
-
-  std::cout << std::endl << "==========================" << std::endl;
-  std::cout << "Total time (ms) : " << static_cast<int>(elapsed.count() * 1000) << std::endl;
-  std::cout << "Nodes searched  : " << nodes << std::endl;
-  std::cout << "Nodes / second  : " << static_cast<int>(nodes / elapsed.count()) << std::endl;
-
-  return nodes;
-}
-void go(std::istringstream input, chess::Board board){
-  std::string token;
-
-  input >> token;
-  if(token == "infinite"){
-    search::search(board, search::timeManagement(search::FOREVER), tree);
-    root = tree.root;
-  }
-  else if(token == "nodes"){
-    int maxNodes;
-    input >> maxNodes;
-    search::search(board, search::timeManagement(search::NODES, maxNodes), tree);
-    root = tree.root;
-  }
-  else{
-    search::timeManagement tm(search::TIME);
-    int time;
-
-    int ourTime = 0;
-    int ourInc = 0;
-    int theirTime = 0;
-    int theirInc = 0;
-
-    if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){ourTime = time;}else{theirTime = time;}}
-    else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){ourTime = time;}else{theirTime = time;}}
-    else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){ourInc = time;}else{theirInc = time;}}
-    else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){ourInc = time;}else{theirInc = time;}}
-
-    while(input >> token){
-      if(token == "wtime"){input >> time; if(board.sideToMove == chess::WHITE){ourTime = time;}else{theirTime = time;}}
-      else if(token == "btime"){input >> time; if(board.sideToMove == chess::BLACK){ourTime = time;}else{theirTime = time;}}
-      else if(token == "winc"){input >> time; if(board.sideToMove == chess::WHITE){ourInc = time;}else{theirInc = time;}}
-      else if(token == "binc"){input >> time; if(board.sideToMove == chess::BLACK){ourInc = time;}else{theirInc = time;}}
-    }
-    int movesLeft = 30;
-    int allocatedTime = fminf(0.05*(ourTime + ourInc*movesLeft), 0.1*(ourTime));
-    tm.limit = allocatedTime/1000.0;
-    search::search(board, tm, tree);
-    root = tree.root;
-  }
-  rootBoard = board;
-}
-void respondUci(){
-  std::cout <<  "id name Aurora " << VERSION_NUM DEV_STRING << "\n"
-                "id author kjljixx\n"
-                "\n";
-                for(auto option : Aurora::options){
-                  if(option.second.type == 2){
-                    std::cout << "option name " << option.first << " "
-                                        "type " << "string" << " "
-                                        "default " << option.second.sDefaultValue << "\n";                  
-                  }
-                  else{
-                    std::cout << "option name " << option.first << " "
-                                        "type " << (option.second.type == 1 ? "spin" : "string") << " "
-                                        "default " << option.second.defaultValue << " "
-                                        "min " << option.second.minValue << " "
-                                        "max " << option.second.maxValue << "\n";
-                  }
-                }
-                std::cout << "\nuciok\n";
-}
-void setOption(std::istringstream input){
-  std::string token;
-
-  input >> token; //input the "name" token
-
-  std::string optionName;
-  input >> optionName;
-
-  if(Aurora::options.find(optionName) == Aurora::options.end()){
-    std::cout << "info string could not find option " << optionName << "\n";
-    return;
-  }
-
-  input >> token; //input the "value" token
-
-  if (Aurora::options[optionName].type == 2){
-    std::string optionValue;
-    input >> optionValue;
-    Aurora::options[optionName].sValue = optionValue;
-    if(optionName != "SyzygyPath" || tb_init(Aurora::options[optionName].sValue.c_str())){
-      std::cout << "info string option " << optionName << " set to " << optionValue << "\n";
-    }
-    else{
-      std::cout << "info string could not init syzygy tablebases\n";
-    }
-  }
-  else{
-    float optionValue;
-    input >> optionValue;
-    Aurora::options[optionName].value = optionValue;
-    std::cout << "info string option " << optionName << " set to " << optionValue << "\n";
-  }
-
-}
-//Custom commands
-chess::Board makeMoves(chess::Board &board, std::istringstream input){
-  std::string token;
-  while(input >> token){
-    //En Passant
-    if((1ULL << squareNotationToIndex(token.substr(2, 2))) & board.enPassant && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::PAWN){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::ENPASSANT), rootBoard, tree);
-    }
-    //Castling
-    else if((squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 2 || squareIndexToFile(squareNotationToIndex(token.substr(2, 2))) == 6) && squareIndexToFile(squareNotationToIndex(token.substr(0, 2))) == 4 && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::KING){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::CASTLE), rootBoard, tree);
-    }
-    //Promotion
-    else if(token.size() == 5){
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2)), chess::PROMOTION, chess::letterToPiece(token[4])), rootBoard, tree);
-    }
-    //Normal
-    else{
-      search::makeMove(board, chess::Move(uint8_t(squareNotationToIndex(token.substr(0, 2))), squareNotationToIndex(token.substr(2, 2))), rootBoard, tree);
-    }
-  }
-  return board;
-}
-chess::Move getMoveFromString(chess::Board &board, std::string token){
+inline chess::Move getMoveFromString(chess::Board &board, std::string token){
   chess::Move move;
   //En Passant
   if((1ULL << squareNotationToIndex(token.substr(2, 2))) & board.enPassant && board.findPiece(squareNotationToIndex(token.substr(0, 2))) == chess::PAWN){
@@ -289,57 +89,240 @@ chess::Move getMoveFromString(chess::Board &board, std::string token){
   return move;
 }
 
+inline chess::Board makeMoves(chess::Board &board, std::istringstream& input){
+  std::string token;
+  while(input >> token){
+    search::makeMove(board, getMoveFromString(board, token), rootBoard, tree);
+  }
+  return board;
+}
+
+inline chess::Board position(std::istringstream& input){
+  std::string fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  std::string token;
+
+  input >> token;
+
+  if(token == "fen"){
+    input >> fen;
+    while(input >> token && token != "moves"){
+      fen += " " + token;
+    }
+  }
+  else{
+    //input the moves token, if there is one
+    input >> token;
+  }
+
+  chess::Board board(fen);
+
+  makeMoves(board, input);
+
+  std::cout << "info string position set to " << board.getFen() << std::endl;
+
+  return board;
+}
+//The "perft" command
+inline uint64_t perft(chess::Board &board, int depth, bool printResults){
+  uint64_t nodes = 0;
+
+  if(depth == 1 && !printResults){
+    return chess::MoveList(board).size();
+  }
+
+  if(depth == 0){
+    return 1;
+  }
+
+  for(chess::Move move : chess::MoveList(board)){
+    chess::Board movedBoard = board;
+    movedBoard.makeMove(move);
+
+    uint64_t result = perft(movedBoard, depth-1, false);
+    if(printResults){std::cout << move.toStringRep() << ": " << result << "\n";}
+    nodes += result;
+  }
+
+  return nodes;
+}
+
+inline uint64_t perftDiv(chess::Board &board, int depth){
+  chess::Board movedBoard;
+  uint64_t nodes = 0;
+
+  auto start = std::chrono::steady_clock::now();
+
+  nodes = perft(board, depth, true);
+
+  auto end = std::chrono::steady_clock::now();
+  std::chrono::duration<double> elapsed = end - start;
+
+  std::cout << std::endl << "==========================" << std::endl;
+  std::cout << "Total time (ms) : " << static_cast<int>(elapsed.count() * 1000) << std::endl;
+  std::cout << "Nodes searched  : " << nodes << std::endl;
+  std::cout << "Nodes / second  : " << static_cast<int>(nodes / elapsed.count()) << std::endl;
+
+  return nodes;
+}
+
+inline void go(std::istringstream& input, chess::Board board){
+  std::string token;
+
+  input >> token;
+  if(token == "infinite"){
+    if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
+    search::search(board, search::timeManagement(search::FOREVER), tree);
+  }
+  else if(token == "nodes"){
+    int maxNodes;
+    input >> maxNodes;
+    if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
+    search::search(board, search::timeManagement(search::NODES, maxNodes), tree);
+  }
+  else if(token == "iters"){
+    int maxIters;
+    input >> maxIters;
+    if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
+    search::search(board, search::timeManagement(search::ITERS, maxIters), tree);
+  }
+  else if(token == "movetime"){
+    int time;
+    input >> time;
+    if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
+    search::timeManagement limit = search::timeManagement(search::TIME, 1000000000.0);
+    limit.hardLimit = time/1000.0;
+    search::search(board, limit, tree); 
+  }
+  else{
+    search::timeManagement tm(search::TIME);
+    int time;
+
+    int ourTime = 0;
+    int ourInc = 0;
+    int theirTime = 0;
+    int theirInc = 0;
+
+    do{
+      input >> time;
+      if(token == "wtime"){
+        if(board.sideToMove == chess::WHITE){ourTime = time;}
+        else{theirTime = time;}
+      }
+      else if(token == "btime"){
+        if(board.sideToMove == chess::BLACK){ourTime = time;}
+        else{theirTime = time;}
+      }
+      else if(token == "winc"){
+        if(board.sideToMove == chess::WHITE){ourInc = time;}
+        else{theirInc = time;}
+      }
+      else if(token == "binc"){
+        if(board.sideToMove == chess::BLACK){ourInc = time;}
+        else{theirInc = time;}
+      }
+    } while(input >> token);
+
+    int movesLeft = 30;
+    int allocatedTime = fminf(0.05*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
+    tm.limit = allocatedTime/1000.0;
+    allocatedTime = fminf(0.1*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
+    tm.hardLimit = allocatedTime/1000.0;
+    if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
+    search::search(board, tm, tree);
+  }
+  rootBoard = board;
+  root = tree.root;
+}
+
+inline void respondUci(){
+  std::cout <<  "id name Aurora " << VERSION_NUM DEV_STRING << "\n"
+                "id author kjljixx\n"
+                "\n";
+                for(auto option : Aurora::options){
+                  if(option->type == 2){
+                    std::cout << "option name " << option->name << " "
+                                        "type " << "string" << " "
+                                        "default " << option->sDefaultValue << "\n";                  
+                  }
+                  else{
+                    std::cout << "option name " << option->name << " "
+                                        "type " << (option->type == 1 ? "spin" : "string") << " "
+                                        "default " << option->defaultValue << " "
+                                        "min " << option->minValue << " "
+                                        "max " << option->maxValue << "\n";
+                  }
+                }
+                std::cout << "\nuciok" << std::endl;
+}
+
+inline void setOption(std::istringstream& input){
+  std::string token;
+
+  input >> token; //input the "name" token
+
+  std::string optionName;
+  input >> optionName;
+
+  if(Aurora::getOption(optionName) == nullptr){
+    std::cout << "info string could not find option " << optionName << std::endl;
+    return;
+  }
+
+  input >> token; //input the "value" token
+
+  if (Aurora::getOption(optionName)->type == 2){
+    std::string optionValue;
+    input >> optionValue;
+    Aurora::getOption(optionName)->sValue = optionValue;
+    if(optionName != "SyzygyPath" || (tb_init(Aurora::getOption(optionName)->sValue.c_str()) && TB_LARGEST > 0)){
+      std::cout << "info string option " << optionName << " set to " << optionValue << std::endl;
+    }
+    else{
+      std::cout << "info string could not init syzygy tablebases" << std::endl;
+    }
+  }
+  else{
+    float optionValue;
+    input >> optionValue;
+    Aurora::getOption(optionName)->value = optionValue;
+    std::cout << "info string option " << optionName << " set to " << optionValue << std::endl;
+  }
+}
 
 //The main UCI loop which detects input and runs other functions based on it
-void loop(chess::Board board){
-
+inline void loop(chess::Board board){
   std::string token;
 
   while(true){
     std::cin >> token;
     if(token == "uci"){respondUci();}
-    if(token == "setoption"){std::getline(std::cin, token); setOption(std::istringstream(token));}
-    if(token == "isready"){std::cout << "readyok\n";} //TODO: make sure we are actually ready before printing readyok
+    if(token == "build"){std::cout << GIT_HASH_STRING << std::endl;}
+    if(token == "setoption"){std::getline(std::cin, token); auto stream = std::istringstream(token); setOption(stream);}
+    if(token == "isready"){std::cout << "readyok" << std::endl;} //TODO: make sure we are actually ready before printing readyok
     if(token == "perft"){int depth; std::cin >> depth; perftDiv(board, depth);}
-    if(token == "position"){std::getline(std::cin, token); board = position(std::istringstream(token));}
-    if(token == "go"){std::getline(std::cin, token); go(std::istringstream(token), board);}
+    if(token == "position"){std::getline(std::cin, token); auto stream = std::istringstream(token); board = position(stream);}
+    if(token == "go"){std::getline(std::cin, token); auto stream = std::istringstream(token); go(stream, board);}
     if(token == "quit"){break;}
-    if(token == "ucinewgame"){search::destroyTree(tree); root = nullptr;}
+    if(token == "ucinewgame"){search::destroyTree(tree); root = nullptr; std::cout << "info string search tree destroyed" << std::endl;}
     //non-uci, custom commands
-    if(token == "moves"){std::getline(std::cin, token); board = makeMoves(board, std::istringstream(token));}
+    if(token == "moves"){std::getline(std::cin, token); auto stream = std::istringstream(token); board = makeMoves(board, stream);}
     //bwlow are mostly for debugging purposes
-    if(token == "board"){board.printBoard(); std::cout << "\n";} 
-    if(token == "checkmask"){bitboards::printBoard(board.generateKingMasks().checkmask); std::cout << "\n";}
-    if(token == "rpinmask"){bitboards::printBoard(board.generateKingMasks().rookPinmask); std::cout << "\n";}
-    if(token == "rpinned"){bitboards::printBoard(board.generateKingMasks().rookPinnedPieces); std::cout << "\n";}
-    if(token == "bpinmask"){bitboards::printBoard(board.generateKingMasks().bishopPinmask); std::cout << "\n";}
-    if(token == "bpinned"){bitboards::printBoard(board.generateKingMasks().bishopPinnedPieces); std::cout << "\n";}
-    if(token == "staticeval"){evaluation::NNUE<NNUEhiddenNeurons> nnue(evaluation::_NNUEparameters); nnue.refreshAccumulator(board); std::cout << evaluation::evaluate(board, nnue) << "\n";}
-    if(token == "see"){std::cin >> token; uint8_t square = squareNotationToIndex(token); std::cout << evaluation::SEE(board, square, 0) << "\n";}
-    if(token == "zobrist"){std::cout << zobrist::getHash(board) << "\n";}
-    if(token == "bench"){
-      int i = 0;
-      int nodes = 0;
+    if(token == "debug"){auto stream = std::istringstream("name outputLevel value 3"); setOption(stream);}
+    if(token == "fen"){std::getline(std::cin, token); auto stream = std::istringstream("fen " + token); board = position(stream);}
 
-      int currOutputLevel = Aurora::options["outputLevel"].value;
-      Aurora::options["outputLevel"].value = 0;
+    if(token == "board"){board.printBoard(); std::cout << std::endl;}
 
-      for(std::string fen : benchFens){
-        i++;
-        chess::Board board(fen);
-
-        search::search(board, search::timeManagement(search::TIME, SECONDS_PER_POSITION), tree);
-        search::Node* root = tree.root;
-
-        nodes += root->visits;
-
-        search::destroyTree(tree); root = nullptr;
-        std::cout << "\nFINISHED POSITION #" << i << " OF 50";
-      }
-      std::cout << "\nnps: " << double(nodes)/(SECONDS_PER_POSITION*i);
-
-      Aurora::options["outputLevel"].value = currOutputLevel;
-    }
+    if(token == "checkmask"){bitboards::printBoard(board.generateKingMasks().checkmask); std::cout << std::endl;}
+    if(token == "rpinmask"){bitboards::printBoard(board.generateKingMasks().rookPinmask); std::cout << std::endl;}
+    if(token == "rpinned"){bitboards::printBoard(board.generateKingMasks().rookPinnedPieces); std::cout << std::endl;}
+    if(token == "bpinmask"){bitboards::printBoard(board.generateKingMasks().bishopPinmask); std::cout << std::endl;}
+    if(token == "bpinned"){bitboards::printBoard(board.generateKingMasks().bishopPinnedPieces); std::cout << std::endl;}
+    
+    if(token == "staticeval"){evaluation::NNUE<NNUEhiddenNeurons> nnue(evaluation::_NNUEparameters); nnue.refreshAccumulator(board); std::cout << evaluation::evaluate(board, nnue) << std::endl;}
+    if(token == "see"){std::cin >> token; uint8_t square = squareNotationToIndex(token); std::cout << evaluation::SEE(board, square, 0) << std::endl;}
+    
+    if(token == "zobrist"){std::cout << zobrist::getHash(board) << std::endl;}
+    if(token == "bench"){bench();}
   }
 }
 }

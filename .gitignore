@@ -21,3 +21,6 @@ bm.bat
 bmd.bat
 auroramini.exe
 auroraminidev.exe
+/.vs
+/debug
+.clangd

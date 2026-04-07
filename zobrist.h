@@ -2,9 +2,9 @@
 #include "chess.h"
 
 namespace zobrist{
-U64 seed = 1070372;
+inline U64 seed = 1070372;
 //From Stockfish
-U64 random_U64() {
+inline U64 random_U64() {
 	seed ^= seed >> 12;
 	seed ^= seed << 25;
 	seed ^= seed >> 27;
@@ -12,12 +12,12 @@ U64 random_U64() {
 	return seed;
 }
 
-U64 pieceKeys[12][64];
-U64 sideToMoveKey;
-U64 castlingKeys[16];
-U64 enPassantKeys[8];
+inline U64 pieceKeys[12][64];
+inline U64 sideToMoveKey;
+inline U64 castlingKeys[16];
+inline U64 enPassantKeys[8];
 
-void init(){
+inline void init(){
   for(int i=0; i<12; i++){
     for(int j=0; j<64; j++){
       pieceKeys[i][j] = random_U64();
@@ -32,7 +32,7 @@ void init(){
   }
 }
 
-U64 getHash(chess::Board& board){
+inline U64 getHash(chess::Board& board){
   U64 hash = 0ULL;
 
   for(int i=0; i<64; i++){
@@ -52,7 +52,7 @@ U64 getHash(chess::Board& board){
 
   return hash;
 }
-U64 updateHash(chess::Board& board, chess::Move move){
+inline U64 updateHash(chess::Board& board, chess::Move move){
   U64 hash = board.history[board.halfmoveClock];
   const uint8_t startSquare = move.getStartSquare();
   const uint8_t endSquare = move.getEndSquare();
@@ -131,7 +131,7 @@ U64 updateHash(chess::Board& board, chess::Move move){
 }//namespace
 namespace chess{
   //The normal Board.makeMove except we update the zobrist hash. Use this rather than Board.makeMove for making moves during a game
-  void makeMove(chess::Board& board, chess::Move move){
+  inline void makeMove(chess::Board& board, chess::Move move){
     if(board.hashed){
       U64 newHash = zobrist::updateHash(board, move);
       board.makeMove(move);
