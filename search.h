@@ -399,7 +399,12 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
     //We can make a guess about how many visits a node had before it was pruned by LRU
     bool isLRUPruned = parent->children[i].edge.value & (1 << 15);
 
-    float currPriority = -std::max(currNode ? currNode->avgValue : currEdge.value, float(secondBestAValue-0.01))+
+    float q = currNode ? currNode->avgValue : currEdge.value;
+    if(q > secondBestAValue - 0.01 && q < secondBestAValue){
+      q = secondBestAValue;
+    }
+
+    float currPriority = -q+
       (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
       varianceScale*
       parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (isLRUPruned ? 14 : 1));
