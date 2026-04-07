@@ -67,6 +67,22 @@ inline Option explorationFactor("explorationFactor", 0.015, 0.001, 1024, 0);
 inline Option valChangedMinWeight("valChangedMinWeight", 0.1560282435642479, 0.001, 1024, 0);
 inline Option valSameMinWeight("valSameMinWeight", 0.015277783601196866, 0.001, 1024, 0);
 
+inline Option varianceScaleMultiplier("varianceScaleMultiplier", 16, 0, 1024, 0);
+inline Option varianceScaleOffset("varianceScaleOffset", 0.00625, -1, 1, 0);
+inline Option varianceScaleMin("varianceScaleMin", 1.0, 0, 1024, 0);
+inline Option varianceScaleMax("varianceScaleMax", 2.0, 0, 1024, 0);
+
+inline Option visitWindow("visitWindow", 0.04, 0, 10, 0);
+
+inline Option bestMoveChangesCoefficient("bestMoveChangesCoefficient", 0.26061644, 0, 1024, 0);
+inline Option bestMoveChangesExponent("bestMoveChangesExponent", 0.54, 0, 16, 0);
+inline Option bestMoveChangesMultiplierMin("bestMoveChangesMultiplierMin", 0.2, 0, 1024, 0);
+inline Option bestMoveChangesMultiplierMax("bestMoveChangesMultiplierMax", 2.0, 0, 1024, 0);
+
+inline Option timeManagementMovesLeft("timeManagementMovesLeft", 30, 1, 200, 1);
+inline Option timeManagementSoftFraction("timeManagementSoftFraction", 0.05, 0, 1, 0);
+inline Option timeManagementHardFraction("timeManagementHardFraction", 0.1, 0, 1, 0);
+
 inline Option* getOption(std::string name){
   for(Option* option : options){
     if(option->name == name) return option;

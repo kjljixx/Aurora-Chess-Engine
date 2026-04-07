@@ -222,10 +222,10 @@ inline void go(std::istringstream& input, chess::Board board){
       }
     } while(input >> token);
 
-    int movesLeft = 30;
-    int allocatedTime = fminf(0.05*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
+    int movesLeft = std::max(1, int(Aurora::timeManagementMovesLeft.value));
+    int allocatedTime = fminf(Aurora::timeManagementSoftFraction.value*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
     tm.limit = allocatedTime/1000.0;
-    allocatedTime = fminf(0.1*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
+    allocatedTime = fminf(Aurora::timeManagementHardFraction.value*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
     tm.hardLimit = allocatedTime/1000.0;
     if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
     search::search(board, tm, tree);

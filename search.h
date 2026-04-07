@@ -369,7 +369,12 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
   float varianceScale = 
     (1.0/parent->iters)*1.0+
     (1.0-1.0/parent->iters)*
-      std::clamp(1.0+16*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 1.0, 2.0);
+      std::clamp<double>(
+        1.0+Aurora::varianceScaleMultiplier.value*
+              (std::sqrt(std::max(parent->variance(), float(0)))-Aurora::varianceScaleOffset.value),
+        Aurora::varianceScaleMin.value,
+        Aurora::varianceScaleMax.value
+      );
   
   // std::cout << std::clamp(1.0+32*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 0.2, 2.0) << " ";
 
@@ -748,7 +753,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
       int visits = 0;
       for(int i=0; i<parentNode->children.size(); i++){
-        if(parentNode->children[i].value <= currBestValue + 0.04){visits++;}
+        if(parentNode->children[i].value <= currBestValue + Aurora::visitWindow.value){visits++;}
       }
       assert(visits >= 1);
 
@@ -777,8 +782,17 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       currBestMove = findBestEdge(tree.root).edge;
     }
 
-    double expectedBestMoveChanges = 0.26061644 * (std::pow(tree.root->visits, 0.54) - std::pow(tree.startNodes, 0.54));
-    bestMoveChangesMultiplier = std::clamp(bestMoveChanges / expectedBestMoveChanges, 0.2, 2.0);
+    double expectedBestMoveChanges =
+      Aurora::bestMoveChangesCoefficient.value *
+      (std::pow(tree.root->visits, Aurora::bestMoveChangesExponent.value) -
+       std::pow(tree.startNodes, Aurora::bestMoveChangesExponent.value));
+    const double bestMoveChangesMultiplierMin = std::min(double(Aurora::bestMoveChangesMultiplierMin.value),
+                               double(Aurora::bestMoveChangesMultiplierMax.value));
+    const double bestMoveChangesMultiplierMax = std::max(double(Aurora::bestMoveChangesMultiplierMin.value),
+                               double(Aurora::bestMoveChangesMultiplierMax.value));
+    bestMoveChangesMultiplier = std::clamp(bestMoveChanges / expectedBestMoveChanges,
+                         bestMoveChangesMultiplierMin,
+                         bestMoveChangesMultiplierMax);
   }
 
   //Output the final result of the search
