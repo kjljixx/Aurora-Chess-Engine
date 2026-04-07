@@ -107,6 +107,17 @@ inline float findBestQValue(Node* parent){
   return currBestValue;
 }
 
+inline float findBestAValue(Node* parent){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+
+  for(int i=0; i<parent->children.size(); i++){
+    float childValue = parent->children[i].child ? parent->children[i].child->avgValue : parent->children[i].value;
+    currBestValue = std::min(currBestValue, childValue);
+  }
+
+  return currBestValue;
+}
+
 inline float findSecondBestAValue(Node* parent){
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
   float secondBestValue = 2;
@@ -391,6 +402,8 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
   
   // std::cout << std::clamp(1.0+32*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 0.2, 2.0) << " ";
   float secondBestAValue = parent->children.size() > 1 ? findSecondBestAValue(parent) : -2;
+  float bestAValue = findBestAValue(parent);
+  bool secondBestBoostUsed = false;
 
   for(int i=0; i<parent->children.size(); i++){
     Node* currNode = parent->children[i].child;
@@ -400,8 +413,9 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
     bool isLRUPruned = parent->children[i].edge.value & (1 << 15);
 
     float q = currNode ? currNode->avgValue : currEdge.value;
-    if(q > secondBestAValue - 0.01 && q < secondBestAValue){
-      q = secondBestAValue;
+    if(q == secondBestAValue && !secondBestBoostUsed){
+      q = bestAValue;
+      secondBestBoostUsed = true;
     }
 
     float currPriority = -q+
