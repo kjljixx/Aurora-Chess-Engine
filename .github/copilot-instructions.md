@@ -1,5 +1,17 @@
 # Aurora Chess Engine Guidelines
 
+## Project Goals
+**Primary Goal**: Achieve the highest possible ELO in tournament play
+
+**Core Constraints**:
+- CPU-only (no GPU acceleration)
+- MCTS-Minimax hybrid search algorithm
+- UCI compatibility (required for tournament participation)
+
+**Success Metric**: Tournament ELO rating
+
+**Development Philosophy**: Any improvement that increases ELO is valuable, as long as it maintains the approach that defines the project's unique position.
+
 ## Build And Run
 - Build from repo root with `make`.
 - `make` uses `clang++` and targets `-march=x86-64-v3` with C++17.
