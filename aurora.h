@@ -67,6 +67,10 @@ inline Option explorationFactor("explorationFactor", 0.015, 0.001, 1024, 0);
 inline Option valChangedMinWeight("valChangedMinWeight", 0.1560282435642479, 0.001, 1024, 0);
 inline Option valSameMinWeight("valSameMinWeight", 0.015277783601196866, 0.001, 1024, 0);
 
+// 0: normal time management
+// 1: basic time management based on time left and increment only
+inline Option timeManager("timeManager", 0, 0, 1, 1);
+
 inline Option* getOption(std::string name){
   for(Option* option : options){
     if(option->name == name) return option;

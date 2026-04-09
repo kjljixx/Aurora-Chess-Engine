@@ -13,11 +13,11 @@
 **Development Philosophy**: Any improvement that increases ELO is valuable, as long as it maintains the approach that defines the project's unique position.
 
 ## Build And Run
-- Build from repo root with `make`.
+- Build from repo root with `make EXE=auroradev`.
 - `make` uses `clang++` and targets `-march=x86-64-v3` with C++17.
-- Run the engine with `./aurora` (or `aurora.exe` on Windows).
-- Run benchmark with `aurora bench`.
-- Before committing changes, ALWAYS run `aurora bench` and append `bench xx` (where xx is the number of nodes searched) output to the commit message.
+- Run the engine with `./auroradev` (or `auroradev.exe` on Windows).
+- Run benchmark with `auroradev bench`.
+- Before committing changes, ALWAYS run `auroradev bench` and append `bench xx` (where xx is the number of nodes searched) output to the commit message.
 
 ## Architecture
 - Entry point: `aurora.cpp`.
