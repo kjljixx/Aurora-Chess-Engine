@@ -125,7 +125,7 @@ struct Tree{
 
   //Used for nps calculations in printing search info
   int previousVisits = 0;
-  int previousElapsed = 0;
+  float previousElapsed = 0;
 
   uint8_t seldepth = 0;
   uint32_t depth = 0;
