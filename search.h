@@ -125,7 +125,7 @@ struct Tree{
 
   //Used for nps calculations in printing search info
   int previousVisits = 0;
-  int previousElapsed = 0;
+  float previousElapsed = 0;
 
   uint8_t seldepth = 0;
   uint32_t depth = 0;
@@ -636,6 +636,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
   //For Time Management
   tree.startNodes = tree.root->visits;
+  const bool useAdaptiveTimeScaling = (tm.tmType == TIME && Aurora::timeManager.value < 1);
   int bestMoveChanges = 0;
   float bestMoveChangesMultiplier = 1;
   chess::Move currBestMove;
@@ -772,13 +773,15 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     }
 
     //Decide if we want to search longer or shorter depending on how much the best move has changed
-    if(findBestEdge(tree.root).edge.value != currBestMove.value){
-      bestMoveChanges++;
-      currBestMove = findBestEdge(tree.root).edge;
-    }
+    if(useAdaptiveTimeScaling){
+      if(findBestEdge(tree.root).edge.value != currBestMove.value){
+        bestMoveChanges++;
+        currBestMove = findBestEdge(tree.root).edge;
+      }
 
-    double expectedBestMoveChanges = 0.26061644 * (std::pow(tree.root->visits, 0.54) - std::pow(tree.startNodes, 0.54));
-    bestMoveChangesMultiplier = std::clamp(bestMoveChanges / expectedBestMoveChanges, 0.2, 2.0);
+      double expectedBestMoveChanges = 0.26061644 * (std::pow(tree.root->visits, 0.54) - std::pow(tree.startNodes, 0.54));
+      bestMoveChangesMultiplier = std::clamp(bestMoveChanges / expectedBestMoveChanges, 0.2, 2.0);
+    }
   }
 
   //Output the final result of the search
