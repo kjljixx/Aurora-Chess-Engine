@@ -132,15 +132,14 @@ inline U64 updateHash(chess::Board& board, chess::Move move){
 namespace chess{
   //The normal Board.makeMove except we update the zobrist hash. Use this rather than Board.makeMove for making moves during a game
   inline void makeMove(chess::Board& board, chess::Move move){
-    if(board.hashed){
-      U64 newHash = zobrist::updateHash(board, move);
-      board.makeMove(move);
-      board.history[board.halfmoveClock] = newHash;
-    }
-    else{
-      board.makeMove(move);
+    if(!board.hashed){
+      // Seed history with the current position so repetition counting includes the root.
       board.history[board.halfmoveClock] = zobrist::getHash(board);
       board.hashed = true;
     }
+
+    U64 newHash = zobrist::updateHash(board, move);
+    board.makeMove(move);
+    board.history[board.halfmoveClock] = newHash;
   }
 }
