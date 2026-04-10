@@ -796,14 +796,21 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 //Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
 //Parameter "board" must be different than parameter "rootBoard"
 inline void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Tree& tree){
-  if(tree.root == nullptr || zobrist::getHash(board) != zobrist::getHash(rootBoard)){chess::makeMove(board, move); return;}
+  if(tree.root == nullptr ||
+    board.equivalentHistory(rootBoard) == false
+  ){
+      chess::makeMove(board, move);
+      return;
+  }
 
   chess::makeMove(board, move);
 
   Edge newRootEdge = Edge(chess::Move());
   for(int i=0; i<tree.root->children.size(); i++){
-    newRootEdge = tree.root->children[i];
-    if(newRootEdge.edge == move){break;}
+    if(tree.root->children[i].edge == move){
+      newRootEdge = tree.root->children[i];
+      break;
+    }
   }
   Node* newRoot = newRootEdge.child;
 

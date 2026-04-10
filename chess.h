@@ -108,6 +108,17 @@ struct Board{
     );
   }
 
+  bool equivalentHistory(const Board& board){
+    if(!hashed || !board.hashed){return false;}
+    if(startHistoryIndex != board.startHistoryIndex){return false;}
+    if(halfmoveClock != board.halfmoveClock){return false;}
+
+    for(int i=startHistoryIndex; i<=halfmoveClock; i++){
+      if(history[i] != board.history[i]){return false;}
+    }
+    return true;
+  }
+
   void setToFen(std::string fenString) {
     std::istringstream fenStream(fenString);
     std::string token;
