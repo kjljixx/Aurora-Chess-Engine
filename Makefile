@@ -1,5 +1,9 @@
 EXE := aurora
 
+ifneq ($(exe),)
+    EXE := $(exe)
+endif
+
 ifeq ($(OS),Windows_NT)
     override EXE := $(EXE).exe
 endif
@@ -14,5 +18,7 @@ endif
 
 build:
 	clang++ aurora.cpp external/Fathom-1.0/src/tbprobe.cpp -o $(EXE) -march=x86-64-v3 -O3 -std=c++17 -Wno-deprecated-declarations -DGIT_HASH=\"$(GIT_HASH)\"
+bench: build
+	./$(EXE) bench
 hash:
 	@echo $(GIT_HASH)
