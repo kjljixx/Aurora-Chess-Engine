@@ -8,7 +8,8 @@ ifeq ($(OS),Windows_NT)
     override EXE := $(EXE).exe
 endif
 
-GIT_HASH := $(shell git rev-parse --short HEAD)
+GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+GIT_HASH := $(GIT_BRANCH)-$(shell git rev-parse --short HEAD)
 GIT_DIFF := $(shell git diff --shortstat)
 
 ifneq ($(GIT_DIFF),)
