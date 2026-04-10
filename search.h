@@ -140,11 +140,14 @@ struct Tree{
   void setHash(){
     uint32_t hashMb = Aurora::hash.value;
     sizeLimit = 1000000 * hashMb * (Aurora::ttHash.value ? 1 : 0.8);
-    TT.clear();
     uint32_t ttHashBytes = Aurora::ttHash.value
                               ? Aurora::ttHash.value * 1000000
                               : hashMb * 1000000 * 0.2;
-    TT.resize(std::max(uint32_t(1), uint32_t(ttHashBytes / sizeof(TTEntry))));
+    size_t targetEntries = std::max<size_t>(1, ttHashBytes / sizeof(TTEntry));
+    if(TT.size() != targetEntries){
+      TT.clear();
+      TT.resize(targetEntries);
+    }
   }
 
   float getHashfull(){
@@ -242,6 +245,7 @@ struct Tree{
 };
 
 inline void destroyTree(Tree& tree){
+  tree.TT.clear();
   tree.tree.clear();
   tree.root = nullptr;
   tree.tail = nullptr;
