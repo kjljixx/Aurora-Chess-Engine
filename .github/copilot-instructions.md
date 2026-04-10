@@ -16,6 +16,7 @@
 - Build from repo root with `make EXE=auroradev`.
 - `make` uses `clang++` and targets `-march=x86-64-v3` with C++17.
 - Run the engine with `./auroradev` (or `auroradev.exe` on Windows).
+- Quit the engine with `quit` in stdin
 - Run benchmark with `auroradev bench`.
 - Before committing changes, ALWAYS run `auroradev bench` and append `bench xx` (where xx is the number of nodes searched) output to the commit message.
 
