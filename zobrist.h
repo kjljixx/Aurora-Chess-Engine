@@ -12,6 +12,16 @@ inline U64 random_U64() {
 	return seed;
 }
 
+inline bool shouldHashEnPassant(chess::Board& board){
+  if(!board.enPassant){
+    return false;
+  }
+
+  const uint8_t enPassantSquare = _bitscanForward(board.enPassant);
+  const U64 enPassantCapturers = lookupTables::pawnAttackTable[!board.sideToMove][enPassantSquare] & board.getOurPieces(chess::PAWN);
+  return enPassantCapturers != 0ULL;
+}
+
 inline U64 pieceKeys[12][64];
 inline U64 sideToMoveKey;
 inline U64 castlingKeys[16];
@@ -42,7 +52,7 @@ inline U64 getHash(chess::Board& board){
     }
   }
 
-  if(board.enPassant){
+  if(shouldHashEnPassant(board)){
     hash ^= enPassantKeys[squareIndexToFile(_bitscanForward(board.enPassant))];
   }
   
@@ -91,17 +101,27 @@ inline U64 updateHash(chess::Board& board, chess::Move move){
   if(moveFlags == chess::PROMOTION){hash ^= pieceKeys[2*(move.getPromotionPiece()-1)+(board.sideToMove ? 1 : 0)][endSquare];}
   else{hash ^= pieceKeys[2*(movingPiece-1)+(board.sideToMove ? 1 : 0)][endSquare];}
 
-  if(board.enPassant){
+  if(shouldHashEnPassant(board)){
     hash ^= enPassantKeys[squareIndexToFile(_bitscanForward(board.enPassant))]; //remove en passant from hash
   }
   if(movingPiece == chess::PAWN){
+    U64 newEnPassant = 0ULL;
     //double pawn push by white
     if((1ULL << endSquare) == (1ULL << startSquare) << 16){
-      hash ^= enPassantKeys[squareIndexToFile(endSquare)];
+      newEnPassant = (1ULL << startSquare) << 8;
     }
     //double pawn push by black
     else if((1ULL << endSquare) == (1ULL << startSquare) >> 16){
-      hash ^= enPassantKeys[squareIndexToFile(endSquare)];
+      newEnPassant = (1ULL << startSquare) >> 8;
+    }
+
+    if(newEnPassant){
+      const uint8_t enPassantSquare = _bitscanForward(newEnPassant);
+      const U64 theirPawns = board.getTheirPieces(chess::PAWN);
+      const U64 enPassantCapturers = lookupTables::pawnAttackTable[board.sideToMove][enPassantSquare] & theirPawns;
+      if(enPassantCapturers){
+        hash ^= enPassantKeys[squareIndexToFile(enPassantSquare)];
+      }
     }
   }
   bool castlingRightsChanged = false;
