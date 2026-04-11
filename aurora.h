@@ -5,8 +5,8 @@
 //Set to 1 if you want to build a version of Aurora which generates data, 2 for generating data while playing (cutechess), 0 for the normal version.
 #define DATAGEN 0
 
-#define VERSION_NUM "v1.26.0"
-#define VERSION_NAME ""
+#define VERSION_NUM "v1.26.1"
+#define VERSION_NAME "-nodestime"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
@@ -69,7 +69,9 @@ inline Option valSameMinWeight("valSameMinWeight", 0.015277783601196866, 0.001, 
 
 // 0: normal time management
 // 1: basic time management based on time left and increment only
-inline Option timeManager("timeManager", 0, 0, 1, 1);
+// 2: normal time management with nodestime
+// 3: basic time management with nodestime based on time left and increment only
+inline Option timeManager("timeManager", 0, 0, 3, 1);
 
 inline Option* getOption(std::string name){
   for(Option* option : options){

@@ -211,8 +211,17 @@ inline void go(std::istringstream& input, chess::Board board){
     search::search(board, limit, tree); 
   }
   else{
-    search::timeManagement tm(search::TIME);
+    search::timeManagement tm;
     int time;
+    const bool useNodeTime = Aurora::timeManager.value >= 2;
+    if(useNodeTime){
+      tm.tmType = search::NODES;
+    }
+    else{
+      tm.tmType = search::TIME;
+    }
+    const bool useSoftHardLimits = int(Aurora::timeManager.value) % 2 == 0;
+    tm.useSoftHardNodeLimits = useSoftHardLimits;
 
     int ourTime = 0;
     int ourInc = 0;
@@ -241,9 +250,9 @@ inline void go(std::istringstream& input, chess::Board board){
 
     int movesLeft = 30;
     int allocatedTime = fminf(0.05*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
-    tm.limit = allocatedTime/1000.0;
+    tm.limit = useNodeTime ? 30000.0*allocatedTime/1000.0 : allocatedTime/1000.0;
     allocatedTime = fminf(0.1*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
-    tm.hardLimit = allocatedTime/1000.0;
+    tm.hardLimit = useNodeTime ? 30000.0*allocatedTime/1000.0 : allocatedTime/1000.0;
     search::search(board, tm, tree);
   }
   rootBoard = board;

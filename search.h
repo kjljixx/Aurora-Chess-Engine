@@ -599,8 +599,9 @@ struct timeManagement{
   timeManagementType tmType = FOREVER;
   float hardLimit;
   float limit; //For FOREVER, this does not matter. For Nodes, this is the amount of nodes. For Time, it is the amount of seconds
-  timeManagement(timeManagementType _tmType, uint32_t _limit = 0): tmType(_tmType), limit(_limit) {}
-  timeManagement(): tmType(FOREVER), limit(0){}
+  bool useSoftHardNodeLimits = false;
+  timeManagement(timeManagementType _tmType, uint32_t _limit = 0): tmType(_tmType), hardLimit(_limit), limit(_limit) {}
+  timeManagement(): tmType(FOREVER), hardLimit(0), limit(0){}
 };
 
 //The main search function
@@ -640,7 +641,6 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
   //For Time Management
   tree.startNodes = tree.root->visits;
-  const bool useAdaptiveTimeScaling = (tm.tmType == TIME && Aurora::timeManager.value < 1);
   int bestMoveChanges = 0;
   float bestMoveChangesMultiplier = 1;
   chess::Move currBestMove;
@@ -665,9 +665,19 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   }
 
   while((tm.tmType == FOREVER) ||
-        (tm.tmType == TIME && elapsed.count()<std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit)) ||
-        (tm.tmType == NODES && tree.root->visits<tm.limit) ||
-        (tm.tmType == ITERS && tree.root->iters<tm.limit)){
+        (tm.tmType == TIME &&
+          ((tm.useSoftHardNodeLimits && elapsed.count()<std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit)) ||
+          (!tm.useSoftHardNodeLimits && elapsed.count()<tm.limit))
+        ) ||
+        (tm.tmType == NODES &&
+          ((tm.useSoftHardNodeLimits && (tree.root->visits - tree.startNodes) < std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit)) ||
+          (!tm.useSoftHardNodeLimits && (tree.root->visits - tree.startNodes) < tm.limit))
+        ) ||
+        (tm.tmType == ITERS &&
+          ((tm.useSoftHardNodeLimits && tree.root->iters < std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit)) ||
+          (!tm.useSoftHardNodeLimits && tree.root->iters < tm.limit))
+        )
+      ){
     chess::Board board = rootBoard;
 
     int currDepth = 0;
@@ -777,7 +787,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     }
 
     //Decide if we want to search longer or shorter depending on how much the best move has changed
-    if(useAdaptiveTimeScaling){
+    if(tm.useSoftHardNodeLimits){
       if(findBestEdge(tree.root).edge.value != currBestMove.value){
         bestMoveChanges++;
         currBestMove = findBestEdge(tree.root).edge;
