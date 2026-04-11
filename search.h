@@ -387,7 +387,7 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
     float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
       (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
       varianceScale*
-      parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (isLRUPruned ? 14 : 1));
+      parentVisitsTerm/std::pow(currNode ? currNode->visits : (isLRUPruned ? 14 : 1), 0.49);
 
     assert(currPriority>=-1);
 
