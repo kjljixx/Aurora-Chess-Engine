@@ -72,7 +72,7 @@ struct Node{
 
   float getInvVisitsPow(){
     if(invVisitsPowCacheAt != visits){
-      invVisitsPow = 1.0f / std::pow(float(visits), 0.49f);
+      invVisitsPow = 1.0f / std::pow(float(visits), 0.48f);
       invVisitsPowCacheAt = visits;
     }
     return invVisitsPow;
@@ -388,7 +388,7 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
   // std::cout << std::clamp(1.0+32*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 0.2, 2.0) << " ";
 
   const float invPowOne = 1.0f;
-  const float invPowPruned14 = 1.0f / std::pow(14.0f, 0.49f);
+  const float invPowPruned14 = 1.0f / std::pow(14.0f, 0.48f);
 
   for(int i=0; i<parent->children.size(); i++){
     Node* currNode = parent->children[i].child;
