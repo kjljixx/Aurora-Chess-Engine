@@ -49,9 +49,11 @@ struct Node{
   Node* newAddress = nullptr;
 
   uint32_t visits;
+  uint32_t invVisitsPowCacheAt;
   int iters;
   float avgValue;
   float sumSquaredVals = 0;
+  float invVisitsPow;
 
   bool isTerminal;
   uint8_t index;
@@ -60,12 +62,20 @@ struct Node{
 
   Node(Node* parent) :
   parent(parent),
-  visits(0), iters(0), avgValue(-2), isTerminal(false) {}
+  visits(0), invVisitsPowCacheAt(uint32_t(-1)), iters(0), avgValue(-2), invVisitsPow(0), isTerminal(false) {}
 
-  Node() : parent(nullptr), visits(0), iters(0), avgValue(-2), isTerminal(false) {}
+  Node() : parent(nullptr), visits(0), invVisitsPowCacheAt(uint32_t(-1)), iters(0), avgValue(-2), invVisitsPow(0), isTerminal(false) {}
 
   float variance(){
     return (sumSquaredVals-avgValue*avgValue);
+  }
+
+  float getInvVisitsPow(){
+    if(invVisitsPowCacheAt != visits){
+      invVisitsPow = 1.0f / std::pow(float(visits), 0.49f);
+      invVisitsPowCacheAt = visits;
+    }
+    return invVisitsPow;
   }
 };
 
@@ -377,17 +387,23 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
   
   // std::cout << std::clamp(1.0+32*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 0.2, 2.0) << " ";
 
+  const float invPowOne = 1.0f;
+  const float invPowPruned14 = 1.0f / std::pow(14.0f, 0.49f);
+
   for(int i=0; i<parent->children.size(); i++){
     Node* currNode = parent->children[i].child;
     Edge currEdge = parent->children[i];
 
     //We can make a guess about how many visits a node had before it was pruned by LRU
     bool isLRUPruned = parent->children[i].edge.value & (1 << 15);
+    float invVisitsPow = currNode
+      ? currNode->getInvVisitsPow()
+      : (isLRUPruned ? invPowPruned14 : invPowOne);
 
     float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
       (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
       varianceScale*
-      parentVisitsTerm/std::pow(currNode ? currNode->visits : (isLRUPruned ? 14 : 1), 0.49);
+      parentVisitsTerm*invVisitsPow;
 
     assert(currPriority>=-1);
 
