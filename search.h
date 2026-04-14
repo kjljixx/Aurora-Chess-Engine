@@ -125,7 +125,7 @@ struct Tree{
 
   //Used for nps calculations in printing search info
   int previousVisits = 0;
-  int previousElapsed = 0;
+  float previousElapsed = 0;
 
   uint8_t seldepth = 0;
   uint32_t depth = 0;
@@ -140,11 +140,14 @@ struct Tree{
   void setHash(){
     uint32_t hashMb = Aurora::hash.value;
     sizeLimit = 1000000 * hashMb * (Aurora::ttHash.value ? 1 : 0.8);
-    TT.clear();
     uint32_t ttHashBytes = Aurora::ttHash.value
                               ? Aurora::ttHash.value * 1000000
                               : hashMb * 1000000 * 0.2;
-    TT.resize(std::max(uint32_t(1), uint32_t(ttHashBytes / sizeof(TTEntry))));
+    size_t targetEntries = std::max<size_t>(1, ttHashBytes / sizeof(TTEntry));
+    if(TT.size() != targetEntries){
+      TT.clear();
+      TT.resize(targetEntries);
+    }
   }
 
   float getHashfull(){
@@ -242,6 +245,7 @@ struct Tree{
 };
 
 inline void destroyTree(Tree& tree){
+  tree.TT.clear();
   tree.tree.clear();
   tree.root = nullptr;
   tree.tail = nullptr;
@@ -600,8 +604,9 @@ struct timeManagement{
   timeManagementType tmType = FOREVER;
   float hardLimit;
   float limit; //For FOREVER, this does not matter. For Nodes, this is the amount of nodes. For Time, it is the amount of seconds
-  timeManagement(timeManagementType _tmType, uint32_t _limit = 0): tmType(_tmType), limit(_limit) {}
-  timeManagement(): tmType(FOREVER), limit(0){}
+  bool useSoftHardNodeLimits = false;
+  timeManagement(timeManagementType _tmType, uint32_t _limit = 0): tmType(_tmType), hardLimit(_limit), limit(_limit) {}
+  timeManagement(): tmType(FOREVER), hardLimit(0), limit(0){}
 };
 
 //The main search function
@@ -665,9 +670,19 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   }
 
   while((tm.tmType == FOREVER) ||
-        (tm.tmType == TIME && elapsed.count()<std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit)) ||
-        (tm.tmType == NODES && tree.root->visits<tm.limit) ||
-        (tm.tmType == ITERS && tree.root->iters<tm.limit)){
+        (tm.tmType == TIME &&
+          ((tm.useSoftHardNodeLimits && elapsed.count()<std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit)) ||
+          (!tm.useSoftHardNodeLimits && elapsed.count()<tm.limit))
+        ) ||
+        (tm.tmType == NODES &&
+          ((tm.useSoftHardNodeLimits && (tree.root->visits - tree.startNodes) < std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit)) ||
+          (!tm.useSoftHardNodeLimits && (tree.root->visits - tree.startNodes) < tm.limit))
+        ) ||
+        (tm.tmType == ITERS &&
+          ((tm.useSoftHardNodeLimits && tree.root->iters < std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit)) ||
+          (!tm.useSoftHardNodeLimits && tree.root->iters < tm.limit))
+        )
+      ){
     chess::Board board = rootBoard;
 
     int currDepth = 0;
@@ -777,10 +792,11 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     }
 
     //Decide if we want to search longer or shorter depending on how much the best move has changed
-    if(findBestEdge(tree.root).edge.value != currBestMove.value){
-      bestMoveChanges++;
-      currBestMove = findBestEdge(tree.root).edge;
-    }
+    if(tm.useSoftHardNodeLimits){
+      if(findBestEdge(tree.root).edge.value != currBestMove.value){
+        bestMoveChanges++;
+        currBestMove = findBestEdge(tree.root).edge;
+      }
 
     double expectedBestMoveChanges =
       Aurora::bestMoveChangesCoefficient.value *
@@ -807,14 +823,21 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 //Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
 //Parameter "board" must be different than parameter "rootBoard"
 inline void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Tree& tree){
-  if(tree.root == nullptr || zobrist::getHash(board) != zobrist::getHash(rootBoard)){chess::makeMove(board, move); return;}
+  if(tree.root == nullptr ||
+    board.equivalentHistory(rootBoard) == false
+  ){
+      chess::makeMove(board, move);
+      return;
+  }
 
   chess::makeMove(board, move);
 
   Edge newRootEdge = Edge(chess::Move());
   for(int i=0; i<tree.root->children.size(); i++){
-    newRootEdge = tree.root->children[i];
-    if(newRootEdge.edge == move){break;}
+    if(tree.root->children[i].edge == move){
+      newRootEdge = tree.root->children[i];
+      break;
+    }
   }
   Node* newRoot = newRootEdge.child;
 

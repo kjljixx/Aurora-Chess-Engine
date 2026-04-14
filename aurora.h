@@ -5,8 +5,8 @@
 //Set to 1 if you want to build a version of Aurora which generates data, 2 for generating data while playing (cutechess), 0 for the normal version.
 #define DATAGEN 0
 
-#define VERSION_NUM "v1.26.0"
-#define VERSION_NAME ""
+#define VERSION_NUM "v1.26.1"
+#define VERSION_NAME "-nodestime"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
@@ -79,6 +79,11 @@ inline Option bestMoveChangesExponent("bestMoveChangesExponent", 0.54, 0, 16, 0)
 inline Option bestMoveChangesMultiplierMin("bestMoveChangesMultiplierMin", 0.2, 0, 1024, 0);
 inline Option bestMoveChangesMultiplierMax("bestMoveChangesMultiplierMax", 2.0, 0, 1024, 0);
 
+// 0: normal time management
+// 1: basic time management based on time left and increment only
+// 2: normal time management with nodestime
+// 3: basic time management with nodestime based on time left and increment only
+inline Option timeManager("timeManager", 0, 0, 3, 1);
 inline Option timeManagementMovesLeft("timeManagementMovesLeft", 30, 1, 200, 1);
 inline Option timeManagementSoftFraction("timeManagementSoftFraction", 0.05, 0, 1, 0);
 inline Option timeManagementHardFraction("timeManagementHardFraction", 0.1, 0, 1, 0);

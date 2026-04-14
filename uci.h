@@ -10,6 +10,23 @@ inline search::Node* root;
 inline chess::Board rootBoard;
 inline search::Tree tree;
 
+inline void ensureBoardHashed(chess::Board& board){
+  if(board.hashed){
+    return;
+  }
+  board.history[board.halfmoveClock] = zobrist::getHash(board);
+  board.hashed = true;
+}
+
+inline void syncTreeWithBoardHistory(chess::Board& board){
+  ensureBoardHashed(board);
+  ensureBoardHashed(rootBoard);
+  if(!board.equivalentHistory(rootBoard)){
+    search::destroyTree(tree);
+    root = nullptr;
+  }
+}
+
 //bench stuff
 const int AMOUNT_OF_FENS = 25;
 
@@ -116,6 +133,8 @@ inline chess::Board position(std::istringstream& input){
 
   chess::Board board(fen);
 
+  ensureBoardHashed(board);
+
   makeMoves(board, input);
 
   std::cout << "info string position set to " << board.getFen() << std::endl;
@@ -169,33 +188,40 @@ inline void go(std::istringstream& input, chess::Board board){
   std::string token;
 
   input >> token;
+  syncTreeWithBoardHistory(board);
+
   if(token == "infinite"){
-    if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
     search::search(board, search::timeManagement(search::FOREVER), tree);
   }
   else if(token == "nodes"){
     int maxNodes;
     input >> maxNodes;
-    if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
     search::search(board, search::timeManagement(search::NODES, maxNodes), tree);
   }
   else if(token == "iters"){
     int maxIters;
     input >> maxIters;
-    if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
     search::search(board, search::timeManagement(search::ITERS, maxIters), tree);
   }
   else if(token == "movetime"){
     int time;
     input >> time;
-    if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
     search::timeManagement limit = search::timeManagement(search::TIME, 1000000000.0);
     limit.hardLimit = time/1000.0;
     search::search(board, limit, tree); 
   }
   else{
-    search::timeManagement tm(search::TIME);
+    search::timeManagement tm;
     int time;
+    const bool useNodeTime = Aurora::timeManager.value >= 2;
+    if(useNodeTime){
+      tm.tmType = search::NODES;
+    }
+    else{
+      tm.tmType = search::TIME;
+    }
+    const bool useSoftHardLimits = int(Aurora::timeManager.value) % 2 == 0;
+    tm.useSoftHardNodeLimits = useSoftHardLimits;
 
     int ourTime = 0;
     int ourInc = 0;
@@ -224,10 +250,9 @@ inline void go(std::istringstream& input, chess::Board board){
 
     int movesLeft = std::max(1, int(Aurora::timeManagementMovesLeft.value));
     int allocatedTime = fminf(Aurora::timeManagementSoftFraction.value*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
-    tm.limit = allocatedTime/1000.0;
+    tm.limit = useNodeTime ? 30000.0*allocatedTime/1000.0 : allocatedTime/1000.0;
     allocatedTime = fminf(Aurora::timeManagementHardFraction.value*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
-    tm.hardLimit = allocatedTime/1000.0;
-    if(zobrist::getHash(board) != zobrist::getHash(rootBoard)){search::destroyTree(tree);}
+    tm.hardLimit = useNodeTime ? 30000.0*allocatedTime/1000.0 : allocatedTime/1000.0;
     search::search(board, tm, tree);
   }
   rootBoard = board;
