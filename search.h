@@ -809,6 +809,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     bestMoveChangesMultiplier = std::clamp(bestMoveChanges / expectedBestMoveChanges,
                          bestMoveChangesMultiplierMin,
                          bestMoveChangesMultiplierMax);
+    }
   }
 
   //Output the final result of the search
