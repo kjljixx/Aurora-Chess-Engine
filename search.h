@@ -628,6 +628,8 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   tree.depth = 0;
 
   evaluation::NNUE<NNUEhiddenNeurons> nnue(evaluation::_NNUEparameters);
+  nnue.refreshAccumulator(rootBoard);
+  const std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> rootAccumulator = nnue.accumulator;
 
   Node* currNode = tree.root;
   
@@ -684,6 +686,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         )
       ){
     chess::Board board = rootBoard;
+    nnue.accumulator = rootAccumulator;
 
     int currDepth = 0;
     currNode = tree.root; tree.moveToHead(tree.root);
@@ -705,7 +708,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root);
 
       currEdge = &currNode->children[currEdgeIndex];
-      chess::makeMove(board, currEdge->edge);
+      nnue.updateAccumulator(board, currEdge->edge);
       traversePath.push_back({currEdge, board.history[board.halfmoveClock]});
 
       //If we only had a child edge before, create the corresponding child node
@@ -748,8 +751,6 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       Node* parentNode = currNode; //This will be where the backpropagation starts
 
       float currBestValue = 2;
-
-      nnue.refreshAccumulator(board);
       std::array<std::array<int16_t, NNUEhiddenNeurons>, 2> currAccumulator = nnue.accumulator;
 
       for(int i=0; i<parentNode->children.size(); i++){
