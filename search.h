@@ -756,6 +756,14 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         currEdge = &parentNode->children[i];
 
         chess::Board movedBoard = board;
+        
+        float seeValue = evaluation::SEE(movedBoard, currEdge->edge.getEndSquare(), -1, currEdge->edge.getStartSquare());
+        if(seeValue < 0){
+          float currCpValue = evaluation::valToCp(parentNode->avgValue);
+          currEdge->value = std::clamp(evaluation::cpToVal(currCpValue + seeValue), float(-1), float(1));
+          currBestValue = std::min(currBestValue, currEdge->value);
+          continue;
+        }
 
         nnue.accumulator = currAccumulator;
         nnue.updateAccumulator(movedBoard, currEdge->edge);
