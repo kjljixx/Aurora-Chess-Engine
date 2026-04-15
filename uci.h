@@ -248,10 +248,16 @@ inline void go(std::istringstream& input, chess::Board board){
       }
     } while(input >> token);
 
-    int movesLeft = 30;
-    int allocatedTime = fminf(0.05*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
+    int movesLeft = std::max(1, int(Aurora::timeManagementMovesLeft.value));
+    int allocatedTime = std::min(
+      Aurora::timeManagementSoftFraction.value*(ourTime + ourInc*movesLeft),
+      float(std::max(ourTime-50, 1))
+    );
     tm.limit = useNodeTime ? 30000.0*allocatedTime/1000.0 : allocatedTime/1000.0;
-    allocatedTime = fminf(0.1*(ourTime + ourInc*movesLeft), fmaxf(ourTime-50, 1));
+    allocatedTime = std::min(
+      Aurora::timeManagementHardFraction.value*(ourTime + ourInc*movesLeft),
+      float(std::max(ourTime-50, 1))
+    );
     tm.hardLimit = useNodeTime ? 30000.0*allocatedTime/1000.0 : allocatedTime/1000.0;
     search::search(board, tm, tree);
   }
@@ -264,6 +270,11 @@ inline void respondUci(){
                 "id author kjljixx\n"
                 "\n";
                 for(auto option : Aurora::options){
+                  #ifndef DEV
+                  if(option->hidden){
+                    continue;
+                  }
+                  #endif
                   if(option->type == 2){
                     std::cout << "option name " << option->name << " "
                                         "type " << "string" << " "

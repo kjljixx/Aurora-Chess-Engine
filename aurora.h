@@ -5,8 +5,8 @@
 //Set to 1 if you want to build a version of Aurora which generates data, 2 for generating data while playing (cutechess), 0 for the normal version.
 #define DATAGEN 0
 
-#define VERSION_NUM "v1.26.1"
-#define VERSION_NAME "-nodestime"
+#define VERSION_NUM "v1.26.2"
+#define VERSION_NAME "-spsa"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
@@ -36,14 +36,15 @@ struct Option{
   std::string sValue;
   
   int type; //0 = string (which aurora uses for floats), 1 = spin (an int), 2 = string (an actual string)
+  bool hidden;
 
-  Option(std::string name, float defaultValue, float minValue, float maxValue, int type) :
-    name(name), defaultValue(defaultValue), minValue(minValue), maxValue(maxValue), value(defaultValue), type(type)
+  Option(std::string name, float defaultValue, float minValue, float maxValue, int type, bool hidden = false) :
+    name(name), defaultValue(defaultValue), minValue(minValue), maxValue(maxValue), value(defaultValue), type(type), hidden(hidden)
     {
       options.push_back(this);
     }
-  Option(std::string name, std::string defaultValue, int type) :
-    name(name), sDefaultValue(defaultValue), minValue(-1), maxValue(-1), sValue(defaultValue), type(type)
+  Option(std::string name, std::string defaultValue, int type, bool hidden = false) :
+    name(name), sDefaultValue(defaultValue), minValue(-1), maxValue(-1), sValue(defaultValue), type(type), hidden(hidden)
     {
       options.push_back(this);
     }
@@ -62,16 +63,32 @@ inline Option outputLevel("outputLevel", 2, -1, 3, 1);
 //  2: output bestmove and info at end of search and output info every 2 seconds
 //  3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 
-inline Option rootExplorationFactor("rootExplorationFactor", 0.026, 0.001, 1024, 0);
-inline Option explorationFactor("explorationFactor", 0.015, 0.001, 1024, 0);
-inline Option valChangedMinWeight("valChangedMinWeight", 0.1560282435642479, 0.001, 1024, 0);
-inline Option valSameMinWeight("valSameMinWeight", 0.015277783601196866, 0.001, 1024, 0);
-
+inline Option timeManager("timeManager", 0, 0, 3, 1);
 // 0: normal time management
 // 1: basic time management based on time left and increment only
 // 2: normal time management with nodestime
 // 3: basic time management with nodestime based on time left and increment only
-inline Option timeManager("timeManager", 0, 0, 3, 1);
+
+inline Option rootExplorationFactor("rootExplorationFactor", 0.026254, 0.001, 1024, 0, true);
+inline Option explorationFactor("explorationFactor", 0.013573, 0.001, 1024, 0, true);
+inline Option valChangedMinWeight("valChangedMinWeight", 0.13744, 0.001, 1024, 0, true);
+inline Option valSameMinWeight("valSameMinWeight", 0.012934, 0.001, 1024, 0, true);
+
+inline Option varianceScaleMultiplier("varianceScaleMultiplier", 15.262608, 0, 1024, 0, true);
+inline Option varianceScaleOffset("varianceScaleOffset", 0.006116, -1, 1, 0, true);
+inline Option varianceScaleMin("varianceScaleMin", 0.974996, 0, 1024, 0, true);
+inline Option varianceScaleMax("varianceScaleMax", 1.92726, 0, 1024, 0, true);
+
+inline Option visitWindow("visitWindow", 0.037702, 0, 10, 0, true);
+
+inline Option bestMoveChangesCoefficient("bestMoveChangesCoefficient", 0.233217, 0, 1024, 0, true);
+inline Option bestMoveChangesExponent("bestMoveChangesExponent", 0.587161, 0, 16, 0, true);
+inline Option bestMoveChangesMultiplierMin("bestMoveChangesMultiplierMin", 0.241893, 0, 1024, 0, true);
+inline Option bestMoveChangesMultiplierMax("bestMoveChangesMultiplierMax", 2.053642, 0, 1024, 0, true);
+
+inline Option timeManagementMovesLeft("timeManagementMovesLeft", 30, 1, 200, 1, true);
+inline Option timeManagementSoftFraction("timeManagementSoftFraction", 0.051142, 0, 1, 0, true);
+inline Option timeManagementHardFraction("timeManagementHardFraction", 0.095422, 0, 1, 0, true);
 
 inline Option* getOption(std::string name){
   for(Option* option : options){

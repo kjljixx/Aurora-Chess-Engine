@@ -1,4 +1,5 @@
 EXE := aurora
+BUILD_OPTIONS := -march=x86-64-v3 -O3 -std=c++17 -Wno-deprecated-declarations
 
 ifneq ($(exe),)
     EXE := $(exe)
@@ -18,8 +19,10 @@ ifneq ($(GIT_DIFF),)
 endif
 
 build:
-	clang++ aurora.cpp external/Fathom-1.0/src/tbprobe.cpp -o $(EXE) -march=x86-64-v3 -O3 -std=c++17 -Wno-deprecated-declarations -DGIT_HASH=\"$(GIT_HASH)\"
+	clang++ aurora.cpp external/Fathom-1.0/src/tbprobe.cpp -o $(EXE) -DGIT_HASH=\"$(GIT_HASH)\" $(BUILD_OPTIONS)
 bench: build
 	./$(EXE) bench
 hash:
 	@echo $(GIT_HASH)
+dev:
+	clang++ aurora.cpp external/Fathom-1.0/src/tbprobe.cpp -o $(EXE) -DGIT_HASH=\"$(GIT_HASH)\" $(BUILD_OPTIONS) -DDEV
