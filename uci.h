@@ -264,6 +264,11 @@ inline void respondUci(){
                 "id author kjljixx\n"
                 "\n";
                 for(auto option : Aurora::options){
+                  #ifndef DEV
+                  if(option->hidden){
+                    continue;
+                  }
+                  #endif
                   if(option->type == 2){
                     std::cout << "option name " << option->name << " "
                                         "type " << "string" << " "
