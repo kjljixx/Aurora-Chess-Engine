@@ -139,10 +139,10 @@ struct Tree{
 
   void setHash(){
     uint32_t hashMb = Aurora::hash.value;
-    sizeLimit = 1000000 * hashMb * (Aurora::ttHash.value ? 1 : 0.8);
+    sizeLimit = 1000000 * hashMb * (Aurora::ttHash.value ? 1 : (1-Aurora::ttHashProportion.value));
     uint32_t ttHashBytes = Aurora::ttHash.value
                               ? Aurora::ttHash.value * 1000000
-                              : hashMb * 1000000 * 0.2;
+                              : hashMb * 1000000 * Aurora::ttHashProportion.value;
     size_t targetEntries = std::max<size_t>(1, ttHashBytes / sizeof(TTEntry));
     if(TT.size() != targetEntries){
       TT.clear();

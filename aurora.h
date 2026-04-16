@@ -90,6 +90,8 @@ inline Option timeManagementMovesLeft("timeManagementMovesLeft", 30, 1, 200, 1, 
 inline Option timeManagementSoftFraction("timeManagementSoftFraction", 0.051142, 0, 1, 0, true);
 inline Option timeManagementHardFraction("timeManagementHardFraction", 0.095422, 0, 1, 0, true);
 
+inline Option ttHashProportion("ttHashProportion", 0.2, 0, 1, 0, true);
+
 inline Option* getOption(std::string name){
   for(Option* option : options){
     if(option->name == name) return option;
