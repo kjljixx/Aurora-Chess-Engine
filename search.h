@@ -373,21 +373,12 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
   float varianceScale = 
     (1.0/parent->iters)*1.0+
     (1.0-1.0/parent->iters)*
-<<<<<<< HEAD
-      std::clamp<double>(
-        1.0+Aurora::varianceScaleMultiplier.value*
-              (std::sqrt(std::max(parent->variance(), float(0)))-Aurora::varianceScaleOffset.value),
-        Aurora::varianceScaleMin.value,
-        Aurora::varianceScaleMax.value
-      );
-=======
     std::clamp<double>(
       1.0+Aurora::varianceScaleMultiplier.value*
             (std::sqrt(std::max(parent->variance(), float(0)))-Aurora::varianceScaleOffset.value),
       Aurora::varianceScaleMin.value,
       Aurora::varianceScaleMax.value
     );
->>>>>>> main
   
   // std::cout << std::clamp(1.0+32*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 0.2, 2.0) << " ";
 
@@ -777,13 +768,9 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
       int visits = 0;
       for(int i=0; i<parentNode->children.size(); i++){
-<<<<<<< HEAD
-        if(parentNode->children[i].value <= currBestValue + Aurora::visitWindow.value){visits++;}
-=======
         if(parentNode->children[i].value <= currBestValue + Aurora::visitWindow.value){
           visits++;
         }
->>>>>>> main
       }
       assert(visits >= 1);
 
@@ -817,15 +804,6 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       Aurora::bestMoveChangesCoefficient.value *
       (std::pow(tree.root->visits, Aurora::bestMoveChangesExponent.value) -
        std::pow(tree.startNodes, Aurora::bestMoveChangesExponent.value));
-<<<<<<< HEAD
-    const double bestMoveChangesMultiplierMin = std::min(double(Aurora::bestMoveChangesMultiplierMin.value),
-                               double(Aurora::bestMoveChangesMultiplierMax.value));
-    const double bestMoveChangesMultiplierMax = std::max(double(Aurora::bestMoveChangesMultiplierMin.value),
-                               double(Aurora::bestMoveChangesMultiplierMax.value));
-    bestMoveChangesMultiplier = std::clamp(bestMoveChanges / expectedBestMoveChanges,
-                         bestMoveChangesMultiplierMin,
-                         bestMoveChangesMultiplierMax);
-=======
     const double bestMoveChangesMultiplierMin =
       std::min(double(Aurora::bestMoveChangesMultiplierMin.value),
               double(Aurora::bestMoveChangesMultiplierMax.value));
@@ -836,7 +814,6 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       std::clamp(bestMoveChanges / expectedBestMoveChanges,
                 bestMoveChangesMultiplierMin,
                 bestMoveChangesMultiplierMax);
->>>>>>> main
     }
   }
 

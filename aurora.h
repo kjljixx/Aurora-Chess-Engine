@@ -86,11 +86,7 @@ inline Option bestMoveChangesExponent("bestMoveChangesExponent", 0.587161, 0, 16
 inline Option bestMoveChangesMultiplierMin("bestMoveChangesMultiplierMin", 0.241893, 0, 1024, 0, true);
 inline Option bestMoveChangesMultiplierMax("bestMoveChangesMultiplierMax", 2.053642, 0, 1024, 0, true);
 
-<<<<<<< HEAD
-inline Option timeManagementMovesLeft("timeManagementMovesLeft", 30, 1, 200, 0, true);
-=======
 inline Option timeManagementMovesLeft("timeManagementMovesLeft", 30, 1, 200, 1, true);
->>>>>>> main
 inline Option timeManagementSoftFraction("timeManagementSoftFraction", 0.051142, 0, 1, 0, true);
 inline Option timeManagementHardFraction("timeManagementHardFraction", 0.095422, 0, 1, 0, true);
 
