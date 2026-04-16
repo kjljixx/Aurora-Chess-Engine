@@ -768,7 +768,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
             // std::cout << seeValue << "\n";
             float currCpValue = evaluation::valToCp(parentNode->avgValue);
             // std::cout << currCpValue << "\n";
-            currEdge->value = std::clamp(evaluation::cpToVal(currCpValue - seeValue), float(-1), float(1));
+            currEdge->value = std::clamp(evaluation::cpToVal(-currCpValue - seeValue), float(-1), float(1));
             // std::cout << parentNode->avgValue << "\n";
             // std::cout << currEdge->value << "\n";
             currBestValue = std::min(currBestValue, currEdge->value);
