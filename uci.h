@@ -248,7 +248,7 @@ inline void go(std::istringstream& input, chess::Board board){
       }
     } while(input >> token);
 
-    int movesLeft = std::max(1, int(Aurora::timeManagementMovesLeft.value));
+    int movesLeft = Aurora::timeManagementMovesLeft.value;
     int allocatedTime = std::min(
       Aurora::timeManagementSoftFraction.value*(ourTime + ourInc*movesLeft),
       float(std::max(ourTime-50, 1))
