@@ -763,7 +763,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
           float seeValue = evaluation::SEE(movedBoard, currEdge->edge.getEndSquare(), -10000000, currEdge->edge.getStartSquare());
           // movedBoard.printBoard();
           // std::cout << currEdge->edge.toStringRep() << "\n";
-          if(seeValue < -100){
+          if(seeValue < -300){
             // std::cout << "\n";
             // std::cout << seeValue << "\n";
             float currCpValue = evaluation::valToCp(parentNode->avgValue);
