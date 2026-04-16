@@ -757,10 +757,15 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
         chess::Board movedBoard = board;
         
-        float seeValue = evaluation::SEE(movedBoard, currEdge->edge.getEndSquare(), -1, currEdge->edge.getStartSquare());
+        float seeValue = evaluation::SEE(movedBoard, currEdge->edge.getEndSquare(), -10000000, currEdge->edge.getStartSquare());
         if(seeValue < 0){
+          // std::cout << "\n";
+          // std::cout << seeValue << "\n";
           float currCpValue = evaluation::valToCp(parentNode->avgValue);
-          currEdge->value = std::clamp(evaluation::cpToVal(currCpValue + seeValue), float(-1), float(1));
+          // std::cout << currCpValue << "\n";
+          currEdge->value = std::clamp(evaluation::cpToVal(currCpValue - seeValue), float(-1), float(1));
+          // std::cout << parentNode->avgValue << "\n";
+          // std::cout << currEdge->value << "\n";
           currBestValue = std::min(currBestValue, currEdge->value);
           continue;
         }
