@@ -390,7 +390,7 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
     bool isLRUPruned = parent->children[i].edge.value & (1 << 15);
 
     float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
-      (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
+      (parent->visits*0.001 > (currNode ? currNode->visits : 1) ? 2 : 1)*
       varianceScale*
       parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (isLRUPruned ? 14 : 1));
 
