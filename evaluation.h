@@ -171,12 +171,12 @@ inline int* eg_table[6] =
 };
 
 inline float cpToVal(int cp){
-  return std::clamp(std::atan(cp/100.0)/1.57079633, -1.0, 1.0);
+  return std::clamp(std::atan(cp/Aurora::cpMultiplier.value)/1.57079633, -1.0, 1.0);
 }
 
 inline int valToCp(float val){
   return std::clamp(
-            std::round(std::tan(std::min(std::max(double(val), -0.9999), 0.9999)*1.57079633)*100)
+            std::round(std::tan(std::min(std::max(double(val), -0.9999), 0.9999)*1.57079633)*Aurora::cpMultiplier.value)
         , -100000.0, 100000.0);
 }
 

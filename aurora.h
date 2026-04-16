@@ -92,6 +92,13 @@ inline Option timeManagementHardFraction("timeManagementHardFraction", 0.095422,
 
 inline Option ttHashProportion("ttHashProportion", 0.2, 0, 1, 0, true);
 
+inline Option lruPrunedVisitsEstimate("lruPrunedVisitsEstimate", 14, 0, 1000, 0, true);
+
+inline Option explorationBoostThreshold("explorationBoostThreshold", 2500, 0, 10000, 0, true);
+inline Option explorationBoostMultiplier("explorationBoostMultiplier", 2, 1, 16, 0, true);
+
+inline Option cpMultiplier("cpMultiplier", 100.0, 50.0, 150.0, 0, true);
+
 inline Option* getOption(std::string name){
   for(Option* option : options){
     if(option->name == name) return option;
