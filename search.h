@@ -395,8 +395,8 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
       std::clamp<double>(
         1.0+Aurora::varianceScaleMultiplier.value*
               (std::sqrt(std::max(childVariance, float(0)))-Aurora::varianceScaleOffset.value),
-        Aurora::varianceScaleMin.value,
-        Aurora::varianceScaleMax.value
+        0.9,
+        1.2
       );
 
     //We can make a guess about how many visits a node had before it was pruned by LRU
