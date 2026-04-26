@@ -4,6 +4,7 @@
 
 //Set to 1 if you want to build a version of Aurora which generates data, 2 for generating data while playing (cutechess), 0 for the normal version.
 #define DATAGEN 0
+#define DEV 1
 
 #define VERSION_NUM "v1.26.2"
 #define VERSION_NAME "-spsa"
