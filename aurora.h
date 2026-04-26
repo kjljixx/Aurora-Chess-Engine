@@ -81,6 +81,8 @@ inline Option varianceScaleMax("varianceScaleMax", 1.92726, 0, 1024, 0, true);
 
 inline Option visitWindow("visitWindow", 0.037702, 0, 10, 0, true);
 
+inline Option visitBoostMultiplier("visitBoostMultiplier", 1.0, 0, 10, 0, true);
+inline Option visitBoostOffset("visitBoostOffset", 0.0004, 0, 1, 0, true);
 inline Option bestMoveChangesCoefficient("bestMoveChangesCoefficient", 0.233217, 0, 1024, 0, true);
 inline Option bestMoveChangesExponent("bestMoveChangesExponent", 0.587161, 0, 16, 0, true);
 inline Option bestMoveChangesMultiplierMin("bestMoveChangesMultiplierMin", 0.241893, 0, 1024, 0, true);
