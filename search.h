@@ -402,8 +402,12 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
     //We can make a guess about how many visits a node had before it was pruned by LRU
     bool isLRUPruned = parent->children[i].edge.value & (1 << 15);
 
+    float childVisits = currNode ? currNode->visits : 1;
+    float boostTerm = 1.0 + Aurora::visitBoostMultiplier.value * (parent->visits * Aurora::visitBoostOffset.value) / 
+                      (parent->visits * Aurora::visitBoostOffset.value + childVisits);
+
     float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
-      (parent->visits*0.0004 > (currNode ? currNode->visits : 1) ? 2 : 1)*
+      boostTerm*
       varianceScale*
       childVarianceScale*
       parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (isLRUPruned ? 14 : 1));
