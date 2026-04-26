@@ -386,17 +386,17 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
     Node* currNode = parent->children[i].child;
     Edge currEdge = parent->children[i];
 
-    float childVariance = currNode ? currNode->variance() : Aurora::varianceScaleOffset.value;
+    float childVariance = currNode ? currNode->variance() : Aurora::childVarianceScaleOffset.value;
     int childIters = currNode ? currNode->iters : 1;
 
     float childVarianceScale = 
       (1.0/childIters)*1.0+
       (1.0-1.0/childIters)*
       std::clamp<double>(
-        1.0+Aurora::varianceScaleMultiplier.value*
-              (std::sqrt(std::max(childVariance, float(0)))-Aurora::varianceScaleOffset.value),
-        0.9,
-        1.2
+        1.0+Aurora::childVarianceScaleMultiplier.value*
+              (std::sqrt(std::max(childVariance, float(0)))-Aurora::childVarianceScaleOffset.value),
+        Aurora::childVarianceScaleMin.value,
+        Aurora::childVarianceScaleMax.value
       );
 
     //We can make a guess about how many visits a node had before it was pruned by LRU

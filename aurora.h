@@ -79,6 +79,11 @@ inline Option varianceScaleOffset("varianceScaleOffset", 0.006116, -1, 1, 0, tru
 inline Option varianceScaleMin("varianceScaleMin", 0.974996, 0, 1024, 0, true);
 inline Option varianceScaleMax("varianceScaleMax", 1.92726, 0, 1024, 0, true);
 
+inline Option childVarianceScaleMultiplier("childVarianceScaleMultiplier", 15.262608, 0, 1024, 0, true);
+inline Option childVarianceScaleOffset("childVarianceScaleOffset", 0.006116, -1, 1, 0, true);
+inline Option childVarianceScaleMin("childVarianceScaleMin", 0.9, 0, 1024, 0, true);
+inline Option childVarianceScaleMax("childVarianceScaleMax", 1.2, 0, 1024, 0, true);
+
 inline Option visitWindow("visitWindow", 0.037702, 0, 10, 0, true);
 
 inline Option visitBoostMultiplier("visitBoostMultiplier", 1.0, 0, 10, 0, true);
