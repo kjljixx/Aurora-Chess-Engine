@@ -393,7 +393,7 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
     float boostTerm = 1.0 + Aurora::visitBoostMultiplier.value * (parent->visits * Aurora::visitBoostOffset.value) / 
                       (parent->visits * Aurora::visitBoostOffset.value + childVisits);
 
-    float currPriority = -(currNode ? currNode->avgValue : currEdge.value)+
+    float currPriority = -(currNode && currNode->iters >= 6 ? currNode->avgValue : currEdge.value)+
       boostTerm*
       varianceScale*
       parentVisitsTerm/std::sqrt(currNode ? currNode->visits : (isLRUPruned ? 14 : 1));
