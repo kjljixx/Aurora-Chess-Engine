@@ -71,8 +71,8 @@ inline Option timeManager("timeManager", 0, 0, 3, 1);
 
 inline Option rootExplorationFactor("rootExplorationFactor", 0.026254, 0.001, 1024, 0, true);
 inline Option explorationFactor("explorationFactor", 0.013573, 0.001, 1024, 0, true);
-inline Option valChangedMinWeight("valChangedMinWeight", 0.13744, 0.001, 1024, 0, true);
-inline Option valSameMinWeight("valSameMinWeight", 0.012934, 0.001, 1024, 0, true);
+inline Option valChangedAlpha("valChangedAlpha", 0.86256, 0.0, 1.0, 0, true);
+inline Option valSameAlpha("valSameAlpha", 0.98707, 0.0, 1.0, 0, true);
 
 inline Option varianceScaleMultiplier("varianceScaleMultiplier", 15.262608, 0, 1024, 0, true);
 inline Option varianceScaleOffset("varianceScaleOffset", 0.006116, -1, 1, 0, true);

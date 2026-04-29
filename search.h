@@ -479,7 +479,8 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
         continueBackprop = false;
 
         currEdge->child->iters++;
-        float newValWeight = std::clamp(1.0/currEdge->child->iters, double(Aurora::valSameMinWeight.value), 1.0);
+        const float alpha = Aurora::valSameAlpha.value;
+        const float newValWeight = (alpha == 1.0) ? 1.0 / currEdge->child->iters : (1.0 - alpha) / (1.0 - std::pow(alpha, currEdge->child->iters));
         currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
         currEdge->child->sumSquaredVals = currEdge->child->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
 
@@ -500,13 +501,15 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
       result = -currEdge->value;
 
       currEdge->child->iters++;
-      float newValWeight = std::clamp(1.0/currEdge->child->iters, double(Aurora::valChangedMinWeight.value), 1.0);
+      const float alpha = Aurora::valChangedAlpha.value;
+      const float newValWeight = (alpha == 1.0) ? 1.0 / currEdge->child->iters : (1.0 - alpha) / (1.0 - std::pow(alpha, currEdge->child->iters));
       currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
       currEdge->child->sumSquaredVals = currEdge->child->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
     }
     else{
       currEdge->child->iters++;
-      float newValWeight = std::clamp(1.0/currEdge->child->iters, double(Aurora::valSameMinWeight.value), 1.0);
+      const float alpha = Aurora::valSameAlpha.value;
+      const float newValWeight = (alpha == 1.0) ? 1.0 / currEdge->child->iters : (1.0 - alpha) / (1.0 - std::pow(alpha, currEdge->child->iters));
       currEdge->child->avgValue = currEdge->child->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
       currEdge->child->sumSquaredVals = currEdge->child->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
     }
