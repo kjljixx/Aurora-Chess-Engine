@@ -40,13 +40,11 @@ struct Edge{
 
 struct Node{
   std::vector<Edge> children;
-  Node* parent;
+  uint32_t parentIdx = UINT32_MAX;
 
   //For LRU tree management
-  Node* backLink = nullptr; //back = node use less recently
-  Node* forwardLink = nullptr; //forward = node used more recently
-  //For Tree Reuse
-  Node* newAddress = nullptr;
+  uint32_t backIdx = UINT32_MAX; //back = node use less recently
+  uint32_t forwardIdx = UINT32_MAX; //forward = node used more recently
 
   uint32_t visits;
   int iters;
@@ -58,11 +56,13 @@ struct Node{
   //For Tree Reuse
   bool mark = false;
 
-  Node(Node* parent) :
-  parent(parent),
-  visits(0), iters(0), avgValue(-2), isTerminal(false) {}
+  Node(uint32_t parentIdx) :
+    parentIdx(parentIdx),
+    visits(0), iters(0), avgValue(-2), isTerminal(false) {}
 
-  Node() : parent(nullptr), visits(0), iters(0), avgValue(-2), isTerminal(false) {}
+  Node() :
+    parentIdx(UINT32_MAX),
+    visits(0), iters(0), avgValue(-2), isTerminal(false) {}
 
   float variance(){
     return (sumSquaredVals-avgValue*avgValue);
@@ -115,13 +115,25 @@ struct TTEntry{
 };
 
 struct Tree{
-  std::deque<Node> tree;
+  std::vector<Node> tree;
   std::vector<TTEntry> TT;
-  Node* root = nullptr;
+  uint32_t rootIdx = UINT32_MAX;
   uint64_t sizeLimit = 0;
   uint64_t currSize = 0;
-  Node* tail = nullptr;
-  Node* head = nullptr;
+  uint32_t tailIdx = UINT32_MAX;
+  uint32_t headIdx = UINT32_MAX;
+
+  // Helper accessors
+  Node* getNode(uint32_t idx) {
+    return idx == UINT32_MAX ? nullptr : &tree[idx];
+  }
+  uint32_t getIdx(Node* node) {
+    return node == nullptr ? UINT32_MAX : uint32_t(node - tree.data());
+  }
+
+  Node* root() { return getNode(rootIdx); }
+  Node* head() { return getNode(headIdx); }
+  Node* tail() { return getNode(tailIdx); }
 
   //Used for nps calculations in printing search info
   int previousVisits = 0;
@@ -148,6 +160,7 @@ struct Tree{
       TT.clear();
       TT.resize(targetEntries);
     }
+    tree.reserve(sizeLimit / sizeof(Node));
   }
 
   float getHashfull(){
@@ -168,78 +181,81 @@ struct Tree{
 
   //for debug purposes
   void passthrough(){
-    Node* currNode = tail;
-    while(currNode){
-      currNode = currNode->forwardLink;
+    uint32_t currIdx = tailIdx;
+    while(currIdx != UINT32_MAX){
+      currIdx = tree[currIdx].forwardIdx;
     }
-    currNode = head;
-    while(currNode){
-      currNode = currNode->backLink;
+    currIdx = headIdx;
+    while(currIdx != UINT32_MAX){
+      currIdx = tree[currIdx].backIdx;
     }
     return;
   }
 
   void moveToHead(Node* node){
-    if(head == node){
+    uint32_t nodeIdx = getIdx(node);
+    if(headIdx == nodeIdx){
       return;
     }
-    if(tail == node && node->forwardLink){
-      tail = node->forwardLink;
+    if(tailIdx == nodeIdx && node->forwardIdx != UINT32_MAX){
+      tailIdx = node->forwardIdx;
     }
-    if(node->backLink){
-      node->backLink->forwardLink = node->forwardLink;
+    if(node->backIdx != UINT32_MAX){
+      tree[node->backIdx].forwardIdx = node->forwardIdx;
     }
-    if(node->forwardLink){
-      node->forwardLink->backLink = node->backLink;
+    if(node->forwardIdx != UINT32_MAX){
+      tree[node->forwardIdx].backIdx = node->backIdx;
     }
-    head->forwardLink = node;
-    node->backLink = head;
-    node->forwardLink = nullptr;
-    head = node;
+    tree[headIdx].forwardIdx = nodeIdx;
+    node->backIdx = headIdx;
+    node->forwardIdx = UINT32_MAX;
+    headIdx = nodeIdx;
   }
 
   Node* push_back(Node node){
     if(sizeLimit != 0 && currSize >= sizeLimit){
-      assert(tail);
-      Node* currTail = tail;
+      assert(tailIdx != UINT32_MAX);
+      uint32_t currTailIdx = tailIdx;
+      Node* currTail = &tree[currTailIdx];
       for(int i=0; i<currTail->children.size(); i++){
         currSize -= sizeof(Edge);
         if(currTail->children[i].child){
-          currTail->children[i].child->parent = nullptr;
+          currTail->children[i].child->parentIdx = UINT32_MAX;
         }
       }
-      if(currTail->parent){
+      if(currTail->parentIdx != UINT32_MAX){
         //Update the 16th bit in the chess::Move to indicate that the child was pruned
-        currTail->parent->children[currTail->index].edge.value |= 1 << 15;
-        currTail->parent->children[currTail->index].child = nullptr;
+        tree[currTail->parentIdx].children[currTail->index].edge.value |= 1 << 15;
+        tree[currTail->parentIdx].children[currTail->index].child = nullptr;
       }
-      if(currTail->forwardLink){
-        currTail->forwardLink->backLink = nullptr;
+      if(currTail->forwardIdx != UINT32_MAX){
+        tree[currTail->forwardIdx].backIdx = UINT32_MAX;
       }
 
-      tail = currTail->forwardLink;
-      tail->backLink = nullptr;
+      tailIdx = currTail->forwardIdx;
+      tree[tailIdx].backIdx = UINT32_MAX;
 
       *currTail = node;
       currTail->children.shrink_to_fit(); //Free Memory
-      head->forwardLink = currTail;
-      currTail->backLink = head;
-      currTail->forwardLink = nullptr;
-      head = currTail;
-      return head;
+      tree[headIdx].forwardIdx = currTailIdx;
+      currTail->backIdx = headIdx;
+      currTail->forwardIdx = UINT32_MAX;
+      headIdx = currTailIdx;
+      return &tree[headIdx];
     }
     else{
       tree.push_back(node);
       currSize += sizeof(Node);
-      tree.back().backLink = head;
-      if(head){
-        head->forwardLink = &tree.back();
+      uint32_t newNodeIdx = uint32_t(tree.size() - 1);
+      tree[newNodeIdx].backIdx = headIdx;
+      if(headIdx != UINT32_MAX){
+        tree[headIdx].forwardIdx = newNodeIdx;
       }
       else{
-        tail = &tree.back();
+        tailIdx = newNodeIdx;
       }
-      head = &tree.back();
-      return &tree.back();
+      headIdx = newNodeIdx;
+      return &tree[newNodeIdx];
     }
   }
 };
@@ -247,9 +263,9 @@ struct Tree{
 inline void destroyTree(Tree& tree){
   tree.TT.clear();
   tree.tree.clear();
-  tree.root = nullptr;
-  tree.tail = nullptr;
-  tree.head = nullptr;
+  tree.rootIdx = UINT32_MAX;
+  tree.tailIdx = UINT32_MAX;
+  tree.headIdx = UINT32_MAX;
   tree.currSize = 0;
 }
 
@@ -269,54 +285,53 @@ inline uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked
   return markedNodes;
 }
 
-//Returns a pointer to the new root, which is different from the pointer given as a parameter because of the garbage collection
-inline Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
+//Returns the index of the new root
+inline uint32_t moveRootToChild(Tree& tree, uint32_t newRootIdx, uint32_t currRootIdx){
   //LISP 2 Garbage Collection Algorithm (https://en.wikipedia.org/wiki/Mark%E2%80%93compact_algorithm#LISP_2_algorithm)
   //Mark all nodes which we want to keep
-  uint64_t markedNodes = markSubtree(newRoot);
-  bool marked = newRoot->mark;
+  uint64_t markedNodes = markSubtree(tree.getNode(newRootIdx));
+  bool marked = tree.tree[newRootIdx].mark;
 
-  //Index of the next unreserved address in tree.tree
-  uint64_t freePointer = 0;
+  std::vector<uint32_t> forwardingTable(tree.tree.size(), UINT32_MAX);
+  uint32_t freePointer = 0;
 
   //Reserve addresses for all nodes we want to keep
   for(uint32_t i=0; i<tree.tree.size(); i++){
-    Node* livePointer = &tree.tree[i];
-    if(livePointer->mark == marked){
-      livePointer->newAddress = &tree.tree[freePointer];
-      freePointer++;
+    if(tree.tree[i].mark == marked){
+      forwardingTable[i] = freePointer++;
     }
   }
 
-  Node* newRootNewAddress = newRoot->newAddress;
+  uint32_t newRootNewIdx = forwardingTable[newRootIdx];
 
   //Update LRU links to not include nodes we're about to discard
-  for(Node& node : tree.tree){
+  for(uint32_t i=0; i<tree.tree.size(); i++){
+    Node& node = tree.tree[i];
     if(node.mark == marked){
-      Node* currNode = node.backLink;
-      while(currNode && currNode->mark == !marked){
-        currNode = currNode->backLink;
+      uint32_t currIdx = node.backIdx;
+      while(currIdx != UINT32_MAX && tree.tree[currIdx].mark == !marked){
+        currIdx = tree.tree[currIdx].backIdx;
       }
-      if(!currNode){
-        node.backLink = nullptr;
-        tree.tail = &node;
+      if(currIdx == UINT32_MAX){
+        node.backIdx = UINT32_MAX;
+        tree.tailIdx = i;
       }
       else{
-        node.backLink = currNode;
-        currNode->forwardLink = &node;
+        node.backIdx = currIdx;
+        tree.tree[currIdx].forwardIdx = i;
       }
 
-      currNode = node.forwardLink;
-      while(currNode && currNode->mark == !marked){
-        currNode = currNode->forwardLink;
+      currIdx = node.forwardIdx;
+      while(currIdx != UINT32_MAX && tree.tree[currIdx].mark == !marked){
+        currIdx = tree.tree[currIdx].forwardIdx;
       }
-      if(!currNode){
-        node.forwardLink = nullptr;
-        tree.head = &node;
+      if(currIdx == UINT32_MAX){
+        node.forwardIdx = UINT32_MAX;
+        tree.headIdx = i;
       }
       else{
-        node.forwardLink = currNode;
-        currNode->backLink = &node;
+        node.forwardIdx = currIdx;
+        tree.tree[currIdx].backIdx = i;
       }
     }
   }
@@ -327,41 +342,37 @@ inline Node* moveRootToChild(Tree& tree, Node* newRoot, Node* currRoot){
   for(Node& node : tree.tree){
     if(node.mark == marked){
       tree.currSize += sizeof(Node);
-      if(node.parent){
-        assert(&node == newRoot || node.parent->mark == marked);
-        node.parent = node.parent->newAddress;
+      if(node.parentIdx != UINT32_MAX){
+        node.parentIdx = forwardingTable[node.parentIdx];
       }
-      if(node.backLink){
-        node.backLink = node.backLink->newAddress;
+      if(node.backIdx != UINT32_MAX){
+        node.backIdx = forwardingTable[node.backIdx];
       }
-      if(node.forwardLink){
-        node.forwardLink = node.forwardLink->newAddress;
+      if(node.forwardIdx != UINT32_MAX){
+        node.forwardIdx = forwardingTable[node.forwardIdx];
       }
       for(int i=0; i<node.children.size(); i++){
         tree.currSize += sizeof(Edge);
         if(node.children[i].child){
-          assert(node.children[i].child->mark == marked);
-          node.children[i].child = node.children[i].child->newAddress;
+          node.children[i].child = tree.getNode(forwardingTable[tree.getIdx(node.children[i].child)]);
         }
       }
     }
   }
 
-  tree.head = tree.head->newAddress;
-  tree.tail = tree.tail->newAddress;
+  tree.headIdx = forwardingTable[tree.headIdx];
+  tree.tailIdx = forwardingTable[tree.tailIdx];
 
   //Move nodes to new addresses
   for(uint32_t i=0; i<tree.tree.size(); i++){
-    Node* livePointer = &tree.tree[i];
-    if(livePointer->mark == marked){
-      *(livePointer->newAddress) = *livePointer;
+    if(tree.tree[i].mark == marked){
+      tree.tree[forwardingTable[i]] = tree.tree[i];
     }
-    livePointer++;
   }
 
   tree.tree.resize(markedNodes);
 
-  return newRootNewAddress;
+  return newRootNewIdx;
 }
 
 inline uint8_t selectEdge(Node* parent, bool isRoot){
@@ -472,7 +483,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
     if(continueBackprop){
       //If currEdge is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currEdge
       oldCurrNodeValue = 2;
-      if(currEdge->child->parent && edges.size() > 0 && -currEdge->value == edges.back().first->value){oldCurrNodeValue = currEdge->value;}
+      if(currEdge->child->parentIdx != UINT32_MAX && edges.size() > 0 && -currEdge->value == edges.back().first->value){oldCurrNodeValue = currEdge->value;}
 
       //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
       if(result <= currEdge->value && !runFindBestMove && !forceResult){
@@ -520,7 +531,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
 }
 
 inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
-  Node* root = tree.root;
+  Node* root = tree.root();
   if(Aurora::outputLevel.value >= 3){
     std::cout << "NODES: " << root->visits;
     std::cout << " SELDEPTH: " << int(tree.seldepth) <<"\n";
@@ -629,19 +640,19 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     }
   }
 
-  if(!tree.root){tree.push_back(Node()); tree.root = &tree.tree[tree.tree.size()-1];}
+  if(tree.rootIdx == UINT32_MAX){tree.push_back(Node()); tree.rootIdx = uint32_t(tree.tree.size()-1);}
 
   tree.seldepth = 0;
   tree.depth = 0;
 
   evaluation::NNUE<NNUEhiddenNeurons> nnue(evaluation::_NNUEparameters);
 
-  Node* currNode = tree.root;
+  Node* currNode = tree.root();
   
   //For Printing Search Info
   int lastNodeCheck = 1;
   std::chrono::duration<float> elapsed = start - start;
-  tree.previousVisits = tree.root->visits;
+  tree.previousVisits = tree.root()->visits;
   tree.previousElapsed = 0;
 
   if(chess::getGameStatus(rootBoard, chess::isLegalMoves(rootBoard)) != chess::ONGOING){
@@ -652,7 +663,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   }
 
   //For Time Management
-  tree.startNodes = tree.root->visits;
+  tree.startNodes = tree.root()->visits;
   int bestMoveChanges = 0;
   float bestMoveChangesMultiplier = 1;
   chess::Move currBestMove;
@@ -662,16 +673,16 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   if(tbMove.value){
     chess::gameStatus result = chess::probeWdlTb(rootBoard);
     chess::MoveList moves(rootBoard);
-    expand(tree, tree.root, moves);
+    expand(tree, tree.root(), moves);
     for(int i=0; i<moves.size(); i++){
       if(moves[i] == tbMove){
-        tree.root->children[i].value = -result+0.001;
+        tree.root()->children[i].value = -result+0.001;
       }
       else{
-        tree.root->children[i].value = 1;
+        tree.root()->children[i].value = 1;
       }
     }
-    tree.root->visits = 1;
+    tree.root()->visits = 1;
     tm.tmType = NODES;
     tm.limit = -1;
   }
@@ -682,18 +693,18 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
           (!tm.useSoftHardNodeLimits && elapsed.count()<tm.limit))
         ) ||
         (tm.tmType == NODES &&
-          ((tm.useSoftHardNodeLimits && (tree.root->visits - tree.startNodes) < std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit)) ||
-          (!tm.useSoftHardNodeLimits && (tree.root->visits - tree.startNodes) < tm.limit))
+          ((tm.useSoftHardNodeLimits && (tree.root()->visits - tree.startNodes) < std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit)) ||
+          (!tm.useSoftHardNodeLimits && (tree.root()->visits - tree.startNodes) < tm.limit))
         ) ||
         (tm.tmType == ITERS &&
-          ((tm.useSoftHardNodeLimits && tree.root->iters < std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit)) ||
-          (!tm.useSoftHardNodeLimits && tree.root->iters < tm.limit))
+          ((tm.useSoftHardNodeLimits && tree.root()->iters < std::min(tm.limit*bestMoveChangesMultiplier, tm.hardLimit)) ||
+          (!tm.useSoftHardNodeLimits && tree.root()->iters < tm.limit))
         )
       ){
     chess::Board board = rootBoard;
 
     int currDepth = 0;
-    currNode = tree.root; tree.moveToHead(tree.root);
+    currNode = tree.root(); tree.moveToHead(tree.root());
     Edge* currEdge;
     std::vector<std::pair<Edge*, U64>> traversePath;
 
@@ -709,7 +720,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       }
 
       //Select Child Node to explore
-      uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root);
+      uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root());
 
       currEdge = &currNode->children[currEdgeIndex];
       chess::makeMove(board, currEdge->edge);
@@ -717,9 +728,11 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
       //If we only had a child edge before, create the corresponding child node
       if(currEdge->child == nullptr){
-        currEdge->child = tree.push_back(Node(currNode));
+        uint32_t currNodeIdx = tree.getIdx(currNode);
+        bool currNodeMark = currNode->mark;
+        currEdge->child = tree.push_back(Node(currNodeIdx));
         currEdge->child->index = currEdgeIndex;
-        currEdge->child->mark = currNode->mark;
+        currEdge->child->mark = currNodeMark;
         currEdge->child->visits = 1;
         currEdge->child->iters = 1;
         currEdge->child->avgValue = currEdge->value;
@@ -732,8 +745,8 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     //Expand & Backpropagate new values
     if(currNode->isTerminal){
       tree.depth += currDepth;
-      tree.root->visits += 1;
-      tree.root->iters += 1;
+      tree.root()->visits += 1;
+      tree.root()->iters += 1;
       backpropagate(tree, currEdge->value, traversePath, 1, true, false, true);
     }
     else{
@@ -784,8 +797,8 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       tree.depth += currDepth*visits;
 
       //Update root stats, since backpropagation doesn't reach the root
-      tree.root->visits += visits;
-      tree.root->iters += 1;
+      tree.root()->visits += visits;
+      tree.root()->iters += 1;
 
       //Backpropagate best value
       backpropagate(tree, -currBestValue, traversePath, visits, true, false, true);
@@ -802,14 +815,14 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
     //Decide if we want to search longer or shorter depending on how much the best move has changed
     if(tm.useSoftHardNodeLimits){
-      if(findBestEdge(tree.root).edge.value != currBestMove.value){
+      if(findBestEdge(tree.root()).edge.value != currBestMove.value){
         bestMoveChanges++;
-        currBestMove = findBestEdge(tree.root).edge;
+        currBestMove = findBestEdge(tree.root()).edge;
       }
 
     double expectedBestMoveChanges =
       Aurora::bestMoveChangesCoefficient.value *
-      (std::pow(tree.root->visits, Aurora::bestMoveChangesExponent.value) -
+      (std::pow(tree.root()->visits, Aurora::bestMoveChangesExponent.value) -
        std::pow(tree.startNodes, Aurora::bestMoveChangesExponent.value));
     const double bestMoveChangesMultiplierMin =
       std::min(double(Aurora::bestMoveChangesMultiplierMin.value),
@@ -827,7 +840,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   //Output the final result of the search
   printSearchInfo(tree, start, true);
   if(Aurora::outputLevel.value >= 0){
-    std::cout << "\nbestmove " << findBestEdge(tree.root).edge.toStringRep() << std::endl;
+    std::cout << "\nbestmove " << findBestEdge(tree.root()).edge.toStringRep() << std::endl;
   }
 
   return;
@@ -836,7 +849,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 //Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
 //Parameter "board" must be different than parameter "rootBoard"
 inline void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBoard, Tree& tree){
-  if(tree.root == nullptr ||
+  if(tree.rootIdx == UINT32_MAX ||
     board.equivalentHistory(rootBoard) == false
   ){
       chess::makeMove(board, move);
@@ -846,21 +859,21 @@ inline void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBo
   chess::makeMove(board, move);
 
   Edge newRootEdge = Edge(chess::Move());
-  for(int i=0; i<tree.root->children.size(); i++){
-    if(tree.root->children[i].edge == move){
-      newRootEdge = tree.root->children[i];
+  for(int i=0; i<tree.root()->children.size(); i++){
+    if(tree.root()->children[i].edge == move){
+      newRootEdge = tree.root()->children[i];
       break;
     }
   }
-  Node* newRoot = newRootEdge.child;
+  uint32_t newRootIdx = tree.getIdx(newRootEdge.child);
 
-  if(newRoot == nullptr){tree.root = nullptr; destroyTree(tree); return;}
+  if(newRootIdx == UINT32_MAX){tree.rootIdx = UINT32_MAX; destroyTree(tree); return;}
 
-  tree.root = moveRootToChild(tree, newRoot, tree.root);
+  tree.rootIdx = moveRootToChild(tree, newRootIdx, tree.rootIdx);
 
-  tree.root->parent = nullptr;
-  tree.root->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
-  tree.root->iters--;//Same logic for iters
+  tree.root()->parentIdx = UINT32_MAX;
+  tree.root()->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node
+  tree.root()->iters--;//Same logic for iters
 
   chess::makeMove(rootBoard, move);
 }
