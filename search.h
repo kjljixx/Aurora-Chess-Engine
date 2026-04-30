@@ -210,6 +210,7 @@ struct Tree{
       }
       if(currTail->parent){
         //Update the 16th bit in the chess::Move to indicate that the child was pruned
+        currTail->parent->children[currTail->index].value = currTail->avgValue;
         currTail->parent->children[currTail->index].edge.value |= 1 << 15;
         currTail->parent->children[currTail->index].child = nullptr;
       }
