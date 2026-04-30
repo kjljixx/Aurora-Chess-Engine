@@ -6,7 +6,7 @@
 //See https://backscattering.de/chess/uci/ for information on the Universal Chess Interface, which this file implements
 namespace uci{
 
-inline search::Node* root;
+inline uint32_t rootIdx = UINT32_MAX;
 inline chess::Board rootBoard;
 inline search::Tree tree;
 
@@ -23,7 +23,7 @@ inline void syncTreeWithBoardHistory(chess::Board& board){
   ensureBoardHashed(rootBoard);
   if(!board.equivalentHistory(rootBoard)){
     search::destroyTree(tree);
-    root = nullptr;
+    rootIdx = UINT32_MAX;
   }
 }
 
@@ -74,11 +74,11 @@ inline void bench(){
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
     totalElapsed += elapsed.count();
 
-    search::Node* root = tree.root;
+    search::Node* root = tree.root();
 
     nodes += root->visits;
 
-    search::destroyTree(tree); root = nullptr;
+    search::destroyTree(tree); rootIdx = UINT32_MAX;
   }
 
 
@@ -262,7 +262,7 @@ inline void go(std::istringstream& input, chess::Board board){
     search::search(board, tm, tree);
   }
   rootBoard = board;
-  root = tree.root;
+  rootIdx = tree.rootIdx;
 }
 
 inline void respondUci(){
@@ -339,7 +339,7 @@ inline void loop(chess::Board board){
     if(token == "position"){std::getline(std::cin, token); auto stream = std::istringstream(token); board = position(stream);}
     if(token == "go"){std::getline(std::cin, token); auto stream = std::istringstream(token); go(stream, board);}
     if(token == "quit"){break;}
-    if(token == "ucinewgame"){search::destroyTree(tree); root = nullptr; std::cout << "info string search tree destroyed" << std::endl;}
+    if(token == "ucinewgame"){search::destroyTree(tree); rootIdx = UINT32_MAX; std::cout << "info string search tree destroyed" << std::endl;}
     //non-uci, custom commands
     if(token == "moves"){std::getline(std::cin, token); auto stream = std::istringstream(token); board = makeMoves(board, stream);}
     //bwlow are mostly for debugging purposes

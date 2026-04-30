@@ -86,7 +86,7 @@ int main(){
         }
 
         search::search(board, tm, tree);
-        root = tree.root;
+        root = tree.root();
         rootBoard = board;
 
         search::Edge bestEdge = search::findBestEdge(root);
