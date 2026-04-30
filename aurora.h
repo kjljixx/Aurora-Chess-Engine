@@ -5,8 +5,8 @@
 //Set to 1 if you want to build a version of Aurora which generates data, 2 for generating data while playing (cutechess), 0 for the normal version.
 #define DATAGEN 0
 
-#define VERSION_NUM "v1.26.2"
-#define VERSION_NAME "-spsa"
+#define VERSION_NUM "v1.26.3"
+#define VERSION_NAME "-cont-boost"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
@@ -50,7 +50,7 @@ struct Option{
     }
 };
 
-inline Option hash("Hash", 0, 0, 65536, 1);
+inline Option hash("Hash", 16, 0, 65536, 1);
 inline Option ttHash("TTHash", 0, 0, 65536, 1);
 inline Option threads("Threads", 1, 1, 1, 1); // just here to make OpenBench happy
 

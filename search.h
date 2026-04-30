@@ -624,6 +624,9 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
               << "and TT size " <<
               (tree.TT.size()*sizeof(TTEntry)/1000000.0) << " mb"
               << std::endl;
+    if(tree.TT.size() == 1){
+      std::cout << "info string WARNING: TT is disabled, set either TTHash or Hash option to a non-zero value to enable" << std::endl;
+    }
   }
 
   if(!tree.root){tree.push_back(Node()); tree.root = &tree.tree[tree.tree.size()-1];}
