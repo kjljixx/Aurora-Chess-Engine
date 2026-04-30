@@ -61,6 +61,7 @@ inline std::string benchFens[AMOUNT_OF_FENS] = { //From Alexandria
 inline void bench(){
   int nodes = 0;
   Aurora::outputLevel.value = -1;
+  Aurora::hash.value = 1;
 
   float totalElapsed = 0;
 
@@ -80,7 +81,6 @@ inline void bench(){
 
     search::destroyTree(tree); rootIdx = UINT32_MAX;
   }
-
 
   std::cout << "\n" << nodes << " nodes " << int(nodes/totalElapsed) << " nps" << std::endl;
 }

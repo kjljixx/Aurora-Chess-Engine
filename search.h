@@ -163,18 +163,25 @@ struct Tree{
     tree.reserve(sizeLimit / sizeof(Node));
   }
 
-  float getHashfull(){
-    float treeHashfull = sizeLimit > 0 ? float(currSize) / sizeLimit : 0;
+  float getTreefull(){
+    return sizeLimit > 0 ? float(currSize) / sizeLimit : 0;
+  }
 
-    float ttHashfull = 0;
+  float getTTfull(){
     int numTTEntriesToCheck = std::min(1000, int(TT.size()));
+    float ttHashfull = 0;
     for(int i=0; i<numTTEntriesToCheck; i++){
       if(TT[i].val != -2){
         ttHashfull += 1;
       }
     }
     ttHashfull /= numTTEntriesToCheck;
+    return ttHashfull;
+  }
 
+  float getHashfull(){
+    float treeHashfull = getTreefull();
+    float ttHashfull = getTTfull();
     float totalHash = TT.size() * sizeof(TTEntry) + sizeLimit;
     return treeHashfull * (sizeLimit / totalHash) + ttHashfull * (TT.size()*sizeof(TTEntry) / totalHash);
   }
@@ -592,6 +599,8 @@ inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point st
     " nodes " << root->visits <<
     " score cp " << evaluation::valToCp(-findBestValue(root)) <<
     " hashfull " << int(tree.getHashfull()*1000) <<
+    " ttfull " << int(tree.getTTfull()*1000) <<
+    " treefull " << int(tree.getTreefull()*1000) <<
     " nps " << std::round((root->visits-tree.previousVisits)/(elapsed.count()-tree.previousElapsed)) <<
     " time " << std::round(elapsed.count()*1000) <<
     " pv ";
