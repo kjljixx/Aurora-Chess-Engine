@@ -207,7 +207,7 @@ inline void go(std::istringstream& input, chess::Board board){
     int time;
     input >> time;
     search::timeManagement limit = search::timeManagement(search::TIME, 1000000000.0);
-    limit.hardLimit = time/1000.0;
+    limit.limit = time/1000.0;
     search::search(board, limit, tree); 
   }
   else{
