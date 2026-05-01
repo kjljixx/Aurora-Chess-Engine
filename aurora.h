@@ -5,8 +5,8 @@
 //Set to 1 if you want to build a version of Aurora which generates data, 2 for generating data while playing (cutechess), 0 for the normal version.
 #define DATAGEN 0
 
-#define VERSION_NUM "v1.26.3"
-#define VERSION_NAME "-cont-boost"
+#define VERSION_NUM "v1.26.4"
+#define VERSION_NAME "-lru-avg-val"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
