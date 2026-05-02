@@ -354,7 +354,7 @@ inline void loop(chess::Board board){
     if(token == "bpinmask"){bitboards::printBoard(board.generateKingMasks().bishopPinmask); std::cout << std::endl;}
     if(token == "bpinned"){bitboards::printBoard(board.generateKingMasks().bishopPinnedPieces); std::cout << std::endl;}
     
-    if(token == "staticeval"){evaluation::NNUE<NNUEhiddenNeurons> nnue(evaluation::_NNUEparameters); nnue.refreshAccumulator(board); std::cout << evaluation::evaluate(board, nnue) << std::endl;}
+    if(token == "staticeval"){evaluation::NNUE<NNUEhiddenNeurons> nnue(evaluation::_NNUEparameters); nnue.refreshAccumulator(board); std::cout << evaluation::evaluate(board, nnue, tree.TT) << std::endl;}
     if(token == "see"){std::cin >> token; uint8_t square = squareNotationToIndex(token); std::cout << evaluation::SEE(board, square, 0) << std::endl;}
     
     if(token == "zobrist"){std::cout << zobrist::getHash(board) << std::endl;}

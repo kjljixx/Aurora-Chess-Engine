@@ -1,6 +1,8 @@
 #pragma once
 #include "simd.h"
 #include "zobrist.h"
+#include <vector>
+#include "tree.h"
 #include <math.h>
 #include <algorithm>
 #include <random>
@@ -341,7 +343,15 @@ inline int mvvLva(chess::Board& board, chess::Move move){
 }
 
 template<int numHiddenNeurons>
-int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int beta){
+int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int beta, const std::vector<search::TTEntry>& TT){
+  if(!TT.empty()){
+    U64 hash = board.history[board.halfmoveClock];
+    const search::TTEntry& entry = TT[hash % TT.size()];
+    if(entry.hash == (uint32_t)(hash >> 32) && entry.val != -2){
+      return valToCp(entry.val);
+    }
+  }
+
   int eval = nnue.evaluate(board.sideToMove);
   int bestEval = eval;
 
@@ -370,7 +380,7 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
     nnue.accumulator = currAccumulator;
     nnue.updateAccumulator(movedBoard, moves[i]);
 
-    eval = -qSearch(movedBoard, nnue, -beta, -alpha);
+    eval = -qSearch(movedBoard, nnue, -beta, -alpha, TT);
     
     if(eval > bestEval) bestEval = eval;
     if(eval > alpha) alpha = eval;
@@ -381,8 +391,8 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
 }
 
 template<int numHiddenNeurons>
-int evaluate(chess::Board& board, NNUE<numHiddenNeurons>& nnue){
-  int cpEvaluation = qSearch(board, nnue, -999999, 999999);
+int evaluate(chess::Board& board, NNUE<numHiddenNeurons>& nnue, const std::vector<search::TTEntry>& TT){
+  int cpEvaluation = qSearch(board, nnue, -999999, 999999, TT);
 
   return cpEvaluation;
 }
