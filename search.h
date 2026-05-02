@@ -69,7 +69,7 @@ struct Node{
   }
 };
 
-inline Edge findBestEdge(Node* parent){
+inline Edge findBestQEdge(Node* parent){
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
   Edge currBestMove = parent->children[0];
 
@@ -83,7 +83,7 @@ inline Edge findBestEdge(Node* parent){
   return currBestMove;
 }
 
-inline Node* findBestChild(Node* parent){
+inline Node* findBestQChild(Node* parent){
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
   Node* currBestMove = parent->children[0].child;
 
@@ -97,7 +97,7 @@ inline Node* findBestChild(Node* parent){
   return currBestMove;
 }
 
-inline float findBestValue(Node* parent){
+inline float findBestQ(Node* parent){
   float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
 
   for(int i=0; i<parent->children.size(); i++){
@@ -105,6 +105,21 @@ inline float findBestValue(Node* parent){
   }
 
   return currBestValue;
+}
+
+inline Edge findBestAEdge(Node* parent){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+  Edge currBestMove = parent->children[0];
+
+  for(int i=0; i<parent->children.size(); i++){
+    float currVal = parent->children[i].child ? parent->children[i].child->avgValue : parent->children[i].value;
+    if(currVal < currBestValue){
+      currBestValue = currVal;
+      currBestMove = parent->children[i];
+    }
+  }
+
+  return currBestMove;
 }
 
 struct TTEntry{
@@ -471,7 +486,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
   else if(backpropStrat == MINIMAX){
     //We only need to backpropagate two types of results here: the current best child becomes worse, or there is a new best child
     if(continueBackprop){
-      //If currEdge is the best move and is backpropagated to become worse, we need to run findBestValue for the parent of currEdge
+      //If currEdge is the best move and is backpropagated to become worse, we need to run findBestQ for the parent of currEdge
       oldCurrNodeValue = 2;
       if(currEdge->child->parent && edges.size() > 0 && -currEdge->value == edges.back().first->value){oldCurrNodeValue = currEdge->value;}
 
@@ -492,7 +507,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
         return;
       }
 
-      currEdge->value = runFindBestMove ? -findBestValue(currEdge->child) : result;
+      currEdge->value = runFindBestMove ? -findBestQ(currEdge->child) : result;
 
       assert(-1<=currEdge->value && 1>=currEdge->value);
 
@@ -563,7 +578,7 @@ inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point st
         // Print PV sequence
         Node* pvNode = sortedEdges[i].child;
         while(pvNode && pvNode->children.size() > 0) {
-            Edge pvEdge = findBestEdge(pvNode);
+            Edge pvEdge = findBestQEdge(pvNode);
             std::cout << pvEdge.edge.toStringRep() << " ";
             pvNode = pvEdge.child;
         }
@@ -580,14 +595,14 @@ inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point st
     "info depth " << (root->visits == tree.startNodes ? 0 : int(tree.depth / (root->visits - tree.startNodes))) <<
     " seldepth " << int(tree.seldepth) <<
     " nodes " << root->visits <<
-    " score cp " << evaluation::valToCp(-findBestValue(root)) <<
+    " score cp " << evaluation::valToCp(-findBestQ(root)) <<
     " hashfull " << int(tree.getHashfull()*1000) <<
     " nps " << std::round((root->visits-tree.previousVisits)/(elapsed.count()-tree.previousElapsed)) <<
     " time " << std::round(elapsed.count()*1000) <<
     " pv ";
     Node* pvNode = root;
     while(pvNode && pvNode->children.size() > 0){
-      Edge pvEdge = findBestEdge(pvNode);
+      Edge pvEdge = findBestQEdge(pvNode);
       std::cout << pvEdge.edge.toStringRep() << " ";
       pvNode = pvEdge.child;
     }
@@ -803,9 +818,9 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
     //Decide if we want to search longer or shorter depending on how much the best move has changed
     if(tm.useSoftHardNodeLimits){
-      if(findBestEdge(tree.root).edge.value != currBestMove.value){
+      if(findBestQEdge(tree.root).edge.value != currBestMove.value){
         bestMoveChanges++;
-        currBestMove = findBestEdge(tree.root).edge;
+        currBestMove = findBestQEdge(tree.root).edge;
       }
 
     double expectedBestMoveChanges =
@@ -828,7 +843,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   //Output the final result of the search
   printSearchInfo(tree, start, true);
   if(Aurora::outputLevel.value >= 0){
-    std::cout << "\nbestmove " << findBestEdge(tree.root).edge.toStringRep() << std::endl;
+    std::cout << "\nbestmove " << findBestAEdge(tree.root).edge.toStringRep() << std::endl;
   }
 
   return;
