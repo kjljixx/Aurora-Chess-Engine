@@ -8,34 +8,34 @@
 
 using U64 = unsigned long long;
 
-constexpr inline uint8_t _bitscanForward(U64 board) {
+constexpr uint8_t bitscanForward(U64 board) {
   assert(board);
   return __builtin_ctzll(board);
 }
 
-constexpr inline uint8_t _bitscanReverse(U64 board) {
+constexpr uint8_t bitscanReverse(U64 board) {
   assert(board);
   return 63 - __builtin_clzll(board);
 }
 
-constexpr inline uint8_t _popCount(U64 board) {
+constexpr uint8_t popCount(U64 board) {
   return __builtin_popcountll(board);
 }
 
-constexpr inline uint8_t _popLsb(U64 &board) {
+constexpr uint8_t popLsb(U64 &board) {
   assert(board);
-  const int lsbIndex = _bitscanForward(board);
+  const int lsbIndex = bitscanForward(board);
   board &= board - 1;
   return lsbIndex;
 }
 
-inline U64 _flipBoard(U64 &board){
+inline U64 flipBoard(U64 &board){
   return __builtin_bswap64(board);
 }
 
 //functions for transferring back and forth between notation(ex. a8) and index(ex. 56)
 inline uint8_t squareNotationToIndex(std::string notation){
-  return (notation[1] - '1')*8+(notation[0] - 'a');
+  return ((notation[1] - '1')*8)+(notation[0] - 'a');
 }
 
 inline std::string squareIndexToNotation(int index){

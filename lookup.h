@@ -85,7 +85,7 @@ constexpr Move* MoveListFromBitboard(U64 moves, uint8_t startSquare, bool isPawn
   if(isPawn && (moves & 0xFF000000000000FFULL))//checks if move is pawn promotion. FF000000000000FF is the first and eight ranks
   {
     while(moves){
-      uint8_t endSquare = _popLsb(moves);
+      uint8_t endSquare = popLsb(moves);
       *movesList++ = Move(startSquare, endSquare, PROMOTION, KNIGHT);
       *movesList++ = Move(startSquare, endSquare, PROMOTION, BISHOP);
       *movesList++ = Move(startSquare, endSquare, PROMOTION, ROOK);
@@ -94,7 +94,7 @@ constexpr Move* MoveListFromBitboard(U64 moves, uint8_t startSquare, bool isPawn
   }
   else{
   while(moves){
-    uint8_t endSquare = _popLsb(moves);
+    uint8_t endSquare = popLsb(moves);
     *movesList++ = Move(startSquare, endSquare, moveFlags);
   }
   }
@@ -237,9 +237,9 @@ inline void initKingTable(){
 
 inline U64 getBlockersFromIndex(int index, U64 mask) {
   U64 blockers = 0;
-  int bits = _popCount(mask);
+  int bits = popCount(mask);
   for (int i = 0; i < bits; i++) {
-  int bitPos = _popLsb(mask);
+  int bitPos = popLsb(mask);
   if (index & (1ULL << i)) {
     blockers |= (1ULL << bitPos);
   }
@@ -290,25 +290,25 @@ inline U64 pregenerateBishopMoves(int square, U64 blockers) {
   // North West
   attacks |= rays::rays[4][square];
   if (rays::rays[4][square] & blockers) {
-  attacks &= ~(rays::rays[4][_bitscanForward(rays::rays[4][square] & blockers)]);
+  attacks &= ~(rays::rays[4][bitscanForward(rays::rays[4][square] & blockers)]);
   }
 
   // North East
   attacks |= rays::rays[5][square];
   if (rays::rays[5][square] & blockers) {
-  attacks &= ~(rays::rays[5][_bitscanForward(rays::rays[5][square] & blockers)]);
+  attacks &= ~(rays::rays[5][bitscanForward(rays::rays[5][square] & blockers)]);
   }
 
   // South East
   attacks |= rays::rays[6][square];
   if (rays::rays[6][square] & blockers) {
-  attacks &= ~(rays::rays[6][_bitscanReverse(rays::rays[6][square] & blockers)]);
+  attacks &= ~(rays::rays[6][bitscanReverse(rays::rays[6][square] & blockers)]);
   }
 
   // South West
   attacks |= rays::rays[7][square];
   if (rays::rays[7][square] & blockers) {
-  attacks &= ~(rays::rays[7][_bitscanReverse(rays::rays[7][square] & blockers)]);
+  attacks &= ~(rays::rays[7][bitscanReverse(rays::rays[7][square] & blockers)]);
   }
 
   return attacks;
@@ -320,25 +320,25 @@ inline U64 pregenerateRookMoves(int square, U64 blockers) {
   // North
   attacks |= rays::rays[0][square];
   if (rays::rays[0][square] & blockers) {
-  attacks &= ~(rays::rays[0][_bitscanForward(rays::rays[0][square] & blockers)]);
+  attacks &= ~(rays::rays[0][bitscanForward(rays::rays[0][square] & blockers)]);
   }
 
   // South
   attacks |= rays::rays[1][square];
   if (rays::rays[1][square] & blockers) {
-  attacks &= ~(rays::rays[1][_bitscanReverse(rays::rays[1][square] & blockers)]);
+  attacks &= ~(rays::rays[1][bitscanReverse(rays::rays[1][square] & blockers)]);
   }
 
   // East
   attacks |= rays::rays[2][square];
   if (rays::rays[2][square] & blockers) {
-  attacks &= ~(rays::rays[2][_bitscanForward(rays::rays[2][square] & blockers)]);
+  attacks &= ~(rays::rays[2][bitscanForward(rays::rays[2][square] & blockers)]);
   }
 
   // West
   attacks |= rays::rays[3][square];
   if (rays::rays[3][square] & blockers) {
-  attacks &= ~(rays::rays[3][_bitscanReverse(rays::rays[3][square] & blockers)]);
+  attacks &= ~(rays::rays[3][bitscanReverse(rays::rays[3][square] & blockers)]);
   }
   return attacks;
 }
