@@ -342,14 +342,16 @@ inline int mvvLva(chess::Board& board, chess::Move move){
          mg_value[sidedPieceToPiece[board.mailbox[0][move.getStartSquare()]]-1];
 }
 
+int numTTHits = 0;
+int numQSearches = 0;
+
 template<int numHiddenNeurons>
-int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int beta, const std::vector<search::TTEntry>& TT){
-  if(!TT.empty()){
-    U64 hash = board.history[board.halfmoveClock];
-    const search::TTEntry& entry = TT[hash % TT.size()];
-    if(entry.hash == (uint32_t)(hash >> 32) && entry.val != -2){
-      return valToCp(entry.val);
-    }
+int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int beta, std::vector<search::TTEntry>& TT){
+  numQSearches++;
+  search::TTEntry* entry = &TT[board.history[board.halfmoveClock] % TT.size()];
+  if(entry->hash == (board.history[board.halfmoveClock] >> 32) && entry->val != -2){
+    numTTHits++;
+    return valToCp(entry->val);
   }
 
   int eval = nnue.evaluate(board.sideToMove);
@@ -386,12 +388,16 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
     if(eval > alpha) alpha = eval;
     if(eval >= beta) break;
   }
-
+  
+  if(std::abs(bestEval-eval) > 50){
+    entry->val = cpToVal(bestEval);
+    entry->hash = board.history[board.halfmoveClock] >> 32;
+  }
   return bestEval;
 }
 
 template<int numHiddenNeurons>
-int evaluate(chess::Board& board, NNUE<numHiddenNeurons>& nnue, const std::vector<search::TTEntry>& TT){
+int evaluate(chess::Board& board, NNUE<numHiddenNeurons>& nnue, std::vector<search::TTEntry>& TT){
   int cpEvaluation = qSearch(board, nnue, -999999, 999999, TT);
 
   return cpEvaluation;

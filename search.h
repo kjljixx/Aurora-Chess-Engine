@@ -82,6 +82,9 @@ inline void expand(Tree& tree, Node* parent, chess::MoveList& moves){
   }
 }
 
+int numTTHits = 0;
+int numPlayouts = 0;
+
 template<int numHiddenNeurons>
 float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>& nnue){
   //First, check if position is terminal
@@ -90,16 +93,18 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   if(_gameStatus != chess::ONGOING){
     return _gameStatus;
   }
-
+  
   //Next, check TBs
   chess::gameStatus tbResult = chess::probeWdlTb(board);
   if(tbResult != chess::ONGOING){
     return tbResult;
   }
-
+  
+  numPlayouts++;
   //Next, check TT
   TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
   if(entry->hash == (board.history[board.halfmoveClock] >> 32) && entry->val != -2){
+    numTTHits++;
     return entry->val;
   }
 
@@ -182,6 +187,8 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
 }
 
 inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
+  std::cout << evaluation::numTTHits << "/" << evaluation::numQSearches << "\n";
+  std::cout << numTTHits << "/" << numPlayouts << "\n";
   Node* root = tree.root;
   if(Aurora::outputLevel.value >= 3){
     std::cout << "NODES: " << root->visits;
