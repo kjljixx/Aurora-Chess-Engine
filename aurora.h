@@ -38,13 +38,13 @@ struct Option{
   int type; //0 = string (which aurora uses for floats), 1 = spin (an int), 2 = string (an actual string)
   bool hidden;
 
-  Option(std::string name, float defaultValue, float minValue, float maxValue, int type, bool hidden = false) :
+  Option(const std::string& name, float defaultValue, float minValue, float maxValue, int type, bool hidden = false) :
     name(name), defaultValue(defaultValue), minValue(minValue), maxValue(maxValue), value(defaultValue), type(type), hidden(hidden)
     {
       options.push_back(this);
     }
-  Option(std::string name, std::string defaultValue, int type, bool hidden = false) :
-    name(name), sDefaultValue(defaultValue), minValue(-1), maxValue(-1), sValue(defaultValue), type(type), hidden(hidden)
+  Option(const std::string& name, const std::string& defaultValue, int type, bool hidden = false) :
+    name(name), sDefaultValue(defaultValue), minValue(-1), maxValue(-1), sValue(defaultValue), defaultValue(0), value(0), type(type), hidden(hidden)
     {
       options.push_back(this);
     }
@@ -92,7 +92,7 @@ inline Option timeManagementMovesLeft("timeManagementMovesLeft", 30, 1, 200, 1, 
 inline Option timeManagementSoftFraction("timeManagementSoftFraction", 0.051142, 0, 1, 0, true);
 inline Option timeManagementHardFraction("timeManagementHardFraction", 0.095422, 0, 1, 0, true);
 
-inline Option* getOption(std::string name){
+inline Option* getOption(const std::string& name){
   for(Option* option : options){
     if(option->name == name) return option;
   }

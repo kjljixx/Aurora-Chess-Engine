@@ -167,7 +167,7 @@ namespace SIMD {
   }
 
   inline int vecHaddEpi32(Vec vec) {
-    int* asArray = (int*) &vec;
+    int* asArray = (int*) &vec; // NOLINT(cppcoreguidelines-pro-type-cstyle-cast)
     return asArray[0] + asArray[1] + asArray[2] + asArray[3];
   }
 

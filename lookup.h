@@ -9,8 +9,8 @@
 //Everything here is heavily inspired by (and a lot of the time uses code from) https://github.com/GunshipPenguin/shallow-blue
 //generate lookup tables so we can find all the moves of a given pieces without having to calculate it
 namespace chess{
-enum Colors{WHITE, BLACK};
-enum Pieces{null, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, UNKNOWN};
+enum Colors: uint8_t{WHITE, BLACK};
+enum Pieces: uint8_t{null, PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, UNKNOWN};
 
 inline Pieces letterToPiece(char letter){
   switch (letter){
@@ -20,6 +20,7 @@ inline Pieces letterToPiece(char letter){
     case 'r': return ROOK;
     case 'q': return QUEEN;
     case 'k': return KING;
+    default: assert(0);
   }
   return null;
 }
@@ -36,8 +37,8 @@ inline char PieceToLetter(Pieces piece){ //mainly for PGN move notation
   return ' ';
 }
 
-enum MoveFlags{
-  NONE, CASTLE = 1 << 12, ENPASSANT = 2 << 12, PROMOTION = 1 << 14
+enum MoveFlags: uint16_t{
+  NONE = 0, CASTLE = 1 << 12, ENPASSANT = 2 << 12, PROMOTION = 1 << 14
 };
 
 struct Move{

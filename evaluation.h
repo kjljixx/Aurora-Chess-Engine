@@ -3,7 +3,6 @@
 #include "zobrist.h"
 #include <math.h>
 #include <algorithm>
-#include <random>
 #include <array>
 //taken from stormphrax 
 #ifdef _MSC_VER
@@ -35,17 +34,17 @@ inline int valToCp(float val){
 }
 
 //A simple 768->N*2->1 NNUE
-#define NNUEhiddenNeurons 256
+const int NNUEhiddenNeurons = 256;
 
 const int WeightsPerVec = sizeof(SIMD::Vec) / sizeof(int16_t);
 
-inline int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
+inline const int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6};
 
 template<int numHiddenNeurons>
 struct NNUEparameters{
     alignas(SIMD::Alignment) std::array<std::array<int16_t, numHiddenNeurons>, 768> hiddenLayerWeights;
     alignas(SIMD::Alignment) std::array<int16_t, numHiddenNeurons> hiddenLayerBiases;
-    alignas(SIMD::Alignment) std::array<int16_t, 2*numHiddenNeurons> outputLayerWeights;
+    alignas(SIMD::Alignment) std::array<int16_t, int(2*numHiddenNeurons)> outputLayerWeights;
     int16_t outputLayerBias;
 };
 
@@ -53,7 +52,7 @@ extern "C" {
   INCBIN(networkData, "andromeda-3.nnue");
 }
 
-inline const NNUEparameters<NNUEhiddenNeurons>* _NNUEparameters = reinterpret_cast<
+inline const NNUEparameters<NNUEhiddenNeurons>* const nnueParameters = reinterpret_cast<
                                                            const NNUEparameters<NNUEhiddenNeurons>*
                                                                            >(gnetworkDataData);
 
@@ -143,7 +142,7 @@ struct NNUE{
   }
 
   void updateAccumulator(chess::Board& board, chess::Move move){
-    U64 newHash;
+    U64 newHash = 0ULL;
     if(board.hashed){
       newHash = zobrist::updateHash(board, move);
     }
@@ -160,7 +159,7 @@ struct NNUE{
     board.unsetPieces(movingPiece, (1ULL << startSquare));
 
     if(moveFlags == chess::ENPASSANT){
-      U64 theirPawnSquare;
+      U64 theirPawnSquare = 0ULL;
       if(board.sideToMove == chess::WHITE){theirPawnSquare = (1ULL << endSquare) >> 8;}
       else{theirPawnSquare = (1ULL << endSquare) << 8;}
 
@@ -184,8 +183,8 @@ struct NNUE{
     }
 
     if(moveFlags == chess::CASTLE){
-      uint8_t rookStartSquare;
-      uint8_t rookEndSquare;
+      uint8_t rookStartSquare = 0;
+      uint8_t rookEndSquare = 0;
       //Queenside Castling
       if(squareIndexToFile(endSquare) == 2){
         rookStartSquare = board.sideToMove*56;
@@ -271,9 +270,9 @@ inline void init(){
   lookupTables::init();
 }
 
-inline int gamephaseInc[6] = {0, 1, 1, 2, 4, 0};
+inline const int gamephaseInc[6] = {0, 1, 1, 2, 4, 0};
 
-inline int gamePhase = 24;
+inline const int gamePhase = 24;
 
 //Static Exchange Evaluation
 //Returns the value in cp from the current board's sideToMove's perspective on how good 
@@ -332,7 +331,7 @@ inline int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0, int
   return (isOurSideToMove ? beta : -beta)/24;
 }
 
-inline std::array<uint8_t, 13> sidedPieceToPiece = {0, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6};
+inline const std::array<uint8_t, 13> sidedPieceToPiece = {0, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6};
 
 inline int mvvLva(chess::Board& board, chess::Move move){
   return 30*mg_value[sidedPieceToPiece[move.getMoveFlags() == chess::ENPASSANT ? 1 : 
@@ -351,7 +350,7 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
 
   chess::MoveList moves(board, true);
 
-  std::array<int, 256> orderValue;
+  std::array<int, 256> orderValue = {};
   int i=0;
   for(auto move : moves){orderValue[i] = mvvLva(board, move); i++;}
 

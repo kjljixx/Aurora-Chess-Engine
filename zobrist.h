@@ -81,8 +81,8 @@ inline U64 updateHash(chess::Board& board, chess::Move move){
   }
 
   if(moveFlags == chess::CASTLE){
-    uint8_t rookStartSquare;
-    uint8_t rookEndSquare;
+    uint8_t rookStartSquare = 0;
+    uint8_t rookEndSquare = 0;
     //Queenside Castling
     if(squareIndexToFile(endSquare) == 2){
       rookStartSquare = board.sideToMove*56;

@@ -30,7 +30,7 @@ inline void syncTreeWithBoardHistory(chess::Board& board){
 //bench stuff
 const int AMOUNT_OF_FENS = 25;
 
-inline std::string benchFens[AMOUNT_OF_FENS] = { //From Alexandria
+inline const std::string benchFens[AMOUNT_OF_FENS] = { //From Alexandria
 			"r3k2r/2pb1ppp/2pp1q2/p7/1nP1B3/1P2P3/P2N1PPP/R2QK2R w KQkq a6 0 14",
 			"4rrk1/2p1b1p1/p1p3q1/4p3/2P2n1p/1P1NR2P/PB3PP1/3R1QK1 b - - 2 24",
 			"r3qbrk/6p1/2b2pPp/p3pP1Q/PpPpP2P/3P1B2/2PB3K/R5R1 w - - 16 42",
@@ -64,7 +64,7 @@ inline void bench(){
 
   float totalElapsed = 0;
 
-  for(std::string fen : benchFens){
+  for(const std::string& fen : benchFens){
     chess::Board board(fen);
 
     auto start = std::chrono::steady_clock::now();
@@ -194,17 +194,17 @@ inline void go(std::istringstream& input, chess::Board board){
     search::search(board, search::timeManagement(search::FOREVER), tree);
   }
   else if(token == "nodes"){
-    int maxNodes;
+    int maxNodes = 0;
     input >> maxNodes;
     search::search(board, search::timeManagement(search::NODES, maxNodes), tree);
   }
   else if(token == "iters"){
-    int maxIters;
+    int maxIters = 0;
     input >> maxIters;
     search::search(board, search::timeManagement(search::ITERS, maxIters), tree);
   }
   else if(token == "movetime"){
-    int time;
+    int time = 0;
     input >> time;
     search::timeManagement limit = search::timeManagement(search::TIME, 1000000000.0);
     limit.limit = time/1000.0;
@@ -212,7 +212,7 @@ inline void go(std::istringstream& input, chess::Board board){
   }
   else{
     search::timeManagement tm;
-    int time;
+    int time = 0;
     const bool useNodeTime = Aurora::timeManager.value >= 2;
     if(useNodeTime){
       tm.tmType = search::NODES;
@@ -318,7 +318,7 @@ inline void setOption(std::istringstream& input){
     }
   }
   else{
-    float optionValue;
+    float optionValue = 0;
     input >> optionValue;
     Aurora::getOption(optionName)->value = optionValue;
     std::cout << "info string option " << optionName << " set to " << optionValue << std::endl;
@@ -335,7 +335,7 @@ inline void loop(chess::Board board){
     if(token == "build"){std::cout << GIT_HASH_STRING << std::endl;}
     if(token == "setoption"){std::getline(std::cin, token); auto stream = std::istringstream(token); setOption(stream);}
     if(token == "isready"){std::cout << "readyok" << std::endl;} //TODO: make sure we are actually ready before printing readyok
-    if(token == "perft"){int depth; std::cin >> depth; perftDiv(board, depth);}
+    if(token == "perft"){int depth = 0; std::cin >> depth; perftDiv(board, depth);}
     if(token == "position"){std::getline(std::cin, token); auto stream = std::istringstream(token); board = position(stream);}
     if(token == "go"){std::getline(std::cin, token); auto stream = std::istringstream(token); go(stream, board);}
     if(token == "quit"){break;}
@@ -354,7 +354,7 @@ inline void loop(chess::Board board){
     if(token == "bpinmask"){bitboards::printBoard(board.generateKingMasks().bishopPinmask); std::cout << std::endl;}
     if(token == "bpinned"){bitboards::printBoard(board.generateKingMasks().bishopPinnedPieces); std::cout << std::endl;}
     
-    if(token == "staticeval"){evaluation::NNUE<NNUEhiddenNeurons> nnue(evaluation::_NNUEparameters); nnue.refreshAccumulator(board); std::cout << evaluation::evaluate(board, nnue) << std::endl;}
+    if(token == "staticeval"){evaluation::NNUE<evaluation::NNUEhiddenNeurons> nnue(evaluation::nnueParameters); nnue.refreshAccumulator(board); std::cout << evaluation::evaluate(board, nnue) << std::endl;}
     if(token == "see"){std::cin >> token; uint8_t square = squareNotationToIndex(token); std::cout << evaluation::SEE(board, square, 0) << std::endl;}
     
     if(token == "zobrist"){std::cout << zobrist::getHash(board) << std::endl;}
