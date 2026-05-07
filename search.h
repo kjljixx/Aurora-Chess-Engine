@@ -25,12 +25,12 @@ struct Node;
 
 #pragma pack(push, 1)
 struct Edge{
-  Node* child;
+  uint32_t childIdx;
   float value;
   chess::Move edge;
 
-  Edge() : child(nullptr), value(-2) {}
-  Edge(chess::Move move) : child(nullptr), value(-2), edge(move) {}
+  Edge() : childIdx(UINT32_MAX), value(-2) {}
+  Edge(chess::Move move) : childIdx(UINT32_MAX), value(-2), edge(move) {}
 };
 #pragma pack(pop)
 
@@ -57,66 +57,12 @@ struct Node{
     visits(0), iters(0), avgValue(-2), isTerminal(false) {}
 
   Node() :
-    parentIdx(UINT32_MAX),
     visits(0), iters(0), avgValue(-2), isTerminal(false) {}
 
   float variance() const{
     return (sumSquaredVals - (avgValue * avgValue));
   }
 };
-
-inline Edge findBestQEdge(Node* parent){
-  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
-  Edge currBestMove = parent->children[0];
-
-  for(int i=0; i<parent->children.size(); i++){
-    if(parent->children[i].value < currBestValue){
-      currBestValue = parent->children[i].value;
-      currBestMove = parent->children[i];
-    }
-  }
-
-  return currBestMove;
-}
-
-inline Node* findBestQChild(Node* parent){
-  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
-  Node* currBestMove = parent->children[0].child;
-
-  for(int i=0; i<parent->children.size(); i++){
-    if(parent->children[i].value < currBestValue){
-      currBestValue = parent->children[i].value;
-      currBestMove = parent->children[i].child;
-    }
-  }
-
-  return currBestMove;
-}
-
-inline float findBestQ(Node* parent){
-  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
-
-  for(int i=0; i<parent->children.size(); i++){
-    currBestValue = std::min(currBestValue, parent->children[i].value);
-  }
-
-  return currBestValue;
-}
-
-inline Edge findBestAEdge(Node* parent){
-  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
-  Edge currBestMove = parent->children[0];
-
-  for(int i=0; i<parent->children.size(); i++){
-    float currVal = parent->children[i].child ? parent->children[i].child->avgValue : parent->children[i].value;
-    if(currVal < currBestValue){
-      currBestValue = currVal;
-      currBestMove = parent->children[i];
-    }
-  }
-
-  return currBestMove;
-}
 
 struct TTEntry{
   float val = -2;
@@ -213,7 +159,7 @@ struct Tree{
     if(headIdx == nodeIdx){
       return;
     }
-    if(tailIdx == nodeIdx && node->forwardIdx != UINT32_MAX){
+    if(tailIdx == nodeIdx){
       tailIdx = node->forwardIdx;
     }
     if(node->backIdx != UINT32_MAX){
@@ -235,15 +181,15 @@ struct Tree{
       Node* currTail = &tree[currTailIdx];
       for(int i=0; i<currTail->children.size(); i++){
         currSize -= sizeof(Edge);
-        if(currTail->children[i].child){
-          currTail->children[i].child->parentIdx = UINT32_MAX;
+        if(currTail->children[i].childIdx != UINT32_MAX){
+          tree[currTail->children[i].childIdx].parentIdx = UINT32_MAX;
         }
       }
       if(currTail->parentIdx != UINT32_MAX){
         //Update the 16th bit in the chess::Move to indicate that the child was pruned
         tree[currTail->parentIdx].children[currTail->index].value = currTail->avgValue;
         tree[currTail->parentIdx].children[currTail->index].edge.value |= 1 << 15;
-        tree[currTail->parentIdx].children[currTail->index].child = nullptr;
+        tree[currTail->parentIdx].children[currTail->index].childIdx = UINT32_MAX;
       }
       if(currTail->forwardIdx != UINT32_MAX){
         tree[currTail->forwardIdx].backIdx = UINT32_MAX;
@@ -275,6 +221,98 @@ struct Tree{
   }
 };
 
+inline Edge findBestQEdge(Node* parent){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+  Edge currBestMove = parent->children[0];
+
+  for(int i=0; i<parent->children.size(); i++){
+    if(parent->children[i].value < currBestValue){
+      currBestValue = parent->children[i].value;
+      currBestMove = parent->children[i];
+    }
+  }
+
+  return currBestMove;
+}
+
+inline Node* findBestQChild(Node* parent, Tree& tree){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+  Node* currBestMove = parent->children[0].childIdx == UINT32_MAX ? nullptr : tree.getNode(parent->children[0].childIdx);
+
+  for(int i=0; i<parent->children.size(); i++){
+    if(parent->children[i].value < currBestValue){
+      currBestValue = parent->children[i].value;
+      currBestMove = parent->children[i].childIdx == UINT32_MAX ? nullptr : tree.getNode(parent->children[i].childIdx);
+    }
+  }
+
+  return currBestMove;
+}
+
+inline float findBestQ(Node* parent){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+
+  for(int i=0; i<parent->children.size(); i++){
+    currBestValue = std::min(currBestValue, parent->children[i].value);
+  }
+
+  return currBestValue;
+}
+
+inline Edge findBestAEdge(Node* parent, Tree& tree){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+  Edge currBestMove = parent->children[0];
+
+  for(int i=0; i<parent->children.size(); i++){
+    float currVal = parent->children[i].childIdx != UINT32_MAX ? tree.getNode(parent->children[i].childIdx)->avgValue : parent->children[i].value;
+    if(currVal < currBestValue){
+      currBestValue = currVal;
+      currBestMove = parent->children[i];
+    }
+  }
+
+  return currBestMove;
+}
+
+inline Edge findBestEdge(Node* parent){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+  Edge currBestMove = parent->children[0];
+
+  for(int i=0; i<parent->children.size(); i++){
+    if(parent->children[i].value < currBestValue){
+      currBestValue = parent->children[i].value;
+      currBestMove = parent->children[i];
+    }
+  }
+
+  return currBestMove;
+}
+
+inline Node* findBestChild(Node* parent, Tree& tree){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+  Node* currBestMove = tree.getNode(parent->children[0].childIdx);
+
+  for(int i=0; i<parent->children.size(); i++){
+    if(parent->children[i].value < currBestValue){
+      currBestValue = parent->children[i].value;
+      currBestMove = tree.getNode(parent->children[i].childIdx);
+    }
+  }
+
+  return currBestMove;
+}
+
+inline float findBestValue(Node* parent){
+  float currBestValue = 2; //We want to find the node with the least Q, which is the best move from the parent since Q is from the side to move's perspective
+
+  for(int i=0; i<parent->children.size(); i++){
+    currBestValue = std::min(currBestValue, parent->children[i].value);
+  }
+
+  return currBestValue;
+}
+
+
 inline void destroyTree(Tree& tree){
   tree.TT.clear();
   tree.tree.clear();
@@ -284,7 +322,7 @@ inline void destroyTree(Tree& tree){
   tree.currSize = 0;
 }
 
-inline uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked = true){
+inline uint64_t markSubtree(Tree& tree, Node* node, bool isSubtreeRoot = true, bool unmarked = true){
   uint64_t markedNodes = 0;
 
   if(isSubtreeRoot){
@@ -294,7 +332,7 @@ inline uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked
     node->mark = !unmarked;
     markedNodes++;
     for(int i=0; i<node->children.size(); i++){
-      markedNodes += markSubtree(node->children[i].child, false, unmarked);
+      markedNodes += markSubtree(tree, tree.getNode(node->children[i].childIdx), false, unmarked);
     }
   }
   return markedNodes;
@@ -304,7 +342,7 @@ inline uint64_t markSubtree(Node* node, bool isSubtreeRoot = true, bool unmarked
 inline uint32_t moveRootToChild(Tree& tree, uint32_t newRootIdx){
   //LISP 2 Garbage Collection Algorithm (https://en.wikipedia.org/wiki/Mark%E2%80%93compact_algorithm#LISP_2_algorithm)
   //Mark all nodes which we want to keep
-  uint64_t markedNodes = markSubtree(tree.getNode(newRootIdx));
+  uint64_t markedNodes = markSubtree(tree, tree.getNode(newRootIdx));
   bool marked = tree.tree[newRootIdx].mark;
 
   std::vector<uint32_t> forwardingTable(tree.tree.size(), UINT32_MAX);
@@ -368,8 +406,8 @@ inline uint32_t moveRootToChild(Tree& tree, uint32_t newRootIdx){
       }
       for(int i=0; i<node.children.size(); i++){
         tree.currSize += sizeof(Edge);
-        if(node.children[i].child){
-          node.children[i].child = tree.getNode(forwardingTable[tree.getIdx(node.children[i].child)]);
+        if(node.children[i].childIdx != UINT32_MAX){
+          node.children[i].childIdx = forwardingTable[node.children[i].childIdx];
         }
       }
     }
@@ -390,7 +428,7 @@ inline uint32_t moveRootToChild(Tree& tree, uint32_t newRootIdx){
   return newRootNewIdx;
 }
 
-inline uint8_t selectEdge(Node* parent, bool isRoot){
+inline uint8_t selectEdge(Node* parent, Tree& tree, bool isRoot){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
@@ -409,7 +447,7 @@ inline uint8_t selectEdge(Node* parent, bool isRoot){
   // std::cout << std::clamp(1.0+32*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 0.2, 2.0) << " ";
 
   for(int i=0; i<parent->children.size(); i++){
-    Node* currNode = parent->children[i].child;
+    Node* currNode = tree.getNode(parent->children[i].childIdx);
     Edge currEdge = parent->children[i];
 
     //We can make a guess about how many visits a node had before it was pruned by LRU
@@ -484,7 +522,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
   Edge* currEdge = p.first; U64 hash = p.second;
   edges.pop_back();
 
-  currEdge->child->visits += visits;
+  tree.getNode(currEdge->childIdx)->visits += visits;
 
   float oldCurrNodeValue = 2;
 
@@ -492,16 +530,16 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
   if(continueBackprop){
     //If currEdge is the best move and is backpropagated to become worse, we need to run findBestQ for the parent of currEdge
     oldCurrNodeValue = 2;
-    if(currEdge->child->parentIdx != UINT32_MAX && edges.size() > 0 && -currEdge->value == edges.back().first->value){oldCurrNodeValue = currEdge->value;}
+    if(tree.getNode(currEdge->childIdx)->parentIdx != UINT32_MAX && edges.size() > 0 && -currEdge->value == edges.back().first->value){oldCurrNodeValue = currEdge->value;}
 
     //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
     if(result <= currEdge->value && !runFindBestMove && !forceResult){
       continueBackprop = false;
 
-      currEdge->child->iters++;
-      float newValWeight = std::clamp(1.0/currEdge->child->iters, double(Aurora::valSameMinWeight.value), 1.0);
-      currEdge->child->avgValue = (currEdge->child->avgValue * (1 - newValWeight)) + (currEdge->value * newValWeight);
-      currEdge->child->sumSquaredVals = (currEdge->child->sumSquaredVals * (1 - newValWeight)) + (currEdge->value * currEdge->value * newValWeight);
+        tree.getNode(currEdge->childIdx)->iters++;
+        float newValWeight = std::clamp(1.0/tree.getNode(currEdge->childIdx)->iters, double(Aurora::valSameMinWeight.value), 1.0);
+        tree.getNode(currEdge->childIdx)->avgValue = tree.getNode(currEdge->childIdx)->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
+        tree.getNode(currEdge->childIdx)->sumSquaredVals = tree.getNode(currEdge->childIdx)->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
 
       TTEntry* entry = tree.getTTEntry(hash);
       entry->hash = hash >> 32;
@@ -511,7 +549,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
       return;
     }
 
-    currEdge->value = runFindBestMove ? -findBestQ(currEdge->child) : result;
+    currEdge->value = runFindBestMove ? -findBestQ(tree.getNode(currEdge->childIdx)) : result;
 
     assert(-1<=currEdge->value && 1>=currEdge->value);
 
@@ -519,16 +557,16 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
 
     result = -currEdge->value;
 
-    currEdge->child->iters++;
-    float newValWeight = std::clamp(1.0/currEdge->child->iters, double(Aurora::valChangedMinWeight.value), 1.0);
-    currEdge->child->avgValue = (currEdge->child->avgValue * (1 - newValWeight)) + (currEdge->value * newValWeight);
-    currEdge->child->sumSquaredVals = (currEdge->child->sumSquaredVals * (1 - newValWeight)) + (currEdge->value * currEdge->value * newValWeight);
+    tree.getNode(currEdge->childIdx)->iters++;
+    float newValWeight = std::clamp(1.0/tree.getNode(currEdge->childIdx)->iters, double(Aurora::valChangedMinWeight.value), 1.0);
+    tree.getNode(currEdge->childIdx)->avgValue = tree.getNode(currEdge->childIdx)->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
+    tree.getNode(currEdge->childIdx)->sumSquaredVals = tree.getNode(currEdge->childIdx)->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
   }
   else{
-    currEdge->child->iters++;
-    float newValWeight = std::clamp(1.0/currEdge->child->iters, double(Aurora::valSameMinWeight.value), 1.0);
-    currEdge->child->avgValue = (currEdge->child->avgValue * (1 - newValWeight)) + (currEdge->value * newValWeight);
-    currEdge->child->sumSquaredVals = (currEdge->child->sumSquaredVals * (1 - newValWeight)) + (currEdge->value * currEdge->value * newValWeight);
+    tree.getNode(currEdge->childIdx)->iters++;
+    float newValWeight = std::clamp(1.0/tree.getNode(currEdge->childIdx)->iters, double(Aurora::valSameMinWeight.value), 1.0);
+    tree.getNode(currEdge->childIdx)->avgValue = tree.getNode(currEdge->childIdx)->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
+    tree.getNode(currEdge->childIdx)->sumSquaredVals = tree.getNode(currEdge->childIdx)->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
   }
 
   TTEntry* entry = tree.getTTEntry(hash);
@@ -569,24 +607,25 @@ inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point st
         });
 
     for(int i = 0; i < sortedEdges.size(); i++) {
-      Edge currEdge = sortedEdges[i];
+        Edge currEdge = sortedEdges[i];
+        Node* currNode = tree.getNode(currEdge.childIdx);
 
-      std::cout << std::left
-                << std::setw(8) << currEdge.edge.toStringRep()
-                << std::setw(12) << -currEdge.value
-                << std::setw(12) << -(currEdge.child ? currEdge.child->avgValue : -2)
-                << std::setw(12) << (currEdge.child ? currEdge.child->iters : 0)
-                << std::setw(12) << (currEdge.child ? currEdge.child->visits : 1)
-                << std::setw(12) << (currEdge.child ? std::sqrt(currEdge.child->variance()) : -1);
-      
-      // Print PV sequence
-      Node* pvNode = sortedEdges[i].child;
-      while(pvNode && pvNode->children.size() > 0) {
-          Edge pvEdge = findBestQEdge(pvNode);
-          std::cout << pvEdge.edge.toStringRep() << " ";
-          pvNode = pvEdge.child;
-      }
-      std::cout << std::endl;
+        std::cout << std::left
+                  << std::setw(8) << currEdge.edge.toStringRep()
+                  << std::setw(12) << -currEdge.value
+                  << std::setw(12) << -(currNode ? currNode->avgValue : -2)
+                  << std::setw(12) << (currNode ? currNode->iters : 0)
+                  << std::setw(12) << (currNode ? currNode->visits : 1)
+                  << std::setw(12) << (currNode ? std::sqrt(currNode->variance()) : -1);
+        
+        // Print PV sequence
+        Node* pvNode = currNode;
+        while(pvNode && pvNode->children.size() > 0) {
+            Edge pvEdge = findBestEdge(pvNode);
+            std::cout << pvEdge.edge.toStringRep() << " ";
+            pvNode = tree.getNode(pvEdge.childIdx);
+        }
+        std::cout << std::endl;
     }
 
     std::cout.precision(10);
@@ -610,7 +649,7 @@ inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point st
     while(pvNode && pvNode->children.size() > 0){
       Edge pvEdge = findBestQEdge(pvNode);
       std::cout << pvEdge.edge.toStringRep() << " ";
-      pvNode = pvEdge.child;
+      pvNode = tree.getNode(pvEdge.childIdx);
     }
     std::cout << std::endl;
 
@@ -725,32 +764,33 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       
       //Move all children nodes to the front of LRU
       for(int i=0; i<currNode->children.size(); i++){
-        if(currNode->children[i].child != nullptr){
-          tree.moveToHead(currNode->children[i].child);
+        if(currNode->children[i].childIdx != UINT32_MAX){
+          tree.moveToHead(tree.getNode(currNode->children[i].childIdx));
         }
       }
 
       //Select Child Node to explore
-      uint8_t currEdgeIndex = selectEdge(currNode, currNode == tree.root());
+      uint8_t currEdgeIndex = selectEdge(currNode, tree, currNode == tree.root());
 
       currEdge = &currNode->children[currEdgeIndex];
       chess::makeMove(board, currEdge->edge);
       traversePath.push_back({currEdge, board.history[board.halfmoveClock]});
 
       //If we only had a child edge before, create the corresponding child node
-      if(currEdge->child == nullptr){
+      if(currEdge->childIdx == UINT32_MAX){
         uint32_t currNodeIdx = tree.getIdx(currNode);
         bool currNodeMark = currNode->mark;
-        currEdge->child = tree.push_back(Node(currNodeIdx));
-        currEdge->child->index = currEdgeIndex;
-        currEdge->child->mark = currNodeMark;
-        currEdge->child->visits = 1;
-        currEdge->child->iters = 1;
-        currEdge->child->avgValue = currEdge->value;
-        currEdge->child->sumSquaredVals = currEdge->value*currEdge->value;
+        currEdge->childIdx = tree.getIdx(tree.push_back(Node(currNodeIdx)));
+        Node* childNode = tree.getNode(currEdge->childIdx);
+        childNode->index = currEdgeIndex;
+        childNode->mark = currNodeMark;
+        childNode->visits = 1;
+        childNode->iters = 1;
+        childNode->avgValue = currEdge->value;
+        childNode->sumSquaredVals = currEdge->value*currEdge->value;
       }
 
-      currNode = currEdge->child;
+      currNode = tree.getNode(currEdge->childIdx);
     }
 
     //Expand & Backpropagate new values
@@ -851,7 +891,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   //Output the final result of the search
   printSearchInfo(tree, start, true);
   if(Aurora::outputLevel.value >= 0){
-    std::cout << "\nbestmove " << findBestAEdge(tree.root()).edge.toStringRep() << std::endl; //std::endl to flush
+    std::cout << "\nbestmove " << findBestAEdge(tree.root(), tree).edge.toStringRep() << std::endl; //std::endl to flush
   }
 }
 
@@ -874,7 +914,7 @@ inline void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBo
       break;
     }
   }
-  uint32_t newRootIdx = tree.getIdx(newRootEdge.child);
+  uint32_t newRootIdx = newRootEdge.childIdx;
 
   if(newRootIdx == UINT32_MAX){tree.rootIdx = UINT32_MAX; destroyTree(tree); return;}
 
