@@ -350,7 +350,7 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
 
   chess::MoveList moves(board, true);
 
-  std::array<int, 256> orderValue = {};
+  std::array<int, 256> orderValue; // NOLINT(cppcoreguidelines-pro-type-member-init)
   int i=0;
   for(auto move : moves){orderValue[i] = mvvLva(board, move); i++;}
 
