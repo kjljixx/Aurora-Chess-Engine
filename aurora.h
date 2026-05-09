@@ -7,8 +7,8 @@
 //Set to 1 if you want to build a version of Aurora which generates data, 2 for generating data while playing (cutechess), 0 for the normal version.
 #define DATAGEN 0
 
-#define VERSION_NUM "v1.26.2"
-#define VERSION_NAME "-spsa"
+#define VERSION_NUM "v1.26.5"
+#define VERSION_NAME "-choose-best-avg-val"
 #ifdef DEV
 #define DEV_STRING "-dev"
 #else
@@ -40,19 +40,19 @@ struct Option{
   int type; //0 = string (which aurora uses for floats), 1 = spin (an int), 2 = string (an actual string)
   bool hidden;
 
-  Option(std::string name, float defaultValue, float minValue, float maxValue, int type, bool hidden = false) :
+  Option(const std::string& name, float defaultValue, float minValue, float maxValue, int type, bool hidden = false) :
     name(name), defaultValue(defaultValue), minValue(minValue), maxValue(maxValue), value(defaultValue), type(type), hidden(hidden)
     {
       options.push_back(this);
     }
-  Option(std::string name, std::string defaultValue, int type, bool hidden = false) :
-    name(name), sDefaultValue(defaultValue), minValue(-1), maxValue(-1), sValue(defaultValue), type(type), hidden(hidden)
+  Option(const std::string& name, const std::string& defaultValue, int type, bool hidden = false) :
+    name(name), sDefaultValue(defaultValue), minValue(-1), maxValue(-1), sValue(defaultValue), defaultValue(0), value(0), type(type), hidden(hidden)
     {
       options.push_back(this);
     }
 };
 
-inline Option hash("Hash", 0, 0, 65536, 1);
+inline Option hash("Hash", 16, 0, 65536, 1);
 inline Option ttHash("TTHash", 0, 0, 65536, 1);
 inline Option threads("Threads", 1, 1, 1, 1); // just here to make OpenBench happy
 
@@ -100,7 +100,7 @@ inline Option lruPrunedVisitsEstimate("lruPrunedVisitsEstimate", 14, 0, 1000, 0,
 
 inline Option cpMultiplier("cpMultiplier", 100.0, 50.0, 150.0, 0, true);
 
-inline Option* getOption(std::string name){
+inline Option* getOption(const std::string& name){
   for(Option* option : options){
     if(option->name == name) return option;
   }

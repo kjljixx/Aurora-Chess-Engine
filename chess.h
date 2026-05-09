@@ -14,17 +14,11 @@ namespace chess{
 const std::string startPosFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 struct KingMasks{
-  U64 checkmask;
-  U64 rookPinmask;
-  U64 rookPinnedPieces;
-  U64 bishopPinmask;
-  U64 bishopPinnedPieces;
-
-  KingMasks():
-  checkmask(0ULL),
-  rookPinmask(0ULL), rookPinnedPieces(0ULL),
-  bishopPinmask(0ULL), bishopPinnedPieces(0ULL)
-  {}
+  U64 checkmask = 0ULL;
+  U64 rookPinmask = 0ULL;
+  U64 rookPinnedPieces = 0ULL;
+  U64 bishopPinmask = 0ULL;
+  U64 bishopPinnedPieces = 0ULL;
 };
 
 struct Board{
@@ -42,14 +36,14 @@ struct Board{
   U64 occupied;
   Colors sideToMove = WHITE; unsigned char castlingRights; U64 enPassant; int halfmoveClock;
 
-  unsigned char canCurrentlyCastle;
+  unsigned char canCurrentlyCastle = 0;
 
   //use to check for repetitions
   U64 history[128] = {};
   bool hashed = false; //if there is a zobrist hash of the position in history, this is true
   uint8_t startHistoryIndex = 0; //When a fen is entered, we want getGameStatus to ignore all items of history before the halfmoveClock of the fen
 
-  std::array<std::array<uint8_t, 64>, 2> mailbox; //mailbox representation of the board, one for each side
+  std::array<std::array<uint8_t, 64>, 2> mailbox{}; //mailbox representation of the board, one for each side
 
   //constructor
   Board(
@@ -76,26 +70,25 @@ struct Board{
   sideToMove(sideToMove),
   castlingRights(castlingRights),
   enPassant(enPassant),
-  halfmoveClock(halfmoveClock),
-  hashed(false)
+  halfmoveClock(halfmoveClock)
   {
     for(int i=0; i<64; i++){mailbox[0][i] = 0; mailbox[1][i] = 0;}
   }
 
-  Board(){
+  Board(){ // NOLINT(cppcoreguidelines-pro-type-member-init)
     for(int i=0; i<64; i++){mailbox[0][i] = 0; mailbox[1][i] = 0;}
     setToFen(startPosFen);
     hashed = false;
   }
 
-  Board(std::string fen){
+  Board(const std::string& fen){ // NOLINT(cppcoreguidelines-pro-type-member-init)
     for(int i=0; i<64; i++){mailbox[0][i] = 0; mailbox[1][i] = 0;}
     setToFen(fen);
     hashed = false;
   }
 
   //Detects if all pieces are in the same position between two boards. THIS ONLY ACCOUNTS FOR PIECES BEING IN SPECIFIC SQUARES AND SIDE TO MOVE, NOTHING ELSE.
-  bool operator==(const Board& board){
+  bool operator==(const Board& board) const{
     return (
       pawns == board.pawns &&
       knights == board.knights &&
@@ -119,7 +112,7 @@ struct Board{
     return true;
   }
 
-  void setToFen(std::string fenString) {
+  void setToFen(const std::string& fenString) {
     std::istringstream fenStream(fenString);
     std::string token;
 
@@ -191,6 +184,7 @@ struct Board{
           break;
         case 'q': castlingRights |= 0x8;
           break;
+        default: break;
       }
     }
 
@@ -208,7 +202,7 @@ struct Board{
   }
 
 
-  std::string getFen(){
+  std::string getFen() const{
     std::string fen;
     U64 mask = 0;
     for(int i=8; i>0; i--){
@@ -262,7 +256,7 @@ struct Board{
 
     fen += " ";
     if(enPassant){
-      fen += squareIndexToNotation(_bitscanForward(enPassant));
+      fen += squareIndexToNotation(bitscanForward(enPassant));
     }
     else{
       fen += "-";
@@ -278,7 +272,7 @@ struct Board{
     return fen;
   }
 
-  void printBoard(){
+  void printBoard() const{
     U64 mask = 0;
     for(int i=8; i>0; i--){
       std::cout << "\n" << i << " ";
@@ -300,11 +294,11 @@ struct Board{
     std::cout << " FEN: " << getFen();
   }
 
-  U64 getPieces(Colors color){
+  U64 getPieces(Colors color) const{
     if(color==WHITE){return white;}
     return black;
   }
-  U64 getPieces(Colors color, Pieces piece){
+  U64 getPieces(Colors color, Pieces piece) const{
     U64 _pieces = getPieces(color);
     switch (piece) {
       case PAWN: return pawns & _pieces; break;
@@ -318,11 +312,11 @@ struct Board{
     return 0ULL;
   }
 
-  U64 getOurPieces(){
+  U64 getOurPieces() const{
     if(sideToMove==WHITE){return white;}
     return black;
   }
-  U64 getOurPieces(Pieces piece){
+  U64 getOurPieces(Pieces piece) const{
     U64 _ourPieces = getOurPieces();
     switch (piece) {
       case PAWN: return pawns & _ourPieces; break;
@@ -336,11 +330,11 @@ struct Board{
     return 0ULL;
   }
 
-  U64 getTheirPieces(){
+  U64 getTheirPieces() const{
     if(sideToMove==WHITE){return black;}
     return white;
   }
-  U64 getTheirPieces(Pieces piece){
+  U64 getTheirPieces(Pieces piece) const{
     U64 _theirPieces = getTheirPieces();
     switch (piece) {
       case PAWN: return pawns & _theirPieces; break;
@@ -419,9 +413,9 @@ struct Board{
   }
 
   //generates checkmasks and pinmasks
-  KingMasks generateKingMasks(){
+  KingMasks generateKingMasks() const{
     U64 ourPieces = getOurPieces();
-    uint8_t square = _bitscanForward(ourPieces & kings);
+    uint8_t square = bitscanForward(ourPieces & kings);
     U64 theirPieces = getTheirPieces();
     KingMasks _kingMasks;
 
@@ -431,9 +425,9 @@ struct Board{
     if(lookupTables::knightTable[square] & knights & theirPieces){_kingMasks.checkmask |= lookupTables::knightTable[square] & knights & theirPieces; numAttackers++;}
 
     U64 rookAttacks = lookupTables::getRookAttacks(square, theirPieces) & (rooks | queens) & theirPieces;
-    U64 attackRay;
+    U64 attackRay = 0ULL;
     while(rookAttacks){
-      int theirRook = _popLsb(rookAttacks);
+      int theirRook = popLsb(rookAttacks);
       int theirRookRank = squareIndexToRank(theirRook); int theirRookFile = squareIndexToFile(theirRook);
       if(theirRookRank==squareRank){
         if(theirRookFile>squareFile){attackRay = rays::rays[2][square] & ~rays::rays[2][theirRook];}
@@ -444,12 +438,12 @@ struct Board{
         else{attackRay = rays::rays[1][square] & ~rays::rays[1][theirRook];}
       }
       if(!(attackRay & ourPieces)){_kingMasks.checkmask |= attackRay; numAttackers++;}
-      else if(_popCount(attackRay & ourPieces) == 1){_kingMasks.rookPinmask |= attackRay; _kingMasks.rookPinnedPieces |= attackRay & ourPieces;}
+      else if(popCount(attackRay & ourPieces) == 1){_kingMasks.rookPinmask |= attackRay; _kingMasks.rookPinnedPieces |= attackRay & ourPieces;}
     }
 
     U64 bishopAttacks = lookupTables::getBishopAttacks(square, theirPieces) & (bishops | queens) & theirPieces;
     while(bishopAttacks){
-      int theirBishop = _popLsb(bishopAttacks);
+      int theirBishop = popLsb(bishopAttacks);
       int theirBishopRank = squareIndexToRank(theirBishop); int theirBishopFile = squareIndexToFile(theirBishop);
       if(theirBishopRank>squareRank){
         if(theirBishopFile<squareFile){attackRay = rays::rays[4][square] & ~rays::rays[4][theirBishop];}
@@ -460,7 +454,7 @@ struct Board{
         else{attackRay = rays::rays[7][square] & ~rays::rays[7][theirBishop];}
       }
       if(!(attackRay & ourPieces)){_kingMasks.checkmask |= attackRay; numAttackers++;}
-      else if(_popCount(attackRay & ourPieces) == 1){_kingMasks.bishopPinmask |= attackRay; _kingMasks.bishopPinnedPieces |= attackRay & ourPieces;}
+      else if(popCount(attackRay & ourPieces) == 1){_kingMasks.bishopPinmask |= attackRay; _kingMasks.bishopPinnedPieces |= attackRay & ourPieces;}
     }
     if(lookupTables::pawnAttackTable[sideToMove][square] & pawns & theirPieces){_kingMasks.checkmask |= lookupTables::pawnAttackTable[sideToMove][square] & pawns & theirPieces; numAttackers++;}
     
@@ -469,28 +463,28 @@ struct Board{
     return _kingMasks;
   }
   //Returns the square of the enemy piece which is attacking the square, if there is one. Otherwise returns 64
-  uint8_t squareUnderAttack(uint8_t square){
+  uint8_t squareUnderAttack(uint8_t square) const{
     U64 theirPieces = getTheirPieces();
 
-    if(lookupTables::pawnAttackTable[sideToMove][square] & pawns & theirPieces){return _bitscanForward(lookupTables::pawnAttackTable[sideToMove][square] & pawns & theirPieces);}
+    if(lookupTables::pawnAttackTable[sideToMove][square] & pawns & theirPieces){return bitscanForward(lookupTables::pawnAttackTable[sideToMove][square] & pawns & theirPieces);}
 
-    if(lookupTables::knightTable[square] & knights & theirPieces){return _bitscanForward(lookupTables::knightTable[square] & knights & theirPieces);}
+    if(lookupTables::knightTable[square] & knights & theirPieces){return bitscanForward(lookupTables::knightTable[square] & knights & theirPieces);}
 
     U64 bishopAttacks = lookupTables::getBishopAttacks(square, white | black) & theirPieces;
-    if(bishopAttacks & bishops){return _bitscanForward(bishopAttacks & bishops);}
+    if(bishopAttacks & bishops){return bitscanForward(bishopAttacks & bishops);}
 
     U64 rookAttacks = lookupTables::getRookAttacks(square, white | black) & theirPieces;
-    if(rookAttacks & rooks){return _bitscanForward(rookAttacks & rooks);}
+    if(rookAttacks & rooks){return bitscanForward(rookAttacks & rooks);}
 
-    if((bishopAttacks | rookAttacks) & queens){return _bitscanForward((bishopAttacks | rookAttacks) & queens);}
+    if((bishopAttacks | rookAttacks) & queens){return bitscanForward((bishopAttacks | rookAttacks) & queens);}
 
-    if(lookupTables::kingTable[square] & kings & theirPieces){return _bitscanForward(lookupTables::kingTable[square] & kings & theirPieces);}
+    if(lookupTables::kingTable[square] & kings & theirPieces){return bitscanForward(lookupTables::kingTable[square] & kings & theirPieces);}
 
     return 64;
   }
 
   //returns a bitboard with all pieces of a certain color attacking a certain square. Mainly used for Static Exchange Evaluation
-  U64 squareAttackers(uint8_t square, Colors color){
+  U64 squareAttackers(uint8_t square, Colors color) const{
     U64 pieces = getPieces(color);
 
     U64 bishopAttacks = lookupTables::getBishopAttacks(square, white | black) & pieces;
@@ -536,10 +530,10 @@ struct Board{
     unsetPieces(movingPiece, (1ULL << startSquare));
 
     if(moveFlags == ENPASSANT){
-      U64 theirPawnSquare;
+      U64 theirPawnSquare = 0ULL;
       if(sideToMove == WHITE){theirPawnSquare = (1ULL << endSquare) >> 8;}
       else{theirPawnSquare = (1ULL << endSquare) << 8;}
-      uint8_t theirPawnSq = _bitscanForward(theirPawnSquare);
+      uint8_t theirPawnSq = bitscanForward(theirPawnSquare);
       mailbox[0][theirPawnSq] = 0; mailbox[1][theirPawnSq^56] = 0;
       unsetColors(theirPawnSquare, Colors(!sideToMove));
       unsetPieces(PAWN, theirPawnSquare);
@@ -555,8 +549,8 @@ struct Board{
     }
 
     if(moveFlags == CASTLE){
-      uint8_t rookStartSquare;
-      uint8_t rookEndSquare;
+      uint8_t rookStartSquare = 0;
+      uint8_t rookEndSquare = 0;
       //Queenside Castling
       if(squareIndexToFile(endSquare) == 2){
         rookStartSquare = sideToMove*56;
@@ -627,7 +621,7 @@ struct Board{
 inline Move* generateLegalMoves(Board &board, Move* legalMoves){
   //Extremely useful source on how pointers/arrays work: https://cplusplus.com/doc/tutorial/pointers/
   Move* legalMovesPtr = legalMoves; //A pointer to the spot in memory where the next move will go
-  uint8_t piecePos;
+  uint8_t piecePos = 0;
 
   KingMasks _kingMasks = board.generateKingMasks();
 
@@ -638,21 +632,21 @@ inline Move* generateLegalMoves(Board &board, Move* legalMoves){
   //Knight cannot move if it is pinned
   U64 pieceBitboard = (ourPieces & board.knights) & ~(_kingMasks.bishopPinnedPieces | _kingMasks.rookPinnedPieces);
   while(pieceBitboard){
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
 
     legalMovesPtr = MoveListFromBitboard(lookupTables::knightTable[piecePos] & notOurPieces & _kingMasks.checkmask, piecePos, false, legalMovesPtr);
   }
 
   pieceBitboard = (ourPieces & board.kings);
   assert(pieceBitboard);
-  piecePos = _bitscanForward(pieceBitboard);
+  piecePos = bitscanForward(pieceBitboard);
   board.canCurrentlyCastle = 0;
 
   U64 kingMovesBitboard = lookupTables::kingTable[piecePos] & notOurPieces;
-  uint8_t endSquare;
+  uint8_t endSquare = 0;
   board.unsetColors(pieceBitboard, board.sideToMove); //when we check if the new position of king is under attack, we don't want the current king position to block the check
   while (kingMovesBitboard){
-    endSquare = _popLsb(kingMovesBitboard);
+    endSquare = popLsb(kingMovesBitboard);
     //check if new position of king is under attack
     if(!board.kingUnderAttack(endSquare)){*legalMovesPtr++ = Move(piecePos, endSquare);}
   }
@@ -671,7 +665,7 @@ inline Move* generateLegalMoves(Board &board, Move* legalMoves){
 
   pieceBitboard = (ourPieces & board.pawns);
   while(pieceBitboard){
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
 
     if(1ULL << piecePos & (_kingMasks.bishopPinnedPieces | _kingMasks.rookPinnedPieces)){
       //if pawn is pinned, you cannot push it unless it is a vertical rook pin. 
@@ -699,17 +693,17 @@ inline Move* generateLegalMoves(Board &board, Move* legalMoves){
   }
   //With en passant, we can just test the move
   if(board.enPassant){
-    uint8_t enPassantSquare = _bitscanForward(board.enPassant);
+    uint8_t enPassantSquare = bitscanForward(board.enPassant);
     U64 enPassantMovesBitboard = lookupTables::pawnAttackTable[!board.sideToMove][enPassantSquare] & (ourPieces & board.pawns);
 
     if(board.sideToMove == WHITE){board.unsetColors(board.enPassant >> 8, Colors(!board.sideToMove));}
     else{board.unsetColors(board.enPassant << 8, Colors(!board.sideToMove));}
     board.setColors(board.enPassant, board.sideToMove);
     while (enPassantMovesBitboard){
-      uint8_t startSquare = _popLsb(enPassantMovesBitboard);
+      uint8_t startSquare = popLsb(enPassantMovesBitboard);
       board.unsetColors(1ULL << startSquare, board.sideToMove);
       //check if king is under attack
-      if(!(board.squareUnderAttack(_bitscanForward(ourPieces & board.kings))<=63)){*legalMovesPtr++ = Move(startSquare, enPassantSquare, ENPASSANT);}
+      if(!(board.squareUnderAttack(bitscanForward(ourPieces & board.kings))<=63)){*legalMovesPtr++ = Move(startSquare, enPassantSquare, ENPASSANT);}
 
       board.setColors(1ULL << startSquare, board.sideToMove);
     }
@@ -719,7 +713,7 @@ inline Move* generateLegalMoves(Board &board, Move* legalMoves){
 
   pieceBitboard = (ourPieces & board.rooks);
   while(pieceBitboard){
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
     //if rook is pinned by a bishop it cannot move, so we only check for if it is pinned by a rook
     if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){continue;}
     if(1ULL << piecePos & _kingMasks.rookPinnedPieces){
@@ -732,7 +726,7 @@ inline Move* generateLegalMoves(Board &board, Move* legalMoves){
 
   pieceBitboard = (ourPieces & board.bishops);
   while(pieceBitboard){
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
 
     //if bishop is pinned by a rook it cannot move, so we only check for if it is pinned by a bishop
     if(1ULL << piecePos & _kingMasks.rookPinnedPieces){continue;}
@@ -748,7 +742,7 @@ inline Move* generateLegalMoves(Board &board, Move* legalMoves){
   while(pieceBitboard){
     //for queen just treat it as a rook, then treat it as a bishop
     //as a rook:
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
 
     //if rook is pinned by a bishop it cannot move, so we only check for if it is pinned by a rook
     if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){}
@@ -776,7 +770,7 @@ inline Move* generateLegalMoves(Board &board, Move* legalMoves){
 inline Move* generateLegalCaptures(Board &board, Move* legalMoves){
   //Extremely useful source on how pointers/arrays work: https://cplusplus.com/doc/tutorial/pointers/
   Move* legalMovesPtr = legalMoves; //A pointer to the spot in memory where the next move will go
-  uint8_t piecePos;
+  uint8_t piecePos = 0;
 
   KingMasks _kingMasks = board.generateKingMasks();
 
@@ -786,21 +780,21 @@ inline Move* generateLegalCaptures(Board &board, Move* legalMoves){
   //Knight cannot move if it is pinned
   U64 pieceBitboard = (ourPieces & board.knights) & ~(_kingMasks.bishopPinnedPieces | _kingMasks.rookPinnedPieces);
   while(pieceBitboard){
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
 
     legalMovesPtr = MoveListFromBitboard(lookupTables::knightTable[piecePos] & theirPieces & _kingMasks.checkmask, piecePos, false, legalMovesPtr);
   }
 
   pieceBitboard = (ourPieces & board.kings);
   assert(pieceBitboard);
-  piecePos = _bitscanForward(pieceBitboard);
+  piecePos = bitscanForward(pieceBitboard);
   board.canCurrentlyCastle = 0;
 
   U64 kingMovesBitboard = lookupTables::kingTable[piecePos] & theirPieces;
-  uint8_t endSquare;
+  uint8_t endSquare = 0;
   board.unsetColors(pieceBitboard, board.sideToMove); //when we check if the new position of king is under attack, we don't want the current king position to block the check
   while (kingMovesBitboard){
-    endSquare = _popLsb(kingMovesBitboard);
+    endSquare = popLsb(kingMovesBitboard);
     //check if new position of king is under attack
     if(!board.kingUnderAttack(endSquare)){*legalMovesPtr++ = Move(piecePos, endSquare);}
   }
@@ -809,7 +803,7 @@ inline Move* generateLegalCaptures(Board &board, Move* legalMoves){
 
   pieceBitboard = (ourPieces & board.pawns);
   while(pieceBitboard){
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
 
     if(1ULL << piecePos & (_kingMasks.bishopPinnedPieces | _kingMasks.rookPinnedPieces)){
       //if pawn is pinned, you cannot push it unless it is a vertical rook pin. 
@@ -830,17 +824,17 @@ inline Move* generateLegalCaptures(Board &board, Move* legalMoves){
   }
   //With en passant, we can just test the move
   if(board.enPassant){
-    uint8_t enPassantSquare = _bitscanForward(board.enPassant);
+    uint8_t enPassantSquare = bitscanForward(board.enPassant);
     U64 enPassantMovesBitboard = lookupTables::pawnAttackTable[!board.sideToMove][enPassantSquare] & (ourPieces & board.pawns);
 
     if(board.sideToMove == WHITE){board.unsetColors(board.enPassant >> 8, Colors(!board.sideToMove));}
     else{board.unsetColors(board.enPassant << 8, Colors(!board.sideToMove));}
     board.setColors(board.enPassant, board.sideToMove);
     while (enPassantMovesBitboard){
-      uint8_t startSquare = _popLsb(enPassantMovesBitboard);
+      uint8_t startSquare = popLsb(enPassantMovesBitboard);
       board.unsetColors(1ULL << startSquare, board.sideToMove);
       //check if king is under attack
-      if(!(board.squareUnderAttack(_bitscanForward(ourPieces & board.kings))<=63)){*legalMovesPtr++ = Move(startSquare, enPassantSquare, ENPASSANT);}
+      if(!(board.squareUnderAttack(bitscanForward(ourPieces & board.kings))<=63)){*legalMovesPtr++ = Move(startSquare, enPassantSquare, ENPASSANT);}
 
       board.setColors(1ULL << startSquare, board.sideToMove);
     }
@@ -850,7 +844,7 @@ inline Move* generateLegalCaptures(Board &board, Move* legalMoves){
 
   pieceBitboard = (ourPieces & board.rooks);
   while(pieceBitboard){
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
     //if rook is pinned by a bishop it cannot move, so we only check for if it is pinned by a rook
     if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){continue;}
     if(1ULL << piecePos & _kingMasks.rookPinnedPieces){
@@ -863,7 +857,7 @@ inline Move* generateLegalCaptures(Board &board, Move* legalMoves){
 
   pieceBitboard = (ourPieces & board.bishops);
   while(pieceBitboard){
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
 
     //if bishop is pinned by a rook it cannot move, so we only check for if it is pinned by a bishop
     if(1ULL << piecePos & _kingMasks.rookPinnedPieces){continue;}
@@ -879,7 +873,7 @@ inline Move* generateLegalCaptures(Board &board, Move* legalMoves){
   while(pieceBitboard){
     //for queen just treat it as a rook, then treat it as a bishop
     //as a rook:
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
 
     //if rook is pinned by a bishop it cannot move, so we only check for if it is pinned by a rook
     if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){}
@@ -908,7 +902,7 @@ inline Move* generateLegalCaptures(Board &board, Move* legalMoves){
 //Used for stalemate and checkmate detection in calls for the getGameStatus() function below
 inline bool isLegalMoves(Board& board){
   //Extremely useful source on how pointers/arrays work: https://cplusplus.com/doc/tutorial/pointers/
-  uint8_t piecePos;
+  uint8_t piecePos = 0;
 
   KingMasks _kingMasks = board.generateKingMasks();
 
@@ -919,20 +913,20 @@ inline bool isLegalMoves(Board& board){
   //Knight cannot move if it is pinned
   U64 pieceBitboard = (ourPieces & board.knights) & ~(_kingMasks.bishopPinnedPieces | _kingMasks.rookPinnedPieces);
   while(pieceBitboard){
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
 
     if(lookupTables::knightTable[piecePos] & notOurPieces & _kingMasks.checkmask){return true;}
   }
 
   pieceBitboard = (ourPieces & board.kings);
-  piecePos = _bitscanForward(pieceBitboard);
+  piecePos = bitscanForward(pieceBitboard);
   board.canCurrentlyCastle = 0;
 
   U64 kingMovesBitboard = lookupTables::kingTable[piecePos] & notOurPieces;
-  uint8_t endSquare;
+  uint8_t endSquare = 0;
   board.unsetColors(pieceBitboard, board.sideToMove); //when we check if the new position of king is under attack, we don't want the current king position to block the check
   while (kingMovesBitboard){
-    endSquare = _popLsb(kingMovesBitboard);
+    endSquare = popLsb(kingMovesBitboard);
     //check if new position of king is under attack
     if(!board.kingUnderAttack(endSquare)){board.setColors(pieceBitboard, board.sideToMove); return true;}
   }
@@ -952,7 +946,7 @@ inline bool isLegalMoves(Board& board){
 
   pieceBitboard = (ourPieces & board.pawns);
   while(pieceBitboard){
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
 
     if(1ULL << piecePos & (_kingMasks.bishopPinnedPieces | _kingMasks.rookPinnedPieces)){
       //if pawn is pinned, you cannot push it unless it is a vertical rook pin. 
@@ -979,17 +973,17 @@ inline bool isLegalMoves(Board& board){
   }
   //With en passant, we can just test the move
   if(board.enPassant){
-    uint8_t enPassantSquare = _bitscanForward(board.enPassant);
+    uint8_t enPassantSquare = bitscanForward(board.enPassant);
     U64 enPassantMovesBitboard = lookupTables::pawnAttackTable[!board.sideToMove][enPassantSquare] & (ourPieces & board.pawns);
 
     if(board.sideToMove == WHITE){board.unsetColors(board.enPassant >> 8, Colors(!board.sideToMove));}
     else{board.unsetColors(board.enPassant << 8, Colors(!board.sideToMove));}
     board.setColors(board.enPassant, board.sideToMove);
     while (enPassantMovesBitboard){
-      uint8_t startSquare = _popLsb(enPassantMovesBitboard);
+      uint8_t startSquare = popLsb(enPassantMovesBitboard);
       board.unsetColors(1ULL << startSquare, board.sideToMove);
       //check if king is under attack
-      if(!(board.squareUnderAttack(_bitscanForward(ourPieces & board.kings))<=63)){
+      if(!(board.squareUnderAttack(bitscanForward(ourPieces & board.kings))<=63)){
         if(board.sideToMove == WHITE){board.setColors(board.enPassant >> 8, Colors(!board.sideToMove));} else{board.setColors(board.enPassant << 8, Colors(!board.sideToMove));}
         board.setColors(1ULL << startSquare, board.sideToMove);
         board.unsetColors(board.enPassant, board.sideToMove);
@@ -1003,7 +997,7 @@ inline bool isLegalMoves(Board& board){
 
   pieceBitboard = (ourPieces & board.rooks);
   while(pieceBitboard){
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
     //if rook is pinned by a bishop it cannot move, so we only check for if it is pinned by a rook
     if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){continue;}
     if(1ULL << piecePos & _kingMasks.rookPinnedPieces){
@@ -1016,7 +1010,7 @@ inline bool isLegalMoves(Board& board){
 
   pieceBitboard = (ourPieces & board.bishops);
   while(pieceBitboard){
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
 
     //if bishop is pinned by a rook it cannot move, so we only check for if it is pinned by a bishop
     if(1ULL << piecePos & _kingMasks.rookPinnedPieces){continue;}
@@ -1032,7 +1026,7 @@ inline bool isLegalMoves(Board& board){
   while(pieceBitboard){
     //for queen just treat it as a rook, then treat it as a bishop
     //as a rook:
-    piecePos = _popLsb(pieceBitboard);
+    piecePos = popLsb(pieceBitboard);
 
     //if rook is pinned by a bishop it cannot move, so we only check for if it is pinned by a rook
     if(1ULL << piecePos & _kingMasks.bishopPinnedPieces){}
@@ -1068,58 +1062,57 @@ struct MoveList{
     lastMove = moveList + moves.size();
   }
 
-  void operator=(const MoveList& moves){
+  MoveList& operator=(const MoveList& moves){
     std::copy(std::begin(moves.moveList), std::end(moves.moveList), std::begin(moveList));
     lastMove = moveList + moves.size(); 
+    return *this;
   }
 
   Move* begin() {return moveList;}
-  Move* end() {return lastMove;}
+  Move* end() const{return lastMove;}
 
   Move operator[](int index) {return moveList[index];}
 
   size_t size() const {return lastMove-moveList;}
 };
 
-enum gameStatus{WIN = 1, DRAW = 0, LOSS = -1, ONGOING = 2};
+enum gameStatus: int8_t{WIN = 1, DRAW = 0, LOSS = -1, ONGOING = 2};
 
 inline gameStatus probeWdlTb(Board& board){
   if(TB_LARGEST == 0){return ONGOING;}
-  if(_popCount(board.occupied) > TB_LARGEST){return ONGOING;}
+  if(popCount(board.occupied) > TB_LARGEST){return ONGOING;}
   
   assert(board.castlingRights == 0);
-  auto tbProbeResult = tb_probe_wdl(board.white, board.black, board.kings, board.queens, board.rooks, board.bishops, board.knights, board.pawns, 0, board.castlingRights, board.enPassant ? _bitscanForward(board.enPassant) : 0, board.sideToMove==WHITE);
+  auto tbProbeResult = tb_probe_wdl(board.white, board.black, board.kings, board.queens, board.rooks, board.bishops, board.knights, board.pawns, 0, board.castlingRights, board.enPassant ? bitscanForward(board.enPassant) : 0, board.sideToMove==WHITE);
   if(tbProbeResult==TB_RESULT_FAILED){board.printBoard(); assert(0);}
   if(tbProbeResult==TB_WIN){return WIN;}
-  else if(tbProbeResult==TB_LOSS){return LOSS;}
-  else{return DRAW;}
+  if(tbProbeResult==TB_LOSS){return LOSS;}
+  return DRAW;
 }
 
 inline Move probeDtzTb(Board& board){
   if(TB_LARGEST == 0){return Move();}
-  if(_popCount(board.occupied) > TB_LARGEST){return Move();}
+  if(popCount(board.occupied) > TB_LARGEST){return Move();}
   
   assert(board.castlingRights == 0);
-  auto tbProbeResult = tb_probe_root(board.white, board.black, board.kings, board.queens, board.rooks, board.bishops, board.knights, board.pawns, board.halfmoveClock, board.castlingRights, board.enPassant ? _bitscanForward(board.enPassant) : 0, board.sideToMove==WHITE, NULL);
+  auto tbProbeResult = tb_probe_root(board.white, board.black, board.kings, board.queens, board.rooks, board.bishops, board.knights, board.pawns, board.halfmoveClock, board.castlingRights, board.enPassant ? bitscanForward(board.enPassant) : 0, board.sideToMove==WHITE, NULL);
   if(tbProbeResult==TB_RESULT_FAILED){board.printBoard(); return Move();}
-  uint8_t from = TB_GET_FROM(tbProbeResult);
-  uint8_t to = TB_GET_TO(tbProbeResult);
+  uint8_t from_sq = TB_GET_FROM(tbProbeResult);
+  uint8_t to_sq = TB_GET_TO(tbProbeResult);
   uint8_t promotion = TB_GET_PROMOTES(tbProbeResult);
-  uint8_t ep = TB_GET_EP(tbProbeResult);
+  uint8_t ep_sq = TB_GET_EP(tbProbeResult);
   if(promotion){
-    return Move(from, to, PROMOTION, Pieces(6-promotion));
+    return Move(from_sq, to_sq, PROMOTION, Pieces(6-promotion));
   }
-  else if(ep){
-    return Move(from, to, ENPASSANT);
+  if(ep_sq){
+    return Move(from_sq, to_sq, ENPASSANT);
   }
-  else{
-    return Move(from, to);
-  }
+  return Move(from_sq, to_sq);
 }
 
 inline gameStatus getGameStatus(Board& board, bool isLegalMoves){
-  /*if(_popCount(board.occupied)<=5){
-    auto tbProbeResult = tb_probe_wdl(board.white, board.black, board.kings, board.queens, board.rooks, board.bishops, board.knights, board.pawns, board.halfmoveClock, board.castlingRights, board.enPassant ? _bitscanForward(board.enPassant) : 0, board.sideToMove==WHITE);
+  /*if(popCount(board.occupied)<=5){
+    auto tbProbeResult = tb_probe_wdl(board.white, board.black, board.kings, board.queens, board.rooks, board.bishops, board.knights, board.pawns, board.halfmoveClock, board.castlingRights, board.enPassant ? bitscanForward(board.enPassant) : 0, board.sideToMove==WHITE);
     if(tbProbeResult==TB_RESULT_FAILED){board.printBoard(); assert(0);}
     if(tbProbeResult==TB_WIN){return WIN;}
     else if(tbProbeResult==TB_LOSS){return LOSS;}
@@ -1127,13 +1120,13 @@ inline gameStatus getGameStatus(Board& board, bool isLegalMoves){
   }*/
   if(!isLegalMoves){
     //If our king is under attack, we lost from checkmate. Otherwise, it is a draw by stalemate.
-    return gameStatus(-(board.squareUnderAttack(_bitscanForward(board.getOurPieces(KING)))<=63));
+    return gameStatus(-(board.squareUnderAttack(bitscanForward(board.getOurPieces(KING)))<=63));
   }
   //Fifty Move Rule
   if(board.halfmoveClock>=100){return DRAW;}
   //Insufficient Material
   if(!(board.pawns | board.rooks | board.queens) &&//If there are pawns, rooks, or queens on the board, it is not insufficient material
-  (_popCount(board.bishops | board.knights)<=1))
+  (popCount(board.bishops | board.knights)<=1))
   {return DRAW;}
   //Threefold Repetition
   if(std::count(&board.history[board.startHistoryIndex], &board.history[board.halfmoveClock], board.history[board.halfmoveClock]) >= 2)

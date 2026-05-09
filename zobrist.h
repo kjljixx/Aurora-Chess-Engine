@@ -17,7 +17,7 @@ inline bool shouldHashEnPassant(chess::Board& board){
     return false;
   }
 
-  const uint8_t enPassantSquare = _bitscanForward(board.enPassant);
+  const uint8_t enPassantSquare = bitscanForward(board.enPassant);
   const U64 enPassantCapturers = lookupTables::pawnAttackTable[!board.sideToMove][enPassantSquare] & board.getOurPieces(chess::PAWN);
   return enPassantCapturers != 0ULL;
 }
@@ -53,7 +53,7 @@ inline U64 getHash(chess::Board& board){
   }
 
   if(shouldHashEnPassant(board)){
-    hash ^= enPassantKeys[squareIndexToFile(_bitscanForward(board.enPassant))];
+    hash ^= enPassantKeys[squareIndexToFile(bitscanForward(board.enPassant))];
   }
   
   hash ^= castlingKeys[board.castlingRights];
@@ -81,8 +81,8 @@ inline U64 updateHash(chess::Board& board, chess::Move move){
   }
 
   if(moveFlags == chess::CASTLE){
-    uint8_t rookStartSquare;
-    uint8_t rookEndSquare;
+    uint8_t rookStartSquare = 0;
+    uint8_t rookEndSquare = 0;
     //Queenside Castling
     if(squareIndexToFile(endSquare) == 2){
       rookStartSquare = board.sideToMove*56;
@@ -102,7 +102,7 @@ inline U64 updateHash(chess::Board& board, chess::Move move){
   else{hash ^= pieceKeys[2*(movingPiece-1)+(board.sideToMove ? 1 : 0)][endSquare];}
 
   if(shouldHashEnPassant(board)){
-    hash ^= enPassantKeys[squareIndexToFile(_bitscanForward(board.enPassant))]; //remove en passant from hash
+    hash ^= enPassantKeys[squareIndexToFile(bitscanForward(board.enPassant))]; //remove en passant from hash
   }
   if(movingPiece == chess::PAWN){
     U64 newEnPassant = 0ULL;
@@ -116,7 +116,7 @@ inline U64 updateHash(chess::Board& board, chess::Move move){
     }
 
     if(newEnPassant){
-      const uint8_t enPassantSquare = _bitscanForward(newEnPassant);
+      const uint8_t enPassantSquare = bitscanForward(newEnPassant);
       const U64 theirPawns = board.getTheirPieces(chess::PAWN);
       const U64 enPassantCapturers = lookupTables::pawnAttackTable[board.sideToMove][enPassantSquare] & theirPawns;
       if(enPassantCapturers){
