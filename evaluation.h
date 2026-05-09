@@ -23,11 +23,11 @@ namespace evaluation{
 inline const int mg_value[6] = {42, 184, 207, 261, 642, 10000};
 inline const int eg_value[6] = {71, 242, 265, 538, 1067, 10000};
 
-inline float cpToVal(int cp){
+inline float cpToVal(float cp){
   return std::clamp(std::atan(cp/100.0)/1.57079633, -1.0, 1.0);
 }
 
-inline int valToCp(float val){
+inline float valToCp(float val){
   return std::clamp(
             std::round(std::tan(std::min(std::max(double(val), -0.9999), 0.9999)*1.57079633)*100)
         , -100000.0, 100000.0);
@@ -63,7 +63,7 @@ struct NNUE{
 
   NNUE(const NNUEparameters<numHiddenNeurons>* parameters) : parameters(parameters) {}
 
-  int evaluate(chess::Colors sideToMove){
+  float evaluate(chess::Colors sideToMove){
     //Adapted from Obsidian https://github.com/gab8192/Obsidian/blob/main/Obsidian/nnue.cpp
     SIMD::Vec stmAcc;
     SIMD::Vec oppAcc;
@@ -93,7 +93,7 @@ struct NNUE{
       v1 = SIMD::maddEpi16(v0, v1);
       sum = SIMD::addEpi32(sum, v1);
     }
-    int unsquared = SIMD::vecHaddEpi32(sum) / 255 + parameters->outputLayerBias;
+    float unsquared = SIMD::vecHaddEpi32(sum) / 255.0 + parameters->outputLayerBias;
 
     return (unsquared * 400) / (255 * 64) + 13;
   }
@@ -333,16 +333,16 @@ inline int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0, int
 
 inline const std::array<uint8_t, 13> sidedPieceToPiece = {0, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6};
 
-inline int mvvLva(chess::Board& board, chess::Move move){
+inline float mvvLva(chess::Board& board, chess::Move move){
   return 30*mg_value[sidedPieceToPiece[move.getMoveFlags() == chess::ENPASSANT ? 1 : 
                      board.mailbox[0][move.getEndSquare()]]-1] -
          mg_value[sidedPieceToPiece[board.mailbox[0][move.getStartSquare()]]-1];
 }
 
 template<int numHiddenNeurons>
-int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int beta){
-  int eval = nnue.evaluate(board.sideToMove);
-  int bestEval = eval;
+float qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, float alpha, float beta){
+  float eval = nnue.evaluate(board.sideToMove);
+  float bestEval = eval;
 
   if(eval >= beta){return eval;}
 
@@ -380,8 +380,8 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
 }
 
 template<int numHiddenNeurons>
-int evaluate(chess::Board& board, NNUE<numHiddenNeurons>& nnue){
-  int cpEvaluation = qSearch(board, nnue, -999999, 999999);
+float evaluate(chess::Board& board, NNUE<numHiddenNeurons>& nnue){
+  float cpEvaluation = qSearch(board, nnue, -999999, 999999);
 
   return cpEvaluation;
 }
