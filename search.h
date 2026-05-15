@@ -8,6 +8,7 @@
 #include <chrono>
 #include <deque>
 #include <iomanip>
+#include <array>
 
 #if DATAGEN >= 1
   std::string dataFolderPath = "C:/Users/kjlji/OneDrive/Documents/VSCode/C++/AuroraChessEngine-main/data";
@@ -15,7 +16,23 @@
 
 namespace search{
 
+inline std::array<float, 1024> emaSameWeights;
+inline std::array<float, 1024> emaChangedWeights;
+
+inline void initEmaWeights() {
+  for (int iters = 1; iters < 1024; iters++) {
+    // Bias-corrected EMA calculation
+    // weight = alpha / (1 - (1 - alpha)^iters)
+    double alphaSame = Aurora::valSameMinWeight.value;
+    emaSameWeights[iters] = static_cast<float>(alphaSame / (1.0 - std::pow(1.0 - alphaSame, iters)));
+    
+    double alphaChanged = Aurora::valChangedMinWeight.value;
+    emaChangedWeights[iters] = static_cast<float>(alphaChanged / (1.0 - std::pow(1.0 - alphaChanged, iters)));
+  }
+}
+
 inline void init(){
+  initEmaWeights();
   evaluation::init();
   zobrist::init();
   std::cout.precision(10);
@@ -537,7 +554,8 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
       continueBackprop = false;
 
         tree.getNode(currEdge->childIdx)->iters++;
-        float newValWeight = std::clamp(1.0/tree.getNode(currEdge->childIdx)->iters, double(Aurora::valSameMinWeight.value), 1.0);
+        int iters = tree.getNode(currEdge->childIdx)->iters;
+        float newValWeight = iters < 1024 ? emaSameWeights[iters] : static_cast<float>(Aurora::valSameMinWeight.value);
         tree.getNode(currEdge->childIdx)->avgValue = tree.getNode(currEdge->childIdx)->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
         tree.getNode(currEdge->childIdx)->sumSquaredVals = tree.getNode(currEdge->childIdx)->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
 
@@ -558,13 +576,15 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
     result = -currEdge->value;
 
     tree.getNode(currEdge->childIdx)->iters++;
-    float newValWeight = std::clamp(1.0/tree.getNode(currEdge->childIdx)->iters, double(Aurora::valChangedMinWeight.value), 1.0);
+    int iters = tree.getNode(currEdge->childIdx)->iters;
+    float newValWeight = iters < 1024 ? emaChangedWeights[iters] : static_cast<float>(Aurora::valChangedMinWeight.value);
     tree.getNode(currEdge->childIdx)->avgValue = tree.getNode(currEdge->childIdx)->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
     tree.getNode(currEdge->childIdx)->sumSquaredVals = tree.getNode(currEdge->childIdx)->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
   }
   else{
     tree.getNode(currEdge->childIdx)->iters++;
-    float newValWeight = std::clamp(1.0/tree.getNode(currEdge->childIdx)->iters, double(Aurora::valSameMinWeight.value), 1.0);
+    int iters = tree.getNode(currEdge->childIdx)->iters;
+    float newValWeight = iters < 1024 ? emaSameWeights[iters] : static_cast<float>(Aurora::valSameMinWeight.value);
     tree.getNode(currEdge->childIdx)->avgValue = tree.getNode(currEdge->childIdx)->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
     tree.getNode(currEdge->childIdx)->sumSquaredVals = tree.getNode(currEdge->childIdx)->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
   }
