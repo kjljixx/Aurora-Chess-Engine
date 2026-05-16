@@ -23,11 +23,11 @@ inline void initEmaWeights() {
   for (int iters = 1; iters < 1024; iters++) {
     // Bias-corrected EMA calculation
     // weight = alpha / (1 - (1 - alpha)^iters)
-    double alphaSame = Aurora::valSameMinWeight.value;
-    emaSameWeights[iters] = static_cast<float>(alphaSame / (1.0 - std::pow(1.0 - alphaSame, iters)));
-    
     double alphaChanged = Aurora::valChangedMinWeight.value;
     emaChangedWeights[iters] = static_cast<float>(alphaChanged / (1.0 - std::pow(1.0 - alphaChanged, iters)));
+
+    double alphaSame = alphaChanged * Aurora::valSameMinWeightRatio.value;
+    emaSameWeights[iters] = static_cast<float>(alphaSame / (1.0 - std::pow(1.0 - alphaSame, iters)));
   }
 }
 
@@ -555,7 +555,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
 
         tree.getNode(currEdge->childIdx)->iters++;
         int iters = tree.getNode(currEdge->childIdx)->iters;
-        float newValWeight = iters < 1024 ? emaSameWeights[iters] : static_cast<float>(Aurora::valSameMinWeight.value);
+        float newValWeight = iters < 1024 ? emaSameWeights[iters] : static_cast<float>(Aurora::valChangedMinWeight.value * Aurora::valSameMinWeightRatio.value);
         tree.getNode(currEdge->childIdx)->avgValue = tree.getNode(currEdge->childIdx)->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
         tree.getNode(currEdge->childIdx)->sumSquaredVals = tree.getNode(currEdge->childIdx)->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
 
@@ -584,7 +584,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
   else{
     tree.getNode(currEdge->childIdx)->iters++;
     int iters = tree.getNode(currEdge->childIdx)->iters;
-    float newValWeight = iters < 1024 ? emaSameWeights[iters] : static_cast<float>(Aurora::valSameMinWeight.value);
+    float newValWeight = iters < 1024 ? emaSameWeights[iters] : static_cast<float>(Aurora::valChangedMinWeight.value * Aurora::valSameMinWeightRatio.value);
     tree.getNode(currEdge->childIdx)->avgValue = tree.getNode(currEdge->childIdx)->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
     tree.getNode(currEdge->childIdx)->sumSquaredVals = tree.getNode(currEdge->childIdx)->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
   }

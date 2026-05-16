@@ -322,7 +322,7 @@ inline void setOption(std::istringstream& input){
     input >> optionValue;
     Aurora::getOption(optionName)->value = optionValue;
     std::cout << "info string option " << optionName << " set to " << optionValue << std::endl;
-    if(optionName == "valChangedMinWeight" || optionName == "valSameMinWeight") {
+    if(optionName == "valChangedMinWeight" || optionName == "valSameMinWeightRatio") {
       search::initEmaWeights();
     }
   }
