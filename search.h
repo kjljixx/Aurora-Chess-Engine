@@ -20,14 +20,19 @@ inline std::array<float, 1024> emaSameWeights;
 inline std::array<float, 1024> emaChangedWeights;
 
 inline void initEmaWeights() {
-  for (int iters = 1; iters < 1024; iters++) {
+  double alphaChanged = Aurora::valChangedMinWeight.value;
+  double alphaSame = alphaChanged * Aurora::valSameMinWeightRatio.value;
+
+  emaChangedWeights[1] = 1.0f;
+  emaSameWeights[1] = 1.0f;
+
+  for (int iters = 2; iters < 1024; iters++) {
     // Bias-corrected EMA calculation
     // weight = alpha / (1 - (1 - alpha)^iters)
-    double alphaChanged = Aurora::valChangedMinWeight.value;
     emaChangedWeights[iters] = static_cast<float>(alphaChanged / (1.0 - std::pow(1.0 - alphaChanged, iters)));
 
-    double alphaSame = alphaChanged * Aurora::valSameMinWeightRatio.value;
-    emaSameWeights[iters] = static_cast<float>(alphaSame / (1.0 - std::pow(1.0 - alphaSame, iters)));
+    // For same weights, we consider the first iteration as having used alphaChanged
+    emaSameWeights[iters] = static_cast<float>(alphaSame / (1.0 - (1.0 - alphaChanged) * std::pow(1.0 - alphaSame, iters - 1)));
   }
 }
 
