@@ -462,6 +462,17 @@ inline uint8_t selectEdge(Node* parent, Tree& tree, bool isRoot){
       varianceScale *
       parentVisitsTerm) / std::sqrt(currNode ? currNode->visits : (isLRUPruned ? Aurora::lruPrunedVisitsEstimate.value : 1)));
 
+    static int log_counter = 0;
+    if (log_counter++ < 50000) {
+      std::cout << std::hexfloat 
+                << "node_idx=" << i
+                << " p_visits=" << parent->visits
+                << " p_term=" << parentVisitsTerm
+                << " varBase=" << std::sqrt(std::max(parent->variance(), float(0)))
+                << " priority=" << currPriority 
+                << std::defaultfloat << "\n";
+    }
+
     assert(currPriority>=-1);
 
     if(currPriority>maxPriority){
