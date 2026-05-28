@@ -8,7 +8,11 @@ namespace uci{
 
 inline uint32_t rootIdx = UINT32_MAX;
 inline chess::Board rootBoard;
-inline search::Tree tree;
+inline std::vector<search::Tree> trees;
+
+inline void init(){
+  trees.resize(Aurora::threads.value);
+}
 
 inline void ensureBoardHashed(chess::Board& board){
   if(board.hashed){
@@ -22,7 +26,7 @@ inline void syncTreeWithBoardHistory(chess::Board& board){
   ensureBoardHashed(board);
   ensureBoardHashed(rootBoard);
   if(!board.equivalentHistory(rootBoard)){
-    search::destroyTree(tree);
+    for(auto& t : trees) search::destroyTree(t);
     rootIdx = UINT32_MAX;
   }
 }
@@ -70,16 +74,16 @@ inline void bench(){
 
     auto start = std::chrono::steady_clock::now();
 
-    search::search(board, search::timeManagement(search::ITERS, 10000), tree);
+    search::search(board, search::timeManagement(search::ITERS, 10000), trees[0], 0);
 
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
     totalElapsed += elapsed.count();
 
-    search::Node* root = tree.root();
+    search::Node* root = trees[0].root();
 
     nodes += root->visits;
 
-    search::destroyTree(tree); rootIdx = UINT32_MAX;
+    search::destroyTree(trees[0]); rootIdx = UINT32_MAX;
   }
 
   std::cout << "\n" << nodes << " nodes " << int(nodes/totalElapsed) << " nps" << std::endl;
@@ -109,7 +113,13 @@ inline chess::Move getMoveFromString(chess::Board &board, std::string token){
 inline chess::Board makeMoves(chess::Board &board, std::istringstream& input){
   std::string token;
   while(input >> token){
-    search::makeMove(board, getMoveFromString(board, token), rootBoard, tree);
+    chess::Move move = getMoveFromString(board, token);
+    int numThreads = Aurora::threads.value;
+    for(int i = 0; i < numThreads; i++){
+      search::updateTreeForMove(board, move, rootBoard, trees[i]);
+    }
+    chess::makeMove(board, move);
+    chess::makeMove(rootBoard, move);
   }
   return board;
 }
@@ -190,81 +200,85 @@ inline void go(std::istringstream& input, chess::Board board){
   input >> token;
   syncTreeWithBoardHistory(board);
 
+  search::timeManagement tm;
+
   if(token == "infinite"){
-    search::search(board, search::timeManagement(search::FOREVER), tree);
+    tm = search::timeManagement(search::FOREVER);
   }
   else if(token == "nodes"){
     int maxNodes = 0;
     input >> maxNodes;
-    search::search(board, search::timeManagement(search::NODES, maxNodes), tree);
+    tm = search::timeManagement(search::NODES, maxNodes);
   }
   else if(token == "iters"){
     int maxIters = 0;
     input >> maxIters;
-    search::search(board, search::timeManagement(search::ITERS, maxIters), tree);
+    tm = search::timeManagement(search::ITERS, maxIters);
   }
   else if(token == "movetime"){
     int time = 0;
     input >> time;
-    search::timeManagement limit = search::timeManagement(search::TIME, 1000000000.0);
-    limit.limit = std::max(1, time - int(Aurora::moveOverhead.value))/1000.0;
-    search::search(board, limit, tree); 
+    tm = search::timeManagement(search::TIME, 1000000000.0);
+    tm.limit = std::max(1, time - int(Aurora::moveOverhead.value))/1000.0;
   }
   else{
-    search::timeManagement tm;
     int time = 0;
     const bool useNodeTime = Aurora::timeManager.value >= 2;
-    if(useNodeTime){
-      tm.tmType = search::NODES;
-    }
-    else{
-      tm.tmType = search::TIME;
-    }
+    tm.tmType = useNodeTime ? search::NODES : search::TIME;
     const bool useSoftHardLimits = int(Aurora::timeManager.value) % 2 == 0;
     tm.useSoftHardNodeLimits = useSoftHardLimits;
 
-    int ourTime = 0;
-    int ourInc = 0;
-    int theirTime = 0;
-    int theirInc = 0;
-
-    do{
-      input >> time;
-      if(token == "wtime"){
-        if(board.sideToMove == chess::WHITE){ourTime = time;}
-        else{theirTime = time;}
-      }
-      else if(token == "btime"){
-        if(board.sideToMove == chess::BLACK){ourTime = time;}
-        else{theirTime = time;}
-      }
-      else if(token == "winc"){
-        if(board.sideToMove == chess::WHITE){ourInc = time;}
-        else{theirInc = time;}
-      }
-      else if(token == "binc"){
-        if(board.sideToMove == chess::BLACK){ourInc = time;}
-        else{theirInc = time;}
-      }
+    int ourTime = 0, ourInc = 0, theirTime = 0, theirInc = 0;
+    do {
+      if      (token == "wtime"){ input >> time; if(board.sideToMove == chess::WHITE) ourTime = time; else theirTime = time; }
+      else if (token == "btime"){ input >> time; if(board.sideToMove == chess::BLACK) ourTime = time; else theirTime = time; }
+      else if (token == "winc") { input >> time; if(board.sideToMove == chess::WHITE) ourInc = time; else theirInc = time; }
+      else if (token == "binc") { input >> time; if(board.sideToMove == chess::BLACK) ourInc = time; else theirInc = time; }
     } while(input >> token);
 
     ourTime -= int(Aurora::moveOverhead.value);
 
     int movesLeft = Aurora::timeManagementMovesLeft.value;
-    int allocatedTime = std::max(1, int(std::min(
-      Aurora::timeManagementSoftFraction.value*(ourTime + ourInc*movesLeft),
-      float(std::max(ourTime, 1))
-    )));
+    int allocatedTime = std::max(1, int(std::min(Aurora::timeManagementSoftFraction.value*(ourTime + ourInc*movesLeft), float(std::max(ourTime, 1)))));
     tm.limit = useNodeTime ? 30000.0*allocatedTime/1000.0 : allocatedTime/1000.0;
-    allocatedTime = std::max(1, int(std::min(
-      Aurora::timeManagementHardFraction.value*(ourTime + ourInc*movesLeft),
-      float(std::max(ourTime, 1))
-    )));
+    allocatedTime = std::max(1, int(std::min(Aurora::timeManagementHardFraction.value*(ourTime + ourInc*movesLeft), float(std::max(ourTime, 1)))));
     tm.hardLimit = useNodeTime ? 30000.0*allocatedTime/1000.0 : allocatedTime/1000.0;
-    search::search(board, tm, tree);
   }
+
+  int numThreads = Aurora::threads.value;
+  if(trees.size() != numThreads) trees.resize(numThreads);
+  
+  std::vector<std::thread> workers;
+  for(int i = 1; i < numThreads; i++){
+      workers.emplace_back(search::search, std::ref(board), tm, std::ref(trees[i]), i);
+  }
+  
+  auto start = std::chrono::steady_clock::now();
+
+  search::search(board, tm, trees[0], 0);
+
+  for(auto& worker : workers){
+      worker.join();
+  }
+
+  // Aggregate results to trees[0] for move selection
+  for(int i = 1; i < numThreads; i++){
+      for(int j = 0; j < (int)trees[0].root()->children.size(); j++){
+          // Aggregate visits to the root's children for better move selection
+          if (trees[i].root()->children[j].childIdx != UINT32_MAX && trees[0].root()->children[j].childIdx != UINT32_MAX) {
+              trees[0].getNode(trees[0].root()->children[j].childIdx)->visits += trees[i].getNode(trees[i].root()->children[j].childIdx)->visits;
+          }
+      }
+      trees[0].root()->visits += trees[i].root()->visits;
+  }
+
+  search::printSearchInfo(trees[0], start, true);
+  if(Aurora::outputLevel.value >= 0){
+    std::cout << "\nbestmove " << search::findBestAEdge(trees[0].root(), trees[0]).edge.toStringRep() << std::endl;
+  }
+
   rootBoard = board;
-  rootIdx = tree.rootIdx;
+  rootIdx = trees[0].rootIdx;
 }
 
 inline void respondUci(){
@@ -324,6 +338,13 @@ inline void setOption(std::istringstream& input){
     input >> optionValue;
     Aurora::getOption(optionName)->value = optionValue;
     std::cout << "info string option " << optionName << " set to " << optionValue << std::endl;
+    if(optionName == "Hash"){
+      for(auto& t : trees) search::destroyTree(t);
+      rootIdx = UINT32_MAX;
+    }
+    if(optionName == "TTHash"){
+      search::init();
+    }
   }
 }
 
@@ -341,7 +362,7 @@ inline void loop(chess::Board board){
     if(token == "position"){std::getline(std::cin, token); auto stream = std::istringstream(token); board = position(stream);}
     if(token == "go"){std::getline(std::cin, token); auto stream = std::istringstream(token); go(stream, board);}
     if(token == "quit"){break;}
-    if(token == "ucinewgame"){search::destroyTree(tree); rootIdx = UINT32_MAX; std::cout << "info string search tree destroyed" << std::endl;}
+    if(token == "ucinewgame"){for(auto& t : trees) search::destroyTree(t); rootIdx = UINT32_MAX; std::cout << "info string search tree destroyed" << std::endl;}
     //non-uci, custom commands
     if(token == "moves"){std::getline(std::cin, token); auto stream = std::istringstream(token); board = makeMoves(board, stream);}
     //bwlow are mostly for debugging purposes

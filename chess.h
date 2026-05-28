@@ -101,7 +101,7 @@ struct Board{
     );
   }
 
-  bool equivalentHistory(const Board& board){
+  bool equivalentHistory(const Board& board) const {
     if(!hashed || !board.hashed){return false;}
     if(startHistoryIndex != board.startHistoryIndex){return false;}
     if(halfmoveClock != board.halfmoveClock){return false;}

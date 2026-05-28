@@ -52,7 +52,7 @@ struct Option{
 
 inline Option hash("Hash", 16, 0, 65536, 1);
 inline Option ttHash("TTHash", 0, 0, 65536, 1);
-inline Option threads("Threads", 1, 1, 1, 1); // just here to make OpenBench happy
+inline Option threads("Threads", 1, 1, 1024, 1);
 
 inline Option syzygyPath("SyzygyPath", "<empty>", 2);
 
