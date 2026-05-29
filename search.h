@@ -31,24 +31,19 @@ inline void init(){
   evaluation::init();
   zobrist::init();
   std::cout.precision(10);
-  if(Aurora::ttHash.value > 0){
-    sharedTT.assign(size_t(Aurora::ttHash.value * 1024 * 1024 / sizeof(TTEntry)), TTEntry());
-  } else {
-    sharedTT.clear();
-  }
 }
 
 inline void updateSharedTT(U64 hash, float val){
   if(sharedTT.empty()) return;
-  uint32_t idx = (hash >> 32) % sharedTT.size();
-  sharedTT[idx].hash = uint32_t(hash);
+  uint32_t idx = hash % sharedTT.size();
+  sharedTT[idx].hash = uint32_t(hash >> 32);
   sharedTT[idx].val = val;
 }
 
 inline bool probeSharedTT(U64 hash, float& val){
   if(sharedTT.empty()) return false;
-  uint32_t idx = (hash >> 32) % sharedTT.size();
-  if(sharedTT[idx].hash == uint32_t(hash)){
+  uint32_t idx = hash % sharedTT.size();
+  if(sharedTT[idx].hash == uint32_t(hash >> 32)){
     val = sharedTT[idx].val;
     return true;
   }
@@ -129,21 +124,26 @@ struct Tree{
   uint32_t startNodes = 0;
 
   TTEntry* getTTEntry(U64 hash){
+    if(sharedTT.empty()) return nullptr;
     return &sharedTT[hash % sharedTT.size()];
   }
 
-  void setHash(){
+  void setHash(int threadId){
     float hashMb = Aurora::hash.value;
-    const int BYTES_PER_MB = 1000000;
-    sizeLimit = (BYTES_PER_MB * hashMb * (Aurora::ttHash.value ? 1 : (1-Aurora::ttHashProportion.value))) / Aurora::threads.value;
-    uint32_t ttHashBytes = Aurora::ttHash.value
-                              ? Aurora::ttHash.value * BYTES_PER_MB
-                              : hashMb * BYTES_PER_MB * Aurora::ttHashProportion.value;
-    size_t targetEntries = std::max<size_t>(1, ttHashBytes / sizeof(TTEntry));
-    if(sharedTT.size() != targetEntries){
-      sharedTT.clear();
-      sharedTT.resize(targetEntries);
+    const uint64_t BYTES_PER_MB = 1024 * 1024;
+    
+    if (threadId == 0) {
+      uint64_t ttHashBytes = Aurora::ttHash.value > 0
+                                ? (uint64_t)Aurora::ttHash.value * BYTES_PER_MB
+                                : (uint64_t)(hashMb * BYTES_PER_MB * Aurora::ttHashProportion.value);
+      size_t targetEntries = std::max<size_t>(1, ttHashBytes / sizeof(TTEntry));
+      if(sharedTT.size() != targetEntries){
+        sharedTT.clear();
+        sharedTT.resize(targetEntries);
+      }
     }
+
+    sizeLimit = (uint64_t)(BYTES_PER_MB * hashMb * (Aurora::ttHash.value > 0 ? 1.0 : (1.0 - Aurora::ttHashProportion.value))) / Aurora::threads.value;
     tree.reserve(sizeLimit / sizeof(Node));
   }
 
@@ -611,7 +611,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
 inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
   Node* root = tree.root();
   if(Aurora::outputLevel.value >= 3){
-    std::cout << "NODES: " << root->visits;
+    std::cout << " NODES: " << root->visits;
     std::cout << " SELDEPTH: " << int(tree.seldepth) <<"\n";
 
     std::cout.precision(5);
@@ -665,6 +665,7 @@ inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point st
 
   if(Aurora::outputLevel.value >= 2 || (finalResult && Aurora::outputLevel.value >= 1)){
     std::chrono::duration<float> elapsed = std::chrono::steady_clock::now() - start;
+    uint64_t nps = elapsed.count() > 0 ? std::round(root->visits / elapsed.count()) : 0;
 
     std::cout <<
     "info depth " << (root->visits == tree.startNodes ? 0 : int(tree.depth / (root->visits - tree.startNodes))) <<
@@ -674,7 +675,7 @@ inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point st
     " hashfull " << int(tree.getHashfull()*1000) <<
     " ttfull " << int(tree.getTTfull()*1000) <<
     " treefull " << int(tree.getTreefull()*1000) <<
-    " nps " << std::round((root->visits-tree.previousVisits)/(elapsed.count()-tree.previousElapsed)) <<
+    " nps " << nps <<
     " time " << std::round(elapsed.count()*1000) <<
     " pv ";
     Node* pvNode = root;
@@ -712,10 +713,10 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree, int t
 
   if(threadId == 0){
     stopSearching = false;
-    tree.setHash();
+    tree.setHash(threadId);
     if(Aurora::outputLevel.value >= 1){
       std::cout << "info string starting search with max tree size " <<
-                (tree.sizeLimit == 0 ? "unlimited" : std::to_string(tree.sizeLimit/1000000.0)) << " mb "
+                (tree.sizeLimit == 0 ? "unlimited" : std::to_string(tree.sizeLimit/1048576.0)) << " mb "
                 << "and TT size " <<
                 (sharedTT.size()*sizeof(TTEntry)/1000000.0) << " mb"
                 << "\n";
@@ -725,9 +726,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree, int t
     }
   }
   else{
-    const int BYTES_PER_MB = 1000000;
-    tree.sizeLimit = (BYTES_PER_MB * Aurora::hash.value * (Aurora::ttHash.value ? 1 : (1-Aurora::ttHashProportion.value))) / Aurora::threads.value;
-    tree.tree.reserve(tree.sizeLimit / sizeof(Node));
+    tree.setHash(threadId);
   }
 
   if(tree.rootIdx == UINT32_MAX){tree.push_back(Node()); tree.rootIdx = uint32_t(tree.tree.size()-1);}
@@ -907,7 +906,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree, int t
     //Output some information on the search occasionally
     if(threadId == 0 && tree.root()->visits % 1024 == 0){
       elapsed = std::chrono::steady_clock::now() - start;
-      if(elapsed.count() >= lastNodeCheck*0.5){
+      if(elapsed.count() >= lastNodeCheck*2.0){
         lastNodeCheck++;
         printSearchInfo(tree, start, false);
       }
