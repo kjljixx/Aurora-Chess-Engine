@@ -114,12 +114,15 @@ inline chess::Board makeMoves(chess::Board &board, std::istringstream& input){
   std::string token;
   while(input >> token){
     chess::Move move = getMoveFromString(board, token);
+    bool shouldUpdateRootBoard = (!trees.empty() && trees[0].rootIdx != UINT32_MAX && board.equivalentHistory(rootBoard));
     int numThreads = Aurora::threads.value;
     for(int i = 0; i < numThreads; i++){
       search::updateTreeForMove(board, move, rootBoard, trees[i]);
     }
     chess::makeMove(board, move);
-    chess::makeMove(rootBoard, move);
+    if(shouldUpdateRootBoard){
+      chess::makeMove(rootBoard, move);
+    }
   }
   return board;
 }
