@@ -536,14 +536,14 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
     if(result <= currEdge->value && !runFindBestMove && !forceResult){
       continueBackprop = false;
 
-        tree.getNode(currEdge->childIdx)->iters++;
-        float newValWeight = std::clamp(1.0/tree.getNode(currEdge->childIdx)->iters, double(Aurora::valSameMinWeight.value), 1.0);
-        tree.getNode(currEdge->childIdx)->avgValue = tree.getNode(currEdge->childIdx)->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
-        tree.getNode(currEdge->childIdx)->sumSquaredVals = tree.getNode(currEdge->childIdx)->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
+      tree.getNode(currEdge->childIdx)->iters++;
+      float newValWeight = std::clamp(1.0/tree.getNode(currEdge->childIdx)->iters, double(Aurora::valSameMinWeight.value), 1.0);
+      tree.getNode(currEdge->childIdx)->avgValue = tree.getNode(currEdge->childIdx)->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
+      tree.getNode(currEdge->childIdx)->sumSquaredVals = tree.getNode(currEdge->childIdx)->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
 
       TTEntry* entry = tree.getTTEntry(hash);
       entry->hash = hash >> 32;
-      entry->val = currEdge->value;
+      entry->val = tree.getNode(currEdge->childIdx)->avgValue;
 
       backpropagate(tree, result, edges, visits, false, runFindBestMove, continueBackprop);
       return;
@@ -571,7 +571,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
 
   TTEntry* entry = tree.getTTEntry(hash);
   entry->hash = hash >> 32;
-  entry->val = currEdge->value;
+  entry->val = tree.getNode(currEdge->childIdx)->avgValue;
 
   backpropagate(tree, result, edges, visits, false, runFindBestMove, continueBackprop);
 }
