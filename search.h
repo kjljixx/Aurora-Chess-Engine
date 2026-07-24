@@ -8,6 +8,7 @@
 #include <chrono>
 #include <deque>
 #include <iomanip>
+#include <tuple>
 
 #if DATAGEN >= 1
   std::string dataFolderPath = "C:/Users/kjlji/OneDrive/Documents/VSCode/C++/AuroraChessEngine-main/data";
@@ -175,7 +176,9 @@ struct Tree{
   }
 
   Node* push_back(const Node& node){
-    if(sizeLimit != 0 && currSize >= sizeLimit){
+    // Never evict the root (it is often both head and tail when the tree is tiny).
+    // If we cannot safely reclaim a slot, grow past sizeLimit instead of corrupting the tree.
+    if(sizeLimit != 0 && currSize >= sizeLimit && tailIdx != UINT32_MAX && tailIdx != rootIdx){
       assert(tailIdx != UINT32_MAX);
       uint32_t currTailIdx = tailIdx;
       Node* currTail = &tree[currTailIdx];
@@ -196,7 +199,9 @@ struct Tree{
       }
 
       tailIdx = currTail->forwardIdx;
-      tree[tailIdx].backIdx = UINT32_MAX;
+      if(tailIdx != UINT32_MAX){
+        tree[tailIdx].backIdx = UINT32_MAX;
+      }
 
       *currTail = node;
       currTail->children.shrink_to_fit(); //Free Memory
@@ -432,11 +437,15 @@ inline uint8_t selectEdge(Node* parent, Tree& tree, bool isRoot){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
-  const float parentVisitsTerm = (isRoot ? Aurora::rootExplorationFactor.value : Aurora::explorationFactor.value)*std::log(parent->visits)*std::sqrt(std::log(parent->visits));
+  // Guard visits/iters: tree reuse (makeMove) and the TB shortcut can leave these at 0.
+  const float parentVisits = std::max(parent->visits, 1u);
+  const float parentIters = std::max(parent->iters, 1);
+  const float logParentVisits = std::log(parentVisits);
+  const float parentVisitsTerm = (isRoot ? Aurora::rootExplorationFactor.value : Aurora::explorationFactor.value)*logParentVisits*std::sqrt(logParentVisits);
 
   float varianceScale = 
-    ((1.0 / parent->iters) * 1.0) +
-    ((1.0 - 1.0 / parent->iters) *
+    ((1.0 / parentIters) * 1.0) +
+    ((1.0 - 1.0 / parentIters) *
     std::clamp<double>(
       1.0 + (Aurora::varianceScaleMultiplier.value *
             (std::sqrt(std::max(parent->variance(), float(0))) - Aurora::varianceScaleOffset.value)),
@@ -453,14 +462,17 @@ inline uint8_t selectEdge(Node* parent, Tree& tree, bool isRoot){
     //We can make a guess about how many visits a node had before it was pruned by LRU
     bool isLRUPruned = parent->children[i].edge.value & (1 << 15);
 
-    float childVisits = currNode ? currNode->visits : 1;
-    float boostTerm = 1.0 + ((Aurora::visitBoostMultiplier.value * (parent->visits * Aurora::visitBoostOffset.value)) / 
-                      (parent->visits * Aurora::visitBoostOffset.value + childVisits));
+    float childVisits = currNode ? std::max(currNode->visits, 1u) : 1;
+    float childVisitsForPriority = currNode
+      ? std::max(currNode->visits, 1u)
+      : (isLRUPruned ? Aurora::lruPrunedVisitsEstimate.value : 1);
+    float boostTerm = 1.0 + ((Aurora::visitBoostMultiplier.value * (parentVisits * Aurora::visitBoostOffset.value)) / 
+                      (parentVisits * Aurora::visitBoostOffset.value + childVisits));
 
     float currPriority = -(currNode ? currNode->avgValue : currEdge.value) +
       ((boostTerm *
       varianceScale *
-      parentVisitsTerm) / std::sqrt(currNode ? currNode->visits : (isLRUPruned ? Aurora::lruPrunedVisitsEstimate.value : 1)));
+      parentVisitsTerm) / std::sqrt(childVisitsForPriority));
 
     assert(currPriority>=-1);
 
@@ -514,13 +526,13 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   return eval;
 }
 
-inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*, U64>>& edges, uint8_t visits, bool forceResult, bool runFindBestMove, bool continueBackprop){
+inline void backpropagate(Tree& tree, float result, std::vector<std::tuple<uint32_t, uint8_t, U64>>& path, uint8_t visits, bool forceResult, bool runFindBestMove, bool continueBackprop){
   //Backpropagate results
-  if(edges.size() == 0){return;}
+  if(path.size() == 0){return;}
 
-  std::pair<Edge*, U64> p = edges.back();
-  Edge* currEdge = p.first; U64 hash = p.second;
-  edges.pop_back();
+  auto [parentIdx, edgeIndex, hash] = path.back();
+  path.pop_back();
+  Edge* currEdge = &tree.getNode(parentIdx)->children[edgeIndex];
 
   tree.getNode(currEdge->childIdx)->visits += visits;
 
@@ -530,7 +542,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
   if(continueBackprop){
     //If currEdge is the best move and is backpropagated to become worse, we need to run findBestQ for the parent of currEdge
     oldCurrNodeValue = 2;
-    if(tree.getNode(currEdge->childIdx)->parentIdx != UINT32_MAX && edges.size() > 0 && -currEdge->value == edges.back().first->value){oldCurrNodeValue = currEdge->value;}
+    if(tree.getNode(currEdge->childIdx)->parentIdx != UINT32_MAX && path.size() > 0 && -currEdge->value == tree.getNode(std::get<0>(path.back()))->children[std::get<1>(path.back())].value){oldCurrNodeValue = currEdge->value;}
 
     //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
     if(result <= currEdge->value && !runFindBestMove && !forceResult){
@@ -545,7 +557,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
       entry->hash = hash >> 32;
       entry->val = currEdge->value;
 
-      backpropagate(tree, result, edges, visits, false, runFindBestMove, continueBackprop);
+      backpropagate(tree, result, path, visits, false, runFindBestMove, continueBackprop);
       return;
     }
 
@@ -573,7 +585,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::pair<Edge*,
   entry->hash = hash >> 32;
   entry->val = currEdge->value;
 
-  backpropagate(tree, result, edges, visits, false, runFindBestMove, continueBackprop);
+  backpropagate(tree, result, path, visits, false, runFindBestMove, continueBackprop);
 }
 
 inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
@@ -733,8 +745,9 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       }
     }
     tree.root()->visits = 1;
+    tree.startNodes = tree.root()->visits;
     tm.tmType = NODES;
-    tm.limit = -1;
+    tm.limit = 0;
   }
 
   while((tm.tmType == FOREVER) ||
@@ -756,7 +769,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     int currDepth = 0;
     currNode = tree.root(); tree.moveToHead(tree.root());
     Edge* currEdge = nullptr;
-    std::vector<std::pair<Edge*, U64>> traversePath;
+    std::vector<std::tuple<uint32_t, uint8_t, U64>> traversePath;
 
     //Traverse the search tree
     while(currNode->children.size() > 0){
@@ -771,17 +784,20 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
       //Select Child Node to explore
       uint8_t currEdgeIndex = selectEdge(currNode, tree, currNode == tree.root());
+      uint32_t currNodeIdx = tree.getIdx(currNode);
 
       currEdge = &currNode->children[currEdgeIndex];
       chess::makeMove(board, currEdge->edge);
-      traversePath.push_back({currEdge, board.history[board.halfmoveClock]});
+      traversePath.push_back({currNodeIdx, currEdgeIndex, board.history[board.halfmoveClock]});
 
       //If we only had a child edge before, create the corresponding child node
       if(currEdge->childIdx == UINT32_MAX){
-        uint32_t currNodeIdx = tree.getIdx(currNode);
         bool currNodeMark = currNode->mark;
-        currEdge->childIdx = tree.getIdx(tree.push_back(Node(currNodeIdx)));
-        Node* childNode = tree.getNode(currEdge->childIdx);
+        uint32_t newChildIdx = tree.getIdx(tree.push_back(Node(currNodeIdx)));
+        currNode = tree.getNode(currNodeIdx);
+        currEdge = &currNode->children[currEdgeIndex];
+        currEdge->childIdx = newChildIdx;
+        Node* childNode = tree.getNode(newChildIdx);
         childNode->index = currEdgeIndex;
         childNode->mark = currNodeMark;
         childNode->visits = 1;
@@ -809,50 +825,54 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       if(chess::getGameStatus(board, moves.size()!=0) != chess::ONGOING){
         assert(currEdge->value>=-1);
         currNode->isTerminal=true;
-        continue;
+        tree.depth += currDepth;
+        tree.root()->visits += 1;
+        tree.root()->iters += 1;
+        backpropagate(tree, currEdge->value, traversePath, 1, true, false, true);
       }
+      else{
+        //Create new child edges
+        expand(tree, currNode, moves);
 
-      //Create new child edges
-      expand(tree, currNode, moves);
+        //Get values for all created edges
+        Node* parentNode = currNode; //This will be where the backpropagation starts
 
-      //Get values for all created edges
-      Node* parentNode = currNode; //This will be where the backpropagation starts
+        float currBestValue = 2;
 
-      float currBestValue = 2;
+        nnue.refreshAccumulator(board);
+        std::array<std::array<int16_t, evaluation::NNUEhiddenNeurons>, 2> currAccumulator = nnue.accumulator;
 
-      nnue.refreshAccumulator(board);
-      std::array<std::array<int16_t, evaluation::NNUEhiddenNeurons>, 2> currAccumulator = nnue.accumulator;
+        for(int i=0; i<parentNode->children.size(); i++){
+          currEdge = &parentNode->children[i];
 
-      for(int i=0; i<parentNode->children.size(); i++){
-        currEdge = &parentNode->children[i];
+          chess::Board movedBoard = board;
 
-        chess::Board movedBoard = board;
+          nnue.accumulator = currAccumulator;
+          nnue.updateAccumulator(movedBoard, currEdge->edge);
 
-        nnue.accumulator = currAccumulator;
-        nnue.updateAccumulator(movedBoard, currEdge->edge);
-
-        currEdge->value = playout(tree, movedBoard, nnue);
-        assert(-1<=currEdge->value && 1>=currEdge->value);
-        
-        currBestValue = std::min(currBestValue, currEdge->value);
-      }
-
-      int visits = 0;
-      for(int i=0; i<parentNode->children.size(); i++){
-        if(parentNode->children[i].value <= currBestValue + Aurora::visitWindow.value){
-          visits++;
+          currEdge->value = playout(tree, movedBoard, nnue);
+          assert(-1<=currEdge->value && 1>=currEdge->value);
+          
+          currBestValue = std::min(currBestValue, currEdge->value);
         }
+
+        int visits = 0;
+        for(int i=0; i<parentNode->children.size(); i++){
+          if(parentNode->children[i].value <= currBestValue + Aurora::visitWindow.value){
+            visits++;
+          }
+        }
+        assert(visits >= 1);
+
+        tree.depth += currDepth*visits;
+
+        //Update root stats, since backpropagation doesn't reach the root
+        tree.root()->visits += visits;
+        tree.root()->iters += 1;
+
+        //Backpropagate best value
+        backpropagate(tree, -currBestValue, traversePath, visits, true, false, true);
       }
-      assert(visits >= 1);
-
-      tree.depth += currDepth*visits;
-
-      //Update root stats, since backpropagation doesn't reach the root
-      tree.root()->visits += visits;
-      tree.root()->iters += 1;
-
-      //Backpropagate best value
-      backpropagate(tree, -currBestValue, traversePath, visits, true, false, true);
     }
 
     tree.seldepth = std::max(currDepth, int(tree.seldepth));
@@ -875,6 +895,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       Aurora::bestMoveChangesCoefficient.value *
       (std::pow(tree.root()->visits, Aurora::bestMoveChangesExponent.value) -
        std::pow(tree.startNodes, Aurora::bestMoveChangesExponent.value));
+    expectedBestMoveChanges = std::max(expectedBestMoveChanges, 1e-9);
     const double bestMoveChangesMultiplierMin =
       std::min(double(Aurora::bestMoveChangesMultiplierMin.value),
               double(Aurora::bestMoveChangesMultiplierMax.value));

@@ -49,7 +49,7 @@ struct NNUEparameters{
 };
 
 extern "C" {
-  INCBIN(networkData, "andromeda-3.nnue");
+  INCBIN_EXTERN(networkData);
 }
 
 inline const NNUEparameters<NNUEhiddenNeurons>* const nnueParameters = reinterpret_cast<

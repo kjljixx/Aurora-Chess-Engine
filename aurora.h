@@ -57,12 +57,11 @@ inline Option threads("Threads", 1, 1, 1, 1); // just here to make OpenBench hap
 inline Option syzygyPath("SyzygyPath", "<empty>", 2);
 
 inline Option outputLevel("outputLevel", 2, -1, 3, 1);
-// -1: just search, don't output anything
-//  0: only output bestmove at end of search
-//  1: output bestmove and info at end of search
-//  2: output bestmove and info at end of search and output info every 2 seconds
-//  3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
-
+  // -1: just search, don't output anything
+  //  0: only output bestmove at end of search
+  //  1: output bestmove and info at end of search
+  //  2: output bestmove and info at end of search and output info every 2 seconds
+  //  3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
 inline Option timeManager("timeManager", 0, 0, 3, 1);
 // 0: normal time management
 // 1: basic time management based on time left and increment only

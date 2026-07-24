@@ -26,3 +26,5 @@ auroraminidev.exe
 .clangd
 aurora
 auroradev
+aurora_tests
+aurora_tests.exe
