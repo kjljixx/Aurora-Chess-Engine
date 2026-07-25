@@ -122,12 +122,14 @@ struct Tree{
 
   // Visit/confidence-aware TT replacement: keep the more informed sample.
   // quality 0 = qsearch, 1..65535 = iters. Terminal positions are never stored.
+  // Quality compared only on the same key so collisions can refresh across move rollover.
   void storeTT(U64 fullHash, float val, uint16_t quality){
     TTEntry* entry = getTTEntry(fullHash);
     const uint32_t h32 = fullHash >> 32;
     const bool occupied = entry->val != -2;
+    const bool sameKey = occupied && entry->hash == h32;
 
-    if(occupied && quality < entry->quality){
+    if(sameKey && quality < entry->quality){
       ttStats.skippedLowerQuality++;
       return;
     }
