@@ -490,7 +490,7 @@ struct Board{
     U64 bishopAttacks = lookupTables::getBishopAttacks(square, white | black) & pieces;
     U64 rookAttacks = lookupTables::getRookAttacks(square, white | black) & pieces;
 
-    return (lookupTables::pawnAttackTable[sideToMove][square] & pawns & pieces)
+    return (lookupTables::pawnAttackTable[!color][square] & pawns & pieces)
           |(lookupTables::knightTable[square] & knights & pieces)
           |(bishopAttacks & bishops)
           |(rookAttacks & rooks)
@@ -653,12 +653,12 @@ inline Move* generateLegalMoves(Board &board, Move* legalMoves){
   board.setColors(pieceBitboard, board.sideToMove); //revert the unsetColors call earlier
   //castling
   if(_kingMasks.checkmask == 0xFFFFFFFFFFFFFFFFULL){ //make sure king is not in check
-    //Queenside castling
-    if((board.canCurrentlyCastle & 0x2) && (1ULL << (board.sideToMove*56+2) & ~board.occupied) && (1ULL << (board.sideToMove*56+1) & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+2)<=63)){
+    //Queenside castling; also require our rook on the corner (malformed FENs can set rights without a rook)
+    if((board.canCurrentlyCastle & 0x2) && (ourPieces & board.rooks & (1ULL << (board.sideToMove*56))) && (1ULL << (board.sideToMove*56+2) & ~board.occupied) && (1ULL << (board.sideToMove*56+1) & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+2)<=63)){
       *legalMovesPtr++ = Move(piecePos, board.sideToMove*56+2, CASTLE);
     }
     //Kingside castling
-    if((board.canCurrentlyCastle & 0x1) && (1ULL << (board.sideToMove*56+6) & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+6)<=63)){
+    if((board.canCurrentlyCastle & 0x1) && (ourPieces & board.rooks & (1ULL << (board.sideToMove*56+7))) && (1ULL << (board.sideToMove*56+6) & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+6)<=63)){
       *legalMovesPtr++ = Move(piecePos, board.sideToMove*56+6, CASTLE);
     }
   }
@@ -933,12 +933,12 @@ inline bool isLegalMoves(Board& board){
   board.setColors(pieceBitboard, board.sideToMove); //revert the unsetColors call earlier
   //castling
   if(_kingMasks.checkmask == 0xFFFFFFFFFFFFFFFFULL){ //make sure king is not in check
-    //Queenside castling
-    if((board.canCurrentlyCastle & 0x2) && (1ULL << (board.sideToMove*56+2) & ~board.occupied) && (1ULL << (board.sideToMove*56+1) & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+2)<=63)){
+    //Queenside castling; also require our rook on the corner (malformed FENs can set rights without a rook)
+    if((board.canCurrentlyCastle & 0x2) && (ourPieces & board.rooks & (1ULL << (board.sideToMove*56))) && (1ULL << (board.sideToMove*56+2) & ~board.occupied) && (1ULL << (board.sideToMove*56+1) & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+2)<=63)){
       return true;
     }
     //Kingside castling
-    if((board.canCurrentlyCastle & 0x1) && (1ULL << (board.sideToMove*56+6) & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+6)<=63)){
+    if((board.canCurrentlyCastle & 0x1) && (ourPieces & board.rooks & (1ULL << (board.sideToMove*56+7))) && (1ULL << (board.sideToMove*56+6) & ~board.occupied) && !(board.squareUnderAttack(board.sideToMove*56+6)<=63)){
       return true;
     }
   }

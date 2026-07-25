@@ -124,25 +124,22 @@ inline U64 updateHash(chess::Board& board, chess::Move move){
       }
     }
   }
-  bool castlingRightsChanged = false;
-  //Remove castling rights if king moved
+  // Compute final castling rights once. A single move can clear multiple rights
+  // (e.g. Ra1xa8), so intermediate keys must not be XOR'd individually.
+  unsigned char newCastlingRights = board.castlingRights;
   if(movingPiece == chess::KING){
-    if(board.sideToMove == chess::WHITE && board.castlingRights & (0x1 | 0x2)){
-      hash ^= castlingKeys[board.castlingRights & ~(0x1 | 0x2)];
-      castlingRightsChanged = true;
-    }
-    else if(board.castlingRights & (0x4 | 0x8)){
-      hash ^= castlingKeys[board.castlingRights & ~(0x4 | 0x8)];
-      castlingRightsChanged = true;
-    }
+    if(board.sideToMove == chess::WHITE){newCastlingRights &= ~(0x1 | 0x2);}
+    else{newCastlingRights &= ~(0x4 | 0x8);}
   }
-  //Remove castling rights if rook moved from starting square or if rook was captured
-  if(((startSquare == 0 && movingPiece == chess::ROOK) || endSquare == 0) && board.castlingRights & 0x2){hash ^= castlingKeys[board.castlingRights & ~0x2]; castlingRightsChanged = true;}
-  if(((startSquare == 7 && movingPiece == chess::ROOK) || endSquare == 7) && board.castlingRights & 0x1){hash ^= castlingKeys[board.castlingRights & ~0x1]; castlingRightsChanged = true;}
-  if(((startSquare == 56 && movingPiece == chess::ROOK) || endSquare == 56) && board.castlingRights & 0x8){hash ^= castlingKeys[board.castlingRights & ~0x8]; castlingRightsChanged = true;}
-  if(((startSquare == 63 && movingPiece == chess::ROOK) || endSquare == 63) && board.castlingRights & 0x4){hash ^= castlingKeys[board.castlingRights & ~0x4]; castlingRightsChanged = true;}
+  if((startSquare == 0 && movingPiece == chess::ROOK) || endSquare == 0){newCastlingRights &= ~0x2;}
+  if((startSquare == 7 && movingPiece == chess::ROOK) || endSquare == 7){newCastlingRights &= ~0x1;}
+  if((startSquare == 56 && movingPiece == chess::ROOK) || endSquare == 56){newCastlingRights &= ~0x8;}
+  if((startSquare == 63 && movingPiece == chess::ROOK) || endSquare == 63){newCastlingRights &= ~0x4;}
 
-  if(castlingRightsChanged){hash ^= castlingKeys[board.castlingRights];} //remove original castling rights if castling rights changed
+  if(newCastlingRights != board.castlingRights){
+    hash ^= castlingKeys[board.castlingRights];
+    hash ^= castlingKeys[newCastlingRights];
+  }
 
   hash ^= sideToMoveKey;
 
