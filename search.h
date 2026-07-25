@@ -65,14 +65,29 @@ struct Node{
   }
 };
 
+#pragma pack(push, 1)
 struct TTEntry{
   float val = -2;
   uint32_t hash = 0;
+  // Writer confidence: 0 = qsearch leaf, 1..65535 = node iters (terminals are not stored)
+  uint16_t quality = 0;
+};
+#pragma pack(pop)
+
+// Lightweight TT store diagnostics (printed when outputLevel >= 1)
+struct TTStats{
+  uint64_t probes = 0;
+  uint64_t hits = 0;
+  uint64_t stores = 0;
+  uint64_t skippedLowerQuality = 0;
+
+  void reset(){ *this = TTStats(); }
 };
 
 struct Tree{
   std::vector<Node> tree;
   std::vector<TTEntry> TT;
+  TTStats ttStats;
   uint32_t rootIdx = UINT32_MAX;
   uint64_t sizeLimit = 0;
   uint64_t currSize = 0;
@@ -105,6 +120,24 @@ struct Tree{
     return &TT[hash % TT.size()];
   }
 
+  // Visit/confidence-aware TT replacement: keep the more informed sample.
+  // quality 0 = qsearch, 1..65535 = iters. Terminal positions are never stored.
+  void storeTT(U64 fullHash, float val, uint16_t quality){
+    TTEntry* entry = getTTEntry(fullHash);
+    const uint32_t h32 = fullHash >> 32;
+    const bool occupied = entry->val != -2;
+
+    if(occupied && quality < entry->quality){
+      ttStats.skippedLowerQuality++;
+      return;
+    }
+
+    ttStats.stores++;
+    entry->hash = h32;
+    entry->val = val;
+    entry->quality = quality;
+  }
+
   void setHash(){
     float hashMb = Aurora::hash.value;
     const int BYTES_PER_MB = 1000000;
@@ -116,6 +149,7 @@ struct Tree{
     if(TT.size() != targetEntries){
       TT.clear();
       TT.resize(targetEntries);
+      ttStats.reset();
     }
     tree.reserve(sizeLimit / sizeof(Node));
   }
@@ -325,6 +359,7 @@ inline void destroyTree(Tree& tree){
   tree.tailIdx = UINT32_MAX;
   tree.headIdx = UINT32_MAX;
   tree.currSize = 0;
+  tree.ttStats.reset();
 }
 
 inline uint64_t markSubtree(Tree& tree, Node* node, bool isSubtreeRoot = true, bool unmarked = true){
@@ -512,15 +547,17 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   }
 
   //Next, check TT
-  TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
-  if(entry->hash == (board.history[board.halfmoveClock] >> 32) && entry->val != -2){
+  const U64 posHash = board.history[board.halfmoveClock];
+  TTEntry* entry = tree.getTTEntry(posHash);
+  tree.ttStats.probes++;
+  if(entry->hash == (posHash >> 32) && entry->val != -2){
+    tree.ttStats.hits++;
     return entry->val;
   }
 
   //Next, do qSearch
   float eval = evaluation::cpToVal(evaluation::evaluate(board, nnue));
-  entry->hash = (board.history[board.halfmoveClock] >> 32);
-  entry->val = eval;
+  tree.storeTT(posHash, eval, /*quality=*/0);
 
   assert(-1<=eval && 1>=eval);
   return eval;
@@ -553,9 +590,13 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::tuple<uint3
         tree.getNode(currEdge->childIdx)->avgValue = tree.getNode(currEdge->childIdx)->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
         tree.getNode(currEdge->childIdx)->sumSquaredVals = tree.getNode(currEdge->childIdx)->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
 
-      TTEntry* entry = tree.getTTEntry(hash);
-      entry->hash = hash >> 32;
-      entry->val = currEdge->value;
+      {
+        Node* child = tree.getNode(currEdge->childIdx);
+        if(!child->isTerminal){
+          const uint16_t q = uint16_t(std::min<int>(std::max(1, child->iters), 65535));
+          tree.storeTT(hash, currEdge->value, q);
+        }
+      }
 
       backpropagate(tree, result, path, visits, false, runFindBestMove, continueBackprop);
       return;
@@ -581,9 +622,13 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::tuple<uint3
     tree.getNode(currEdge->childIdx)->sumSquaredVals = tree.getNode(currEdge->childIdx)->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
   }
 
-  TTEntry* entry = tree.getTTEntry(hash);
-  entry->hash = hash >> 32;
-  entry->val = currEdge->value;
+  {
+    Node* child = tree.getNode(currEdge->childIdx);
+    if(!child->isTerminal){
+      const uint16_t q = uint16_t(std::min<int>(std::max(1, child->iters), 65535));
+      tree.storeTT(hash, currEdge->value, q);
+    }
+  }
 
   backpropagate(tree, result, path, visits, false, runFindBestMove, continueBackprop);
 }
@@ -667,6 +712,22 @@ inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point st
 
     tree.previousVisits = root->visits; tree.previousElapsed = elapsed.count();
   }
+
+  if(finalResult && Aurora::outputLevel.value >= 1){
+    const TTStats& s = tree.ttStats;
+    const double hitRate = s.probes ? double(s.hits) / double(s.probes) : 0.0;
+    const double skipRate = (s.stores + s.skippedLowerQuality)
+      ? double(s.skippedLowerQuality) / double(s.stores + s.skippedLowerQuality) : 0.0;
+    std::cout << "info string tt-stats"
+              << " probes " << s.probes
+              << " hits " << s.hits
+              << " hitRate " << hitRate
+              << " stores " << s.stores
+              << " skippedLowerQuality " << s.skippedLowerQuality
+              << " skipRate " << skipRate
+              << " ttEntryBytes " << sizeof(TTEntry)
+              << "\n";
+  }
 }
 
 //Code relating to the time manager
@@ -691,6 +752,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   auto start = std::chrono::steady_clock::now();
 
   tree.setHash();
+  tree.ttStats.reset(); // per-search aggregators; TT entries themselves are reused
   if(Aurora::outputLevel.value >= 1){
     std::cout << "info string starting search with max tree size " <<
               (tree.sizeLimit == 0 ? "unlimited" : std::to_string(tree.sizeLimit/1000000.0)) << " mb "
