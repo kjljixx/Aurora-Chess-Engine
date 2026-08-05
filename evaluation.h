@@ -334,8 +334,8 @@ inline int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0, int
 inline const std::array<uint8_t, 13> sidedPieceToPiece = {0, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6};
 
 inline int mvvLva(chess::Board& board, chess::Move move){
-  return 30*mg_value[sidedPieceToPiece[move.getMoveFlags() == chess::ENPASSANT ? 1 : 
-                     board.mailbox[0][move.getEndSquare()]]-1] -
+  const uint8_t victim = move.getMoveFlags() == chess::ENPASSANT ? 1 : board.mailbox[0][move.getEndSquare()];
+  return 30*(victim == 0 ? 0 : mg_value[sidedPieceToPiece[victim]-1]) -
          mg_value[sidedPieceToPiece[board.mailbox[0][move.getStartSquare()]]-1];
 }
 
@@ -359,17 +359,30 @@ inline int captureGain(chess::Board& board, chess::Move move){
 }
 
 template<int numHiddenNeurons>
-int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int beta){
-  int eval = nnue.evaluate(board.sideToMove);
-  int bestEval = eval;
+int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int beta, int ply = 0){
+  const bool inCheck = ply < Aurora::qSearchEvasionPlies.value &&
+                       board.squareUnderAttack(bitscanForward(board.getOurPieces(chess::KING))) <= 63;
 
-  if(eval >= beta){return eval;}
+  int eval;
+  int bestEval;
+  int standPat = 0;
 
-  const int standPat = eval;
+  if(inCheck){
+    const int qSearchMateScore = -100000;
+    bestEval = qSearchMateScore;
+  }
+  else{
+    eval = nnue.evaluate(board.sideToMove);
+    bestEval = eval;
 
-  if(eval > alpha){alpha = eval;}
+    if(eval >= beta){return eval;}
 
-  chess::MoveList moves(board, true);
+    standPat = eval;
+
+    if(eval > alpha){alpha = eval;}
+  }
+
+  chess::MoveList moves(board, !inCheck);
 
   std::array<int, 256> orderValue; // NOLINT(cppcoreguidelines-pro-type-member-init)
   int i=0;
@@ -384,15 +397,15 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
           std::swap(moves.moveList[j], moves.moveList[i]);
       }
     }
-    if(standPat + captureGain(board, moves[i]) + Aurora::deltaMargin.value <= alpha) continue;
+    if(!inCheck && standPat + captureGain(board, moves[i]) + Aurora::deltaMargin.value <= alpha) continue;
 
-    if(SEE(board, moves[i].getEndSquare(), -1, moves[i].getStartSquare()) == -1) continue;
+    if(!inCheck && SEE(board, moves[i].getEndSquare(), -1, moves[i].getStartSquare()) == -1) continue;
 
     chess::Board movedBoard = board;
     nnue.accumulator = currAccumulator;
     nnue.updateAccumulator(movedBoard, moves[i]);
 
-    eval = -qSearch(movedBoard, nnue, -beta, -alpha);
+    eval = -qSearch(movedBoard, nnue, -beta, -alpha, ply+1);
     
     if(eval > bestEval) bestEval = eval;
     if(eval > alpha) alpha = eval;
