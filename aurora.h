@@ -73,7 +73,7 @@ inline Option moveOverhead("Move Overhead", 50, 0, 10000, 1);
 inline Option rootExplorationFactor("rootExplorationFactor", 0.026337, 0.001, 1024, 0, true);
 inline Option explorationFactor("explorationFactor", 0.014091, 0.001, 1024, 0, true);
 inline Option valChangedMinWeight("valChangedMinWeight", 0.123489, 0.001, 1024, 0, true);
-inline Option valSameMinWeight("valSameMinWeight", 0.007526, 0.001, 1024, 0, true);
+inline Option valSameMinWeightRatio("valSameMinWeightRatio", 0.060945, 0.0, 1.0, 0, true);
 
 inline Option varianceScaleMultiplier("varianceScaleMultiplier", 15.067323, 0, 1024, 0, true);
 inline Option varianceScaleOffset("varianceScaleOffset", 0.006641, -1, 1, 0, true);

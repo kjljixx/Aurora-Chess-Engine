@@ -324,6 +324,9 @@ inline void setOption(std::istringstream& input){
     input >> optionValue;
     Aurora::getOption(optionName)->value = optionValue;
     std::cout << "info string option " << optionName << " set to " << optionValue << std::endl;
+    if(optionName == "valChangedMinWeight" || optionName == "valSameMinWeightRatio") {
+      search::initEmaWeights();
+    }
   }
 }
 
@@ -355,6 +358,12 @@ inline void loop(chess::Board board){
     if(token == "rpinned"){bitboards::printBoard(board.generateKingMasks().rookPinnedPieces); std::cout << std::endl;}
     if(token == "bpinmask"){bitboards::printBoard(board.generateKingMasks().bishopPinmask); std::cout << std::endl;}
     if(token == "bpinned"){bitboards::printBoard(board.generateKingMasks().bishopPinnedPieces); std::cout << std::endl;}
+    
+    if(token == "ema"){
+      for(int i = 1; i < 1024; i++){
+        std::cout << search::emaSameWeights[i] << " " << search::emaChangedWeights[i] << std::endl;
+      }
+    }
     
     if(token == "staticeval"){evaluation::NNUE<evaluation::NNUEhiddenNeurons> nnue(evaluation::nnueParameters); nnue.refreshAccumulator(board); std::cout << evaluation::evaluate(board, nnue) << std::endl;}
     if(token == "see"){std::cin >> token; uint8_t square = squareNotationToIndex(token); std::cout << evaluation::SEE(board, square, 0) << std::endl;}
