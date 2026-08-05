@@ -1,10 +1,6 @@
 .vscode
 
-aurora.exe
-auroradebug.exe
-auroradev.exe
-auroradatagen
-auroradatagen.exe
+*.exe
 b.bat
 bd.bat
 bdatagen.bat
@@ -19,15 +15,12 @@ engine/EngineTests
 
 bm.bat
 bmd.bat
-auroramini.exe
-auroraminidev.exe
 /.vs
 /debug
 .clangd
 aurora
 auroradev
 aurora_tests
-aurora_tests.exe
 
 shinka_task
 .env
