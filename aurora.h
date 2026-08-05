@@ -97,6 +97,8 @@ inline Option ttHashProportion("ttHashProportion", 0.196714, 0, 1, 0, true);
 
 inline Option lruPrunedVisitsEstimate("lruPrunedVisitsEstimate", 13.884551, 0, 1000, 0, true);
 
+inline Option deltaMargin("deltaMargin", 100, 0, 2000, 0, true);
+
 inline Option cpMultiplier("cpMultiplier", 101.700963, 50.0, 150.0, 0, true);
 
 inline Option* getOption(const std::string& name){
