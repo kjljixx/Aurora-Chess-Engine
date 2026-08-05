@@ -28,3 +28,6 @@ aurora
 auroradev
 aurora_tests
 aurora_tests.exe
+
+shinka_task
+.env
