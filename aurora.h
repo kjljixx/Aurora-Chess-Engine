@@ -80,6 +80,10 @@ inline Option varianceScaleOffset("varianceScaleOffset", 0.006641, -1, 1, 0, tru
 inline Option varianceScaleMin("varianceScaleMin", 1.001753, 0, 1024, 0, true);
 inline Option varianceScaleMax("varianceScaleMax", 1.913014, 0, 1024, 0, true);
 
+inline Option varianceScaleWdlNorm("varianceScaleWdlNorm", 0.4, 0.01, 1, 0, true);
+inline Option varianceScaleWdlMin("varianceScaleWdlMin", 0.25, 0, 2, 0, true);
+inline Option varianceScaleWdlMax("varianceScaleWdlMax", 1.5, 0, 4, 0, true);
+
 inline Option visitWindow("visitWindow", 0.034869, 0, 10, 0, true);
 
 inline Option visitBoostMultiplier("visitBoostMultiplier", 1.117301, 0, 10, 0, true);

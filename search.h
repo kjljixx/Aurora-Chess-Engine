@@ -433,7 +433,60 @@ inline uint32_t moveRootToChild(Tree& tree, uint32_t newRootIdx){
   return newRootNewIdx;
 }
 
-inline uint8_t selectEdge(Node* parent, Tree& tree, bool isRoot){
+inline int material(const chess::Board& board){
+  return 9 * popCount(board.queens) + 5 * popCount(board.rooks)
+       + 3 * popCount(board.bishops) + 3 * popCount(board.knights)
+       + popCount(board.pawns);
+}
+
+inline float wdlPoly3(float x, float c3, float c2, float c1, float c0){
+  return ((c3 * x + c2) * x + c1) * x + c0;
+}
+
+inline float stableLogistic(float z){
+  if(z < 0){
+    const float e = std::exp(z);
+    return e / (1.0 + e);
+  }
+  return 1.0 / (1.0 + std::exp(-z));
+}
+
+inline float stmValueForWdl(Node* parent){
+  if(parent->avgValue >= -1.0 && parent->avgValue <= 1.0){
+    return parent->avgValue;
+  }
+  if(!parent->children.empty()){
+    return -findBestQ(parent);
+  }
+  return 0.0;
+}
+
+//WDL as fitted by stockfish/WDL_model
+inline float multinoulliOutcomeVariance(float stmValue, int material){
+  constexpr float as3 = -29.24238904, as2 = 102.82244435, as1 = -149.74019186, as0 = 113.30705307;
+  constexpr float bs3 = -35.73614760, bs2 = 91.11710740, bs1 = -71.95547116, bs0 = 43.34415310;
+  constexpr float momTarget = 58.0;
+
+  const float m = std::clamp(float(material), 17.0f, 78.0f) / momTarget;
+  const float a = wdlPoly3(m, as3, as2, as1, as0);
+  const float b = std::max(wdlPoly3(m, bs3, bs2, bs1, bs0), 1e-8f);
+  const float cp = float(evaluation::valToCp(stmValue));
+  const float W = stableLogistic((cp - a) / b);
+  const float L = stableLogistic((-cp - a) / b);
+  const float mu = W - L;
+  return (W + L) - mu * mu;
+}
+
+inline float wdlVarianceScalePrior(Node* parent, int material){
+  const float wdlVar = multinoulliOutcomeVariance(stmValueForWdl(parent), material);
+  return float(std::clamp(
+    double(wdlVar / Aurora::varianceScaleWdlNorm.value),
+    double(Aurora::varianceScaleWdlMin.value),
+    double(Aurora::varianceScaleWdlMax.value)
+  ));
+}
+
+inline uint8_t selectEdge(Node* parent, Tree& tree, bool isRoot, int material = 58){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
 
@@ -443,8 +496,9 @@ inline uint8_t selectEdge(Node* parent, Tree& tree, bool isRoot){
   const float logParentVisits = std::log(parentVisits);
   const float parentVisitsTerm = (isRoot ? Aurora::rootExplorationFactor.value : Aurora::explorationFactor.value)*logParentVisits*std::sqrt(logParentVisits);
 
+  const float baseVarianceScale = wdlVarianceScalePrior(parent, material);
   float varianceScale = 
-    ((1.0 / parentIters) * 1.0) +
+    ((1.0 / parentIters) * baseVarianceScale) +
     ((1.0 - 1.0 / parentIters) *
     std::clamp<double>(
       1.0 + (Aurora::varianceScaleMultiplier.value *
@@ -783,7 +837,7 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       }
 
       //Select Child Node to explore
-      uint8_t currEdgeIndex = selectEdge(currNode, tree, currNode == tree.root());
+      uint8_t currEdgeIndex = selectEdge(currNode, tree, currNode == tree.root(), material(board));
       uint32_t currNodeIdx = tree.getIdx(currNode);
 
       currEdge = &currNode->children[currEdgeIndex];
