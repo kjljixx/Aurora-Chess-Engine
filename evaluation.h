@@ -339,12 +339,42 @@ inline int mvvLva(chess::Board& board, chess::Move move){
          mg_value[sidedPieceToPiece[board.mailbox[0][move.getStartSquare()]]-1];
 }
 
+//Material the side to move stands to win from a capture, in the same centipawn units
+//SEE uses. gamePhase is fixed at 24, so the phase blend collapses to mg_value.
+inline int captureGain(chess::Board& board, chess::Move move){
+  const chess::MoveFlags flags = move.getMoveFlags();
+
+  int gain = 0;
+  if(flags == chess::ENPASSANT){
+    gain = mg_value[chess::PAWN-1];
+  }
+  else{
+    const uint8_t victim = board.mailbox[0][move.getEndSquare()];
+    if(victim != 0){gain = mg_value[sidedPieceToPiece[victim]-1];}
+  }
+
+  //A promotion also converts the pawn into the promoted piece
+  if(flags == chess::PROMOTION){
+    gain += mg_value[move.getPromotionPiece()-1] - mg_value[chess::PAWN-1];
+  }
+
+  return gain;
+}
+
+//Delta pruning margin. A capture is skipped when even winning the victim outright,
+//plus this cushion for positional compensation, cannot lift the standing evaluation
+//to alpha.
+inline const int deltaMargin = 100;
+
 template<int numHiddenNeurons>
 int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int beta){
   int eval = nnue.evaluate(board.sideToMove);
   int bestEval = eval;
 
   if(eval >= beta){return eval;}
+
+  //Stand-pat, kept separate because `eval` is reused for child results below
+  const int standPat = eval;
 
   if(eval > alpha){alpha = eval;}
 
@@ -363,6 +393,11 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
           std::swap(moves.moveList[j], moves.moveList[i]);
       }
     }
+    //Delta pruning, before SEE because it is far cheaper than a SEE swap-off.
+    //This discards only captures that are arithmetically incapable of reaching alpha
+    //even if they win the victim for free.
+    if(standPat + captureGain(board, moves[i]) + deltaMargin <= alpha) continue;
+
     if(SEE(board, moves[i].getEndSquare(), -1, moves[i].getStartSquare()) == -1) continue;
 
     chess::Board movedBoard = board;
