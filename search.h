@@ -845,19 +845,24 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         g_searchStats->effectiveBranchingCount++;
       }
 #endif
-      
-      //Move all children nodes to the front of LRU
-      for(int i=0; i<currNode->children.size(); i++){
-        if(currNode->children[i].childIdx != UINT32_MAX){
-          tree.moveToHead(tree.getNode(currNode->children[i].childIdx));
-        }
-      }
 
       //Select Child Node to explore
       uint8_t currEdgeIndex = selectEdge(currNode, tree, currNode == tree.root());
       uint32_t currNodeIdx = tree.getIdx(currNode);
 
       currEdge = &currNode->children[currEdgeIndex];
+      //Move all children nodes to the front of LRU
+      if(tree.sizeLimit > 0 && tree.currSize >= tree.sizeLimit){
+        for(int i=0; i<currNode->children.size(); i++){
+          if(currNode->children[i].childIdx != UINT32_MAX){
+            tree.moveToHead(tree.getNode(currNode->children[i].childIdx));
+          }
+        }
+      }
+      else if(currEdge->childIdx != UINT32_MAX){
+        tree.moveToHead(tree.getNode(currEdge->childIdx));
+      }
+      
       chess::makeMove(board, currEdge->edge);
       traversePath.push_back({currNodeIdx, currEdgeIndex, board.history[board.halfmoveClock]});
 
