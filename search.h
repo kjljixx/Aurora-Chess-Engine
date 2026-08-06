@@ -101,6 +101,10 @@ struct Tree{
   //Nodes at the start of a search
   uint32_t startNodes = 0;
 
+#ifdef DEV
+  SearchStats stats;
+#endif
+
   TTEntry* getTTEntry(U64 hash){
     return &TT[hash % TT.size()];
   }
@@ -179,6 +183,7 @@ struct Tree{
     // Never evict the root (it is often both head and tail when the tree is tiny).
     // If we cannot safely reclaim a slot, grow past sizeLimit instead of corrupting the tree.
     if(sizeLimit != 0 && currSize >= sizeLimit && tailIdx != UINT32_MAX && tailIdx != rootIdx){
+      SEARCH_STAT(lruEvictions);
       assert(tailIdx != UINT32_MAX);
       uint32_t currTailIdx = tailIdx;
       Node* currTail = &tree[currTailIdx];
@@ -319,6 +324,9 @@ inline float findBestValue(Node* parent){
 
 
 inline void destroyTree(Tree& tree){
+#ifdef DEV
+  tree.stats.destroyTreeEvents++;
+#endif
   tree.TT.clear();
   tree.tree.clear();
   tree.rootIdx = UINT32_MAX;
@@ -482,11 +490,19 @@ inline uint8_t selectEdge(Node* parent, Tree& tree, bool isRoot){
     }
   }
 
+  if(parent->children[maxPriorityNodeIndex].childIdx == UINT32_MAX &&
+     (parent->children[maxPriorityNodeIndex].edge.value & (1 << 15))){
+    SEARCH_STAT(lruPrunedEdgeSelects);
+  }
+
   return maxPriorityNodeIndex;
 }
 
 inline void expand(Tree& tree, Node* parent, chess::MoveList& moves){
   if(moves.size()==0){return;}
+
+  SEARCH_STAT_ADD(expandBranchingSum, moves.size());
+  SEARCH_STAT(expandBranchingCount);
 
   parent->children.resize(moves.size());
   tree.currSize += moves.size() * sizeof(Edge);
@@ -502,24 +518,32 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   chess::gameStatus _gameStatus = chess::getGameStatus(board, chess::isLegalMoves(board));
   assert(-1<=_gameStatus && 2>=_gameStatus);
   if(_gameStatus != chess::ONGOING){
+    SEARCH_STAT(playoutTerminal);
     return _gameStatus;
   }
 
   //Next, check TBs
   chess::gameStatus tbResult = chess::probeWdlTb(board);
   if(tbResult != chess::ONGOING){
+    SEARCH_STAT(playoutTb);
     return tbResult;
   }
 
   //Next, check TT
   TTEntry* entry = tree.getTTEntry(board.history[board.halfmoveClock]);
-  if(entry->hash == (board.history[board.halfmoveClock] >> 32) && entry->val != -2){
+  const uint32_t hashHi = board.history[board.halfmoveClock] >> 32;
+  if(entry->hash == hashHi && entry->val != -2){
+    SEARCH_STAT(playoutTtHit);
     return entry->val;
   }
 
   //Next, do qSearch
+  SEARCH_STAT(playoutEval);
   float eval = evaluation::cpToVal(evaluation::evaluate(board, nnue));
-  entry->hash = (board.history[board.halfmoveClock] >> 32);
+#ifdef DEV
+  if(g_searchStats) g_searchStats->recordTtStore(entry->hash, entry->val, hashHi);
+#endif
+  entry->hash = hashHi;
   entry->val = eval;
 
   assert(-1<=eval && 1>=eval);
@@ -547,6 +571,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::tuple<uint3
     //If the result is worse than the current value, there is no point in continuing the backpropagation, other than to add visits to the nodes
     if(result <= currEdge->value && !runFindBestMove && !forceResult){
       continueBackprop = false;
+      SEARCH_STAT(backpropVisitOnly);
 
         tree.getNode(currEdge->childIdx)->iters++;
         float newValWeight = std::clamp(1.0/tree.getNode(currEdge->childIdx)->iters, double(Aurora::valSameMinWeight.value), 1.0);
@@ -554,6 +579,9 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::tuple<uint3
         tree.getNode(currEdge->childIdx)->sumSquaredVals = tree.getNode(currEdge->childIdx)->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
 
       TTEntry* entry = tree.getTTEntry(hash);
+#ifdef DEV
+      if(g_searchStats) g_searchStats->recordTtStore(entry->hash, entry->val, hash >> 32);
+#endif
       entry->hash = hash >> 32;
       entry->val = currEdge->value;
 
@@ -561,6 +589,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::tuple<uint3
       return;
     }
 
+    SEARCH_STAT(backpropValueChanged);
     currEdge->value = runFindBestMove ? -findBestQ(tree.getNode(currEdge->childIdx)) : result;
 
     assert(-1<=currEdge->value && 1>=currEdge->value);
@@ -575,6 +604,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::tuple<uint3
     tree.getNode(currEdge->childIdx)->sumSquaredVals = tree.getNode(currEdge->childIdx)->sumSquaredVals*(1-newValWeight) + currEdge->value*currEdge->value*newValWeight;
   }
   else{
+    SEARCH_STAT(backpropVisitOnly);
     tree.getNode(currEdge->childIdx)->iters++;
     float newValWeight = std::clamp(1.0/tree.getNode(currEdge->childIdx)->iters, double(Aurora::valSameMinWeight.value), 1.0);
     tree.getNode(currEdge->childIdx)->avgValue = tree.getNode(currEdge->childIdx)->avgValue*(1-newValWeight) + currEdge->value*newValWeight;
@@ -582,6 +612,9 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::tuple<uint3
   }
 
   TTEntry* entry = tree.getTTEntry(hash);
+#ifdef DEV
+  if(g_searchStats) g_searchStats->recordTtStore(entry->hash, entry->val, hash >> 32);
+#endif
   entry->hash = hash >> 32;
   entry->val = currEdge->value;
 
@@ -641,6 +674,16 @@ inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point st
     }
 
     std::cout.precision(10);
+
+#ifdef DEV
+    if(root->children.size() > 0){
+      tree.stats.rootQADisagreeChecks++;
+      if(findBestQEdge(root).edge.value != findBestAEdge(root, tree).edge.value){
+        tree.stats.rootQADisagree++;
+      }
+    }
+    tree.stats.print();
+#endif
   }
 
   if(Aurora::outputLevel.value >= 2 || (finalResult && Aurora::outputLevel.value >= 1)){
@@ -690,6 +733,17 @@ struct timeManagement{
 inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   auto start = std::chrono::steady_clock::now();
 
+#ifdef DEV
+  const uint64_t priorDestroyEvents = tree.stats.destroyTreeEvents;
+  const uint64_t priorReuseEvents = tree.stats.treeReuseEvents;
+  const uint64_t priorReuseNodesKept = tree.stats.treeReuseNodesKept;
+  tree.stats.reset();
+  tree.stats.destroyTreeEvents = priorDestroyEvents;
+  tree.stats.treeReuseEvents = priorReuseEvents;
+  tree.stats.treeReuseNodesKept = priorReuseNodesKept;
+  g_searchStats = &tree.stats;
+#endif
+
   tree.setHash();
   if(Aurora::outputLevel.value >= 1){
     std::cout << "info string starting search with max tree size " <<
@@ -721,6 +775,9 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     if(Aurora::outputLevel.value >= 0){
       std::cout << "bestmove a1a1" << std::endl;
     }
+#ifdef DEV
+    g_searchStats = nullptr;
+#endif
     return;
   }
 
@@ -774,6 +831,20 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     //Traverse the search tree
     while(currNode->children.size() > 0){
       currDepth++;
+
+#ifdef DEV
+      if(g_searchStats){
+        uint64_t effective = 0;
+        for(const Edge& edge : currNode->children){
+          Node* child = tree.getNode(edge.childIdx);
+          if(child && child->visits > 0){
+            effective++;
+          }
+        }
+        g_searchStats->effectiveBranchingSum += effective;
+        g_searchStats->effectiveBranchingCount++;
+      }
+#endif
       
       //Move all children nodes to the front of LRU
       for(int i=0; i<currNode->children.size(); i++){
@@ -815,6 +886,11 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       tree.root()->visits += 1;
       tree.root()->iters += 1;
       backpropagate(tree, currEdge->value, traversePath, 1, true, false, true);
+#ifdef DEV
+      SEARCH_STAT_ADD(visitWindowVisitsSum, 1);
+      SEARCH_STAT(visitWindowIters);
+      if(g_searchStats) g_searchStats->recordPathDepth(currDepth);
+#endif
     }
     else{
       //Reached a leaf node
@@ -829,6 +905,11 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         tree.root()->visits += 1;
         tree.root()->iters += 1;
         backpropagate(tree, currEdge->value, traversePath, 1, true, false, true);
+#ifdef DEV
+        SEARCH_STAT_ADD(visitWindowVisitsSum, 1);
+        SEARCH_STAT(visitWindowIters);
+        if(g_searchStats) g_searchStats->recordPathDepth(currDepth);
+#endif
       }
       else{
         //Create new child edges
@@ -872,6 +953,11 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
         //Backpropagate best value
         backpropagate(tree, -currBestValue, traversePath, visits, true, false, true);
+#ifdef DEV
+        SEARCH_STAT_ADD(visitWindowVisitsSum, visits);
+        SEARCH_STAT(visitWindowIters);
+        if(g_searchStats) g_searchStats->recordPathDepth(currDepth);
+#endif
       }
     }
 
@@ -909,11 +995,56 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     }
   }
 
+#ifdef DEV
+  tree.stats.tmBestMoveChanges = bestMoveChanges;
+  tree.stats.tmSoftMultiplier = bestMoveChangesMultiplier;
+  if(tm.tmType == FOREVER){
+    tree.stats.stopReason = StopReason::Forever;
+  }
+  else if(tm.tmType == TIME){
+    if(tm.useSoftHardNodeLimits && elapsed.count() >= tm.hardLimit){
+      tree.stats.stopReason = StopReason::Hard;
+    }
+    else if(tm.useSoftHardNodeLimits){
+      tree.stats.stopReason = StopReason::Soft;
+    }
+    else{
+      tree.stats.stopReason = StopReason::Time;
+    }
+  }
+  else if(tm.tmType == NODES){
+    if(tm.useSoftHardNodeLimits && (tree.root()->visits - tree.startNodes) >= tm.hardLimit){
+      tree.stats.stopReason = StopReason::Hard;
+    }
+    else if(tm.useSoftHardNodeLimits){
+      tree.stats.stopReason = StopReason::Soft;
+    }
+    else{
+      tree.stats.stopReason = StopReason::Nodes;
+    }
+  }
+  else if(tm.tmType == ITERS){
+    if(tm.useSoftHardNodeLimits && tree.root()->iters >= tm.hardLimit){
+      tree.stats.stopReason = StopReason::Hard;
+    }
+    else if(tm.useSoftHardNodeLimits){
+      tree.stats.stopReason = StopReason::Soft;
+    }
+    else{
+      tree.stats.stopReason = StopReason::Iters;
+    }
+  }
+#endif
+
   //Output the final result of the search
   printSearchInfo(tree, start, true);
   if(Aurora::outputLevel.value >= 0){
     std::cout << "\nbestmove " << findBestAEdge(tree.root(), tree).edge.toStringRep() << std::endl; //std::endl to flush
   }
+
+#ifdef DEV
+  g_searchStats = nullptr;
+#endif
 }
 
 //Same as chess::makeMove except we move the root so we can keep nodes from an earlier search
@@ -940,6 +1071,10 @@ inline void makeMove(chess::Board& board, chess::Move move, chess::Board& rootBo
   if(newRootIdx == UINT32_MAX){tree.rootIdx = UINT32_MAX; destroyTree(tree); return;}
 
   tree.rootIdx = moveRootToChild(tree, newRootIdx);
+#ifdef DEV
+  tree.stats.treeReuseEvents++;
+  tree.stats.treeReuseNodesKept += tree.tree.size();
+#endif
 
   tree.root()->parentIdx = UINT32_MAX;
   tree.root()->visits--;//Visits needs to be subtracted by 1 to remove the visit which added the node

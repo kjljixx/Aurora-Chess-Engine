@@ -1,6 +1,7 @@
 #pragma once
 #include "simd.h"
 #include "zobrist.h"
+#include "search_stats.h"
 #include <math.h>
 #include <algorithm>
 #include <array>
@@ -360,6 +361,9 @@ inline int captureGain(chess::Board& board, chess::Move move){
 
 template<int numHiddenNeurons>
 int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int beta, int ply = 0){
+  SEARCH_STAT(qsearchNodes);
+  SEARCH_STAT_MAX(qsearchMaxPly, uint64_t(ply));
+
   const bool inCheck = ply < Aurora::qSearchEvasionPlies.value &&
                        board.squareUnderAttack(bitscanForward(board.getOurPieces(chess::KING))) <= 63;
 
@@ -375,7 +379,10 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
     eval = nnue.evaluate(board.sideToMove);
     bestEval = eval;
 
-    if(eval >= beta){return eval;}
+    if(eval >= beta){
+      SEARCH_STAT(qsearchBetaCut);
+      return eval;
+    }
 
     standPat = eval;
 
@@ -397,9 +404,15 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
           std::swap(moves.moveList[j], moves.moveList[i]);
       }
     }
-    if(!inCheck && standPat + captureGain(board, moves[i]) + Aurora::deltaMargin.value <= alpha) continue;
+    if(!inCheck && standPat + captureGain(board, moves[i]) + Aurora::deltaMargin.value <= alpha){
+      SEARCH_STAT(qsearchDeltaPrune);
+      continue;
+    }
 
-    if(!inCheck && SEE(board, moves[i].getEndSquare(), -1, moves[i].getStartSquare()) == -1) continue;
+    if(!inCheck && SEE(board, moves[i].getEndSquare(), -1, moves[i].getStartSquare()) == -1){
+      SEARCH_STAT(qsearchSeePrune);
+      continue;
+    }
 
     chess::Board movedBoard = board;
     nnue.accumulator = currAccumulator;
@@ -409,7 +422,10 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
     
     if(eval > bestEval) bestEval = eval;
     if(eval > alpha) alpha = eval;
-    if(eval >= beta) break;
+    if(eval >= beta){
+      SEARCH_STAT(qsearchBetaCut);
+      break;
+    }
   }
 
   return bestEval;
