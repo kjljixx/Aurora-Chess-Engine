@@ -455,17 +455,30 @@ inline uint8_t selectEdge(Node* parent, Tree& tree, bool isRoot){
   
   // std::cout << std::clamp(1.0+32*(std::sqrt(std::max(parent->variance(), float(0)))-0.00625), 0.2, 2.0) << " ";
 
+  float knownChildVisits = 0;
+  int lruPrunedCount = 0;
+  for(int i=0; i<parent->children.size(); i++){
+    Node* currNode = tree.getNode(parent->children[i].childIdx);
+    if(currNode){
+      knownChildVisits += currNode->visits;
+    } else if(parent->children[i].edge.value & (1 << 15)){
+      lruPrunedCount++;
+    }
+  }
+  const float lruVisitsEstimate = lruPrunedCount > 0
+    ? std::max(1.f, (parentVisits - knownChildVisits) / float(lruPrunedCount))
+    : 1.f;
+
   for(int i=0; i<parent->children.size(); i++){
     Node* currNode = tree.getNode(parent->children[i].childIdx);
     Edge currEdge = parent->children[i];
 
-    //We can make a guess about how many visits a node had before it was pruned by LRU
     bool isLRUPruned = parent->children[i].edge.value & (1 << 15);
 
     float childVisits = currNode ? std::max(currNode->visits, 1u) : 1;
     float childVisitsForPriority = currNode
       ? std::max(currNode->visits, 1u)
-      : (isLRUPruned ? Aurora::lruPrunedVisitsEstimate.value : 1);
+      : (isLRUPruned ? lruVisitsEstimate : 1);
     float boostTerm = 1.0 + ((Aurora::visitBoostMultiplier.value * (parentVisits * Aurora::visitBoostOffset.value)) / 
                       (parentVisits * Aurora::visitBoostOffset.value + childVisits));
 

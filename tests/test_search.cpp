@@ -114,6 +114,40 @@ TEST(search, select_edge_handles_child_with_zero_visits) {
   ASSERT_EQ(static_cast<int>(idx), 0);
 }
 
+TEST(search, select_edge_lru_visits_from_parent_residual) {
+  // LRU-pruned visit estimate = (parentVisits - knownChildVisits) / lruCount.
+  // A large residual should suppress exploration of the pruned edge relative to
+  // a never-expanded edge with the same Q.
+  search::Tree tree;
+  addRoot(tree);
+  tree.root()->visits = 100;
+  tree.root()->iters = 50;
+
+  uint32_t liveIdx = tree.getIdx(tree.push_back(search::Node(tree.rootIdx)));
+  tree.getNode(liveIdx)->visits = 10;
+  tree.getNode(liveIdx)->iters = 10;
+  tree.getNode(liveIdx)->avgValue = 0.0f;
+
+  search::Node* root = tree.root();
+  root->children.resize(3);
+
+  root->children[0].childIdx = liveIdx;
+  root->children[0].value = 0.0f;
+  root->children[0].edge = chess::Move(0, 1);
+
+  root->children[1].childIdx = UINT32_MAX;
+  root->children[1].value = 0.0f;
+  root->children[1].edge = chess::Move(0, 2);
+  root->children[1].edge.value |= (1 << 15); // LRU-pruned; residual ~90
+
+  root->children[2].childIdx = UINT32_MAX;
+  root->children[2].value = 0.0f;
+  root->children[2].edge = chess::Move(0, 3); // never expanded; visits=1
+
+  uint8_t idx = search::selectEdge(root, tree, true);
+  ASSERT_EQ(static_cast<int>(idx), 2);
+}
+
 TEST(search, expand_creates_edges_for_all_moves) {
   search::Tree tree;
   addRoot(tree);

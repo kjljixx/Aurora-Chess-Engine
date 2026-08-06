@@ -95,8 +95,6 @@ inline Option timeManagementHardFraction("timeManagementHardFraction", 0.093877,
 
 inline Option ttHashProportion("ttHashProportion", 0.196714, 0, 1, 0, true);
 
-inline Option lruPrunedVisitsEstimate("lruPrunedVisitsEstimate", 13.884551, 0, 1000, 0, true);
-
 inline Option deltaMargin("deltaMargin", 100, 0, 2000, 0, true);
 
 inline Option qSearchEvasionPlies("qSearchEvasionPlies", 1, 0, 10, 0, true);
