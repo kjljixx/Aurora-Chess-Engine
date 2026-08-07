@@ -62,6 +62,7 @@ inline Option outputLevel("outputLevel", 2, -1, 3, 1);
   //  1: output bestmove and info at end of search
   //  2: output bestmove and info at end of search and output info every 2 seconds
   //  3: output bestmove and info at end of search and output info + verbose move stats every 2 seconds
+inline Option rootStatsInterval("rootStatsInterval", 0, 0, 1000000, 1, true);
 inline Option timeManager("timeManager", 0, 0, 3, 1);
 // 0: normal time management
 // 1: basic time management based on time left and increment only

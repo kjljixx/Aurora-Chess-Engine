@@ -621,6 +621,33 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::tuple<uint3
   backpropagate(tree, result, path, visits, false, runFindBestMove, continueBackprop);
 }
 
+#ifdef DEV
+inline void dumpRootChildrenSnapshot(Tree& tree){
+  if(!g_searchStats || !g_searchStats->rootChildrenCsv.is_open()) return;
+  Node* root = tree.root();
+  if(!root) return;
+  for(const Edge& edge : root->children){
+    const bool pruned = edge.childIdx == UINT32_MAX;
+    Node* child = pruned ? nullptr : tree.getNode(edge.childIdx);
+    const float variance = child ? child->variance() : -1.0f;
+    const float stdDev = child ? std::sqrt(child->variance()) : -1.0f;
+    chess::Move move = edge.edge;
+    g_searchStats->writeRootChildRow(
+      root->iters,
+      root->visits,
+      move.toStringRep(),
+      edge.value,
+      child ? child->avgValue : -2.0f,
+      child ? child->iters : 0,
+      child ? child->visits : 1u,
+      variance,
+      stdDev,
+      pruned ? 1 : 0
+    );
+  }
+}
+#endif
+
 inline void printSearchInfo(Tree& tree, std::chrono::steady_clock::time_point start, bool finalResult){
   Node* root = tree.root();
   if(Aurora::outputLevel.value >= 3){
@@ -742,6 +769,11 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
   tree.stats.treeReuseEvents = priorReuseEvents;
   tree.stats.treeReuseNodesKept = priorReuseNodesKept;
   g_searchStats = &tree.stats;
+  const int rootStatsInterval = int(Aurora::rootStatsInterval.value);
+  int lastDumpedRootIters = 0;
+  if(rootStatsInterval > 0){
+    tree.stats.beginRootChildrenDump();
+  }
 #endif
 
   tree.setHash();
@@ -776,6 +808,9 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
       std::cout << "bestmove a1a1" << std::endl;
     }
 #ifdef DEV
+    if(rootStatsInterval > 0){
+      tree.stats.endRootChildrenDump();
+    }
     g_searchStats = nullptr;
 #endif
     return;
@@ -963,6 +998,13 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
 
     tree.seldepth = std::max(currDepth, int(tree.seldepth));
 
+#ifdef DEV
+    if(rootStatsInterval > 0 && tree.root()->iters >= lastDumpedRootIters + rootStatsInterval){
+      dumpRootChildrenSnapshot(tree);
+      lastDumpedRootIters = tree.root()->iters;
+    }
+#endif
+
     //Output some information on the search occasionally
     elapsed = std::chrono::steady_clock::now() - start;
     if(elapsed.count() >= lastNodeCheck*2){
@@ -1033,6 +1075,13 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
     else{
       tree.stats.stopReason = StopReason::Iters;
     }
+  }
+#endif
+
+#ifdef DEV
+  if(rootStatsInterval > 0){
+    dumpRootChildrenSnapshot(tree);
+    tree.stats.endRootChildrenDump();
   }
 #endif
 

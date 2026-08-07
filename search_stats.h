@@ -1,6 +1,8 @@
 #pragma once
 #include <cstdint>
+#include <fstream>
 #include <iostream>
+#include <string>
 
 #ifdef DEV
 
@@ -27,6 +29,8 @@ inline const char* stopReasonName(StopReason r){
     default: return "none";
   }
 }
+
+inline const char* rootChildrenCsvPath = "search_stats_root_children.csv";
 
 struct SearchStats{
   uint64_t playoutTerminal = 0;
@@ -71,8 +75,55 @@ struct SearchStats{
   uint64_t pathDepth9_16 = 0;
   uint64_t pathDepth17Plus = 0;
 
+  std::ofstream rootChildrenCsv;
+
   void reset(){
+    std::ofstream keepCsv = std::move(rootChildrenCsv);
     *this = SearchStats{};
+    rootChildrenCsv = std::move(keepCsv);
+  }
+
+  bool beginRootChildrenDump(const char* path = rootChildrenCsvPath){
+    endRootChildrenDump();
+    rootChildrenCsv.open(path, std::ios::out | std::ios::trunc);
+    if(!rootChildrenCsv){
+      std::cout << "info string searchstats failed to open " << path << "\n";
+      return false;
+    }
+    rootChildrenCsv << "root_iters,root_visits,move,q,avg,iters,visits,variance,std_dev,pruned\n";
+    return true;
+  }
+
+  void writeRootChildRow(
+    int rootIters,
+    uint32_t rootVisits,
+    const std::string& move,
+    float q,
+    float avg,
+    int iters,
+    uint32_t visits,
+    float variance,
+    float stdDev,
+    int pruned
+  ){
+    if(!rootChildrenCsv.is_open()) return;
+    rootChildrenCsv << rootIters << ','
+                    << rootVisits << ','
+                    << move << ','
+                    << q << ','
+                    << avg << ','
+                    << iters << ','
+                    << visits << ','
+                    << variance << ','
+                    << stdDev << ','
+                    << pruned << '\n';
+  }
+
+  void endRootChildrenDump(){
+    if(rootChildrenCsv.is_open()){
+      rootChildrenCsv.flush();
+      rootChildrenCsv.close();
+    }
   }
 
   void recordPathDepth(int depth){
