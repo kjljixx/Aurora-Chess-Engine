@@ -71,38 +71,38 @@ inline Option timeManager("timeManager", 0, 0, 3, 1);
 
 inline Option moveOverhead("Move Overhead", 50, 0, 10000, 1);
 
-inline Option rootExplorationFactor("rootExplorationFactor", 0.026337, 0.001, 1024, 0, true);
-inline Option explorationFactor("explorationFactor", 0.014091, 0.001, 1024, 0, true);
-inline Option valChangedMinWeight("valChangedMinWeight", 0.123489, 0.001, 1024, 0, true);
-inline Option valSameMinWeight("valSameMinWeight", 0.007526, 0.001, 1024, 0, true);
+inline Option rootExplorationFactor("rootExplorationFactor", 0.026950, 0.001, 1024, 0, true);
+inline Option explorationFactor("explorationFactor", 0.014080, 0.001, 1024, 0, true);
+inline Option valChangedMinWeight("valChangedMinWeight", 0.101793, 0.001, 1024, 0, true);
+inline Option valSameMinWeight("valSameMinWeight", 0.005596, 0.001, 1024, 0, true);
 
-inline Option varianceScaleMultiplier("varianceScaleMultiplier", 15.067323, 0, 1024, 0, true);
-inline Option varianceScaleOffset("varianceScaleOffset", 0.006641, -1, 1, 0, true);
-inline Option varianceScaleMin("varianceScaleMin", 1.001753, 0, 1024, 0, true);
-inline Option varianceScaleMax("varianceScaleMax", 1.913014, 0, 1024, 0, true);
+inline Option varianceScaleMultiplier("varianceScaleMultiplier", 11.474569, 0, 1024, 0, true);
+inline Option varianceScaleOffset("varianceScaleOffset", 0.007603, -1, 1, 0, true);
+inline Option varianceScaleMin("varianceScaleMin", 1.038742, 0, 1024, 0, true);
+inline Option varianceScaleMax("varianceScaleMax", 1.468699, 0, 1024, 0, true);
 
-inline Option visitWindow("visitWindow", 0.034869, 0, 10, 0, true);
+inline Option visitWindow("visitWindow", 0.036299, 0, 10, 0, true);
 
-inline Option visitBoostMultiplier("visitBoostMultiplier", 1.117301, 0, 10, 0, true);
-inline Option visitBoostOffset("visitBoostOffset", 0.000528, 0, 1, 0, true);
-inline Option bestMoveChangesCoefficient("bestMoveChangesCoefficient", 0.224143, 0, 1024, 0, true);
-inline Option bestMoveChangesExponent("bestMoveChangesExponent", 0.569136, 0, 16, 0, true);
-inline Option bestMoveChangesMultiplierMin("bestMoveChangesMultiplierMin", 0.26941, 0, 1024, 0, true);
-inline Option bestMoveChangesMultiplierMax("bestMoveChangesMultiplierMax", 1.946894, 0, 1024, 0, true);
+inline Option visitBoostMultiplier("visitBoostMultiplier", 0.952660, 0, 10, 0, true);
+inline Option visitBoostOffset("visitBoostOffset", 0.001390, 0, 1, 0, true);
+inline Option bestMoveChangesCoefficient("bestMoveChangesCoefficient", 0.224873, 0, 1024, 0, true);
+inline Option bestMoveChangesExponent("bestMoveChangesExponent", 0.534415, 0, 16, 0, true);
+inline Option bestMoveChangesMultiplierMin("bestMoveChangesMultiplierMin", 0.359329, 0, 1024, 0, true);
+inline Option bestMoveChangesMultiplierMax("bestMoveChangesMultiplierMax", 1.953298, 0, 1024, 0, true);
 
-inline Option timeManagementMovesLeft("timeManagementMovesLeft", 30.215695, 1, 200, 0, true);
-inline Option timeManagementSoftFraction("timeManagementSoftFraction", 0.053364, 0, 1, 0, true);
-inline Option timeManagementHardFraction("timeManagementHardFraction", 0.093877, 0, 1, 0, true);
+inline Option timeManagementMovesLeft("timeManagementMovesLeft", 31.927377, 1, 200, 0, true);
+inline Option timeManagementSoftFraction("timeManagementSoftFraction", 0.058031, 0, 1, 0, true);
+inline Option timeManagementHardFraction("timeManagementHardFraction", 0.089459, 0, 1, 0, true);
 
-inline Option ttHashProportion("ttHashProportion", 0.196714, 0, 1, 0, true);
+inline Option ttHashProportion("ttHashProportion", 0.149399, 0, 1, 0, true);
 
-inline Option lruPrunedVisitsEstimate("lruPrunedVisitsEstimate", 13.884551, 0, 1000, 0, true);
+inline Option lruPrunedVisitsEstimate("lruPrunedVisitsEstimate", 15.103414, 0, 1000, 0, true);
 
-inline Option deltaMargin("deltaMargin", 100, 0, 2000, 0, true);
+inline Option deltaMargin("deltaMargin", 114, 0, 2000, 0, true);
 
-inline Option qSearchEvasionPlies("qSearchEvasionPlies", 1, 0, 10, 0, true);
+inline Option qSearchEvasionPlies("qSearchEvasionPlies", 4, 0, 10, 0, true);
 
-inline Option cpMultiplier("cpMultiplier", 101.700963, 50.0, 150.0, 0, true);
+inline Option cpMultiplier("cpMultiplier", 555.544734, 50.0, 1000.0, 0, true);
 
 inline Option* getOption(const std::string& name){
   for(Option* option : options){

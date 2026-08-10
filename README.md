@@ -35,15 +35,15 @@ Here are some details about the search:
 * Values backpropagated up the tree are done so with minimax (rather than averaging the values, as with traditional UCT)
 
 ## Evaluation
-A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```andromeda-3.nnue```):
+A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```alcaeus-1.nnue```):
 * Arch:  (768->256)x2->1
 * Scale: 400
 * Batch Size: 16384
 * Batches / Superbatch: 6104
 * Positions / Superbatch: 100007936
-* Superbatches: 88
+* Superbatches: 150
 * WDL scheduler: constant 0.0
-* LR scheduler: start 0.001 gamma 0.1 drop every 44 superbatches
-* Device: NVIDIA GeForce MX550
+* LR scheduler: cosine decay start 0.001 end 0.00000243 over 150 superbatches
+* Device: NVIDIA GeForce RTX 5080
 * Threads: 4
-* Positions: 154143704
+* Data: Leela test80-2023, rescored with BT4, in Stockfish binpack format
