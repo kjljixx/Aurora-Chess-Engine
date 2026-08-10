@@ -12,5 +12,5 @@
 #endif
 
 extern "C" {
-  INCBIN(networkData, "andromeda-3.nnue");
+  INCBIN(networkData, "alcaeus-1.nnue");
 }
