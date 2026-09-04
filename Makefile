@@ -4,6 +4,14 @@ TEST_SOURCES := tests/main.cpp tests/test_bitboards.cpp tests/test_fen.cpp tests
 	tests/test_castling.cpp tests/test_enpassant.cpp tests/test_makemove.cpp tests/test_zobrist.cpp \
 	tests/test_game_status.cpp tests/test_moves.cpp tests/test_nnue.cpp tests/test_search.cpp
 BUILD_OPTIONS := -march=x86-64-v3 -O3 -std=c++17 -Wno-deprecated-declarations
+
+HIDDEN := 1024
+BUILD_OPTIONS += -DNNUE_HIDDEN=$(HIDDEN)
+
+# King-bucketed input features. 1 keeps the flat 768-row layout, so existing nets and
+# benches are unaffected; a bucketed net must build with the count it was trained on.
+INPUT_BUCKETS := 16
+BUILD_OPTIONS += -DNNUE_INPUT_BUCKETS=$(INPUT_BUCKETS)
 TEST_BUILD_OPTIONS := -I. -Itests -march=x86-64-v3 -O2 -std=c++17 -Wno-deprecated-declarations
 
 ifneq ($(exe),)

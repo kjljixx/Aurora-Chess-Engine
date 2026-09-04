@@ -36,12 +36,12 @@ Here are some details about the search:
 
 ## Evaluation
 A NNUE trained with [bullet](https://github.com/jw1912/bullet) and options (the options are for ```alcaeus-1.nnue```):
-* Arch:  (768->256)x2->1
+* Arch:  (768->1024)x2->1
 * Scale: 400
 * Batch Size: 16384
 * Batches / Superbatch: 6104
 * Positions / Superbatch: 100007936
-* Superbatches: 150
+* Superbatches: 300
 * WDL scheduler: constant 0.0
 * LR scheduler: cosine decay start 0.001 end 0.00000243 over 150 superbatches
 * Device: NVIDIA GeForce RTX 5080

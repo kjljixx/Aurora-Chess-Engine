@@ -35,7 +35,50 @@ inline int valToCp(float val){
 }
 
 //A simple 768->N*2->1 NNUE
-const int NNUEhiddenNeurons = 256;
+#ifndef NNUE_HIDDEN
+#define NNUE_HIDDEN 256
+#endif
+const int NNUEhiddenNeurons = NNUE_HIDDEN;
+
+#ifndef NNUE_INPUT_BUCKETS
+#define NNUE_INPUT_BUCKETS 1
+#endif
+const int NNUEinputBuckets = NNUE_INPUT_BUCKETS;
+
+#if NNUE_INPUT_BUCKETS == 16
+//Board quadrant x quadrant of the king's own 4x4 corner.
+inline const int inputBucketLayout[64] = {
+     0,  0,  1,  1,   2,  2,  3,  3,
+     0,  0,  1,  1,   2,  2,  3,  3,
+     4,  4,  5,  5,   6,  6,  7,  7,
+     4,  4,  5,  5,   6,  6,  7,  7,
+     8,  8,  9,  9,  10, 10, 11, 11,
+     8,  8,  9,  9,  10, 10, 11, 11,
+    12, 12, 13, 13,  14, 14, 15, 15,
+    12, 12, 13, 13,  14, 14, 15, 15,
+};
+#else
+//queenside/kingside x own-half/far-half.
+inline const int inputBucketLayout[64] = {
+    0, 0, 0, 0,  1, 1, 1, 1,
+    0, 0, 0, 0,  1, 1, 1, 1,
+    0, 0, 0, 0,  1, 1, 1, 1,
+    0, 0, 0, 0,  1, 1, 1, 1,
+    2, 2, 2, 2,  3, 3, 3, 3,
+    2, 2, 2, 2,  3, 3, 3, 3,
+    2, 2, 2, 2,  3, 3, 3, 3,
+    2, 2, 2, 2,  3, 3, 3, 3,
+};
+#endif
+
+//perspective 0 = white, 1 = black. bulletformat stores the stm king absolute and the ntm king
+//already flipped by ^56, matching how Chess768 orients each side's features, so black buckets
+//on its king seen from black's side.
+inline int inputBucketFor(chess::Board& board, int perspective){
+  if(NNUEinputBuckets == 1){return 0;}
+  uint8_t kingSquare = bitscanForward(board.getPieces(chess::Colors(perspective), chess::KING));
+  return inputBucketLayout[perspective == 0 ? kingSquare : (kingSquare ^ 56)];
+}
 
 const int WeightsPerVec = sizeof(SIMD::Vec) / sizeof(int16_t);
 
@@ -43,7 +86,7 @@ inline const int switchPieceColor[13] = {0, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 
 
 template<int numHiddenNeurons>
 struct NNUEparameters{
-    alignas(SIMD::Alignment) std::array<std::array<int16_t, numHiddenNeurons>, 768> hiddenLayerWeights;
+    alignas(SIMD::Alignment) std::array<std::array<int16_t, numHiddenNeurons>, 768*NNUEinputBuckets> hiddenLayerWeights;
     alignas(SIMD::Alignment) std::array<int16_t, numHiddenNeurons> hiddenLayerBiases;
     alignas(SIMD::Alignment) std::array<int16_t, int(2*numHiddenNeurons)> outputLayerWeights;
     int16_t outputLayerBias;
@@ -99,7 +142,20 @@ struct NNUE{
     return (unsquared * 400) / (255 * 64) + 13;
   }
 
+  //Row offset into hiddenLayerWeights for each perspective. Always derived from the board it is
+  //about to be used against, never carried across positions: the search explores siblings by
+  //restoring a saved copy of `accumulator` alone (see search.h and qSearch), so any bucket state
+  //kept beside it would belong to whatever line was walked last.
+  int bucketOffset[2] = {0, 0};
+  //Set when a king crossed a bucket boundary, which makes every feature of that perspective
+  //move to a different weight block: incremental updates are meaningless, so they are skipped
+  //and the accumulator is rebuilt once the move has been applied.
+  bool needsRefresh = false;
+
   void refreshAccumulator(chess::Board& board){
+    bucketOffset[0] = 768*inputBucketFor(board, 0);
+    bucketOffset[1] = 768*inputBucketFor(board, 1);
+
     for(int i=0; i<numHiddenNeurons; i++){
       accumulator[0][i] = parameters->hiddenLayerBiases[i];
       accumulator[1][i] = parameters->hiddenLayerBiases[i];
@@ -107,8 +163,8 @@ struct NNUE{
 
     for(int square=0; square<64; square++){
       if(board.mailbox[0][square]!=0){
-        int currFeatureIndex[2] = {64*(board.mailbox[0][square]-1)+square,
-                                   64*(switchPieceColor[board.mailbox[0][square]]-1)+(square^56)};
+        int currFeatureIndex[2] = {bucketOffset[0]+64*(board.mailbox[0][square]-1)+square,
+                                   bucketOffset[1]+64*(switchPieceColor[board.mailbox[0][square]]-1)+(square^56)};
         for(int i=0; i<numHiddenNeurons; i++){
           accumulator[0][i] += parameters->hiddenLayerWeights[currFeatureIndex[0]][i];
           accumulator[1][i] += parameters->hiddenLayerWeights[currFeatureIndex[1]][i];
@@ -119,14 +175,18 @@ struct NNUE{
 
   void updateSingleFeature(chess::Board& board, uint8_t square, chess::Pieces newPieceType,
                            chess::Colors newPieceColor = chess::WHITE){
+    //The whole accumulator is about to be rebuilt against a different weight block, so there
+    //is nothing worth updating in place.
+    if(needsRefresh){return;}
+
     uint8_t squareFromBlackPerspective = square^56;
 
     int newPiece = (newPieceColor == chess::WHITE) || (newPieceType == chess::null) ? newPieceType : newPieceType+6;
 
-    int currFeatureIndex[2] = {64*(board.mailbox[0][square]-1)+square,
-                               64*(board.mailbox[1][squareFromBlackPerspective]-1)+squareFromBlackPerspective};
-    int newFeatureIndex[2] = {64*(newPiece-1)+square,
-                              64*(switchPieceColor[newPiece]-1)+squareFromBlackPerspective};
+    int currFeatureIndex[2] = {bucketOffset[0]+64*(board.mailbox[0][square]-1)+square,
+                               bucketOffset[1]+64*(board.mailbox[1][squareFromBlackPerspective]-1)+squareFromBlackPerspective};
+    int newFeatureIndex[2] = {bucketOffset[0]+64*(newPiece-1)+square,
+                              bucketOffset[1]+64*(switchPieceColor[newPiece]-1)+squareFromBlackPerspective};
 
     if(board.mailbox[0][square] != 0){
       for(int i=0; i<numHiddenNeurons; i++){
@@ -153,6 +213,21 @@ struct NNUE{
     const uint8_t endSquare = move.getEndSquare();
     const chess::Pieces movingPiece = board.findPiece(startSquare);
     const chess::MoveFlags moveFlags = move.getMoveFlags();
+
+    //`board` is still the pre-move position the incoming accumulator was built against, so this
+    //recovers the right weight block even when the caller restored a sibling's accumulator.
+    bucketOffset[0] = 768*inputBucketFor(board, 0);
+    bucketOffset[1] = 768*inputBucketFor(board, 1);
+
+    //A king that lands in a different bucket re-points every feature of its own perspective at
+    //another weight block. Detect it before the board changes, then rebuild below rather than
+    //updating in place. Castling moves the king too, and is covered by the same test.
+    if(NNUEinputBuckets > 1 && movingPiece == chess::KING){
+      const int perspective = board.sideToMove == chess::WHITE ? 0 : 1;
+      const uint8_t from = perspective == 0 ? startSquare : uint8_t(startSquare^56);
+      const uint8_t to = perspective == 0 ? endSquare : uint8_t(endSquare^56);
+      if(inputBucketLayout[from] != inputBucketLayout[to]){needsRefresh = true;}
+    }
 
     updateSingleFeature(board, startSquare, chess::null);
     board.mailbox[0][startSquare] = 0; board.mailbox[1][startSquare^56] = 0;
@@ -257,6 +332,12 @@ struct NNUE{
     
     board.occupied = board.white | board.black;
     board.sideToMove = chess::Colors(!board.sideToMove);
+
+    //Board is fully updated now, so the rebuild picks up the king's new bucket.
+    if(needsRefresh){
+      needsRefresh = false;
+      refreshAccumulator(board);
+    }
 
     if(board.hashed){
       board.history[board.halfmoveClock] = newHash;
