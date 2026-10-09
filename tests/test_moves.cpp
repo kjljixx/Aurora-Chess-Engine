@@ -80,3 +80,41 @@ TEST(moves, square_attackers_independent_of_side_to_move) {
   const U64 attackers = board.squareAttackers(e4, chess::BLACK);
   ASSERT_TRUE(attackers & (1ULL << squareNotationToIndex("d5")));
 }
+
+namespace {
+bool hasMoveTo(chess::MoveList moves, const char* square) {
+  for (chess::Move move : moves) {
+    if (move.getEndSquare() == squareNotationToIndex(square)) return true;
+  }
+  return false;
+}
+}
+
+TEST(moves, captures_include_quiet_queen_promotion_only) {
+  chess::Board board("7k/4P3/8/8/8/8/8/4K3 w - - 0 1");
+  chess::MoveList captures(board, true);
+  ASSERT_EQ(captures.size(), 1u);
+  ASSERT_EQ(captures[0].getMoveFlags(), chess::PROMOTION);
+  ASSERT_EQ(captures[0].getPromotionPiece(), chess::QUEEN);
+  ASSERT_EQ(captures[0].getEndSquare(), squareNotationToIndex("e8"));
+}
+
+TEST(moves, captures_keep_all_promotions_for_capture_plus_one_queen_push) {
+  chess::Board board("3r3k/4P3/8/8/8/8/8/4K3 w - - 0 1");
+  ASSERT_EQ(chess::MoveList(board, true).size(), 5u);
+}
+
+TEST(moves, captures_skip_blocked_promotion_push) {
+  chess::Board board("4n2k/4P3/8/8/8/8/8/4K3 w - - 0 1");
+  ASSERT_EQ(chess::MoveList(board, true).size(), 0u);
+}
+
+TEST(moves, captures_skip_promotion_push_that_ignores_check) {
+  chess::Board board("7k/4P3/8/8/8/8/4r3/4K3 w - - 0 1");
+  ASSERT_FALSE(hasMoveTo(chess::MoveList(board, true), "e8"));
+}
+
+TEST(moves, captures_skip_promotion_push_of_bishop_pinned_pawn) {
+  chess::Board board("3b3k/4P3/8/6K1/8/8/8/8 w - - 0 1");
+  ASSERT_FALSE(hasMoveTo(chess::MoveList(board, true), "e8"));
+}

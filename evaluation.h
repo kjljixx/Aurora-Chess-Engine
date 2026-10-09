@@ -416,9 +416,11 @@ inline int SEE(chess::Board& board, uint8_t targetSquare, int threshold = 0, int
 inline const std::array<uint8_t, 13> sidedPieceToPiece = {0, 1, 2, 3, 4, 5, 6, 1, 2, 3, 4, 5, 6};
 
 inline int mvvLva(chess::Board& board, chess::Move move){
-  const uint8_t victim = move.getMoveFlags() == chess::ENPASSANT ? 1 : board.mailbox[0][move.getEndSquare()];
-  return 30*(victim == 0 ? 0 : mg_value[sidedPieceToPiece[victim]-1]) -
-         mg_value[sidedPieceToPiece[board.mailbox[0][move.getStartSquare()]]-1];
+  const chess::MoveFlags flags = move.getMoveFlags();
+  const uint8_t victim = flags == chess::ENPASSANT ? 1 : board.mailbox[0][move.getEndSquare()];
+  int gain = victim == 0 ? 0 : mg_value[sidedPieceToPiece[victim]-1];
+  if(flags == chess::PROMOTION){gain += mg_value[move.getPromotionPiece()-1] - mg_value[chess::PAWN-1];}
+  return 30*gain - mg_value[sidedPieceToPiece[board.mailbox[0][move.getStartSquare()]]-1];
 }
 
 inline int captureGain(chess::Board& board, chess::Move move){
@@ -490,7 +492,8 @@ int qSearch(chess::Board& board, NNUE<numHiddenNeurons>& nnue, int alpha, int be
       continue;
     }
 
-    if(!inCheck && SEE(board, moves[i].getEndSquare(), -1, moves[i].getStartSquare()) == -1){
+    const bool quietPromotion = moves[i].getMoveFlags() == chess::PROMOTION && board.mailbox[0][moves[i].getEndSquare()] == 0;
+    if(!inCheck && !quietPromotion && SEE(board, moves[i].getEndSquare(), -1, moves[i].getStartSquare()) == -1){
       SEARCH_STAT(qsearchSeePrune);
       continue;
     }
