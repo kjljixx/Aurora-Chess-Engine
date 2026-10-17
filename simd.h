@@ -3,11 +3,66 @@
 
 #include <algorithm>
 #include <cstdint>
+#if defined(__ARM_NEON) || defined(__aarch64__)
+#include <arm_neon.h>
+#else
 #include <immintrin.h>
+#endif
 
 namespace SIMD {
 
-#if defined(__AVX512F__) && defined(__AVX512BW__)
+#if defined(__ARM_NEON) || defined(__aarch64__)
+
+  using Vec = int16x8_t;
+
+  inline Vec addEpi16(Vec x, Vec y) {
+    return vaddq_s16(x, y);
+  }
+
+  // Epi32 operations treat the 128-bit register as 4 x int32
+  inline Vec addEpi32(Vec x, Vec y) {
+    return vreinterpretq_s16_s32(vaddq_s32(vreinterpretq_s32_s16(x), vreinterpretq_s32_s16(y)));
+  }
+
+  inline Vec subEpi16(Vec x, Vec y) {
+    return vsubq_s16(x, y);
+  }
+
+  inline Vec minEpi16(Vec x, Vec y) {
+    return vminq_s16(x, y);
+  }
+
+  inline Vec maxEpi16(Vec x, Vec y) {
+    return vmaxq_s16(x, y);
+  }
+
+  inline Vec mulloEpi16(Vec x, Vec y) {
+    return vmulq_s16(x, y);
+  }
+
+  inline Vec maddEpi16(Vec x, Vec y) {
+    int32x4_t lo = vmull_s16(vget_low_s16(x), vget_low_s16(y));
+    int32x4_t hi = vmull_high_s16(x, y);
+    return vreinterpretq_s16_s32(vpaddq_s32(lo, hi));
+  }
+
+  inline Vec vecSetZero() {
+    return vdupq_n_s16(0);
+  }
+
+  inline Vec vecSet1Epi16(int16_t x) {
+    return vdupq_n_s16(x);
+  }
+
+  inline int vecHaddEpi32(Vec vec) {
+    return vaddvq_s32(vreinterpretq_s32_s16(vec));
+  }
+
+  inline Vec load(const Vec* x){
+    return vld1q_s16(reinterpret_cast<const int16_t*>(x));
+  }
+
+#elif defined(__AVX512F__) && defined(__AVX512BW__)
 
   using Vec = __m512i;
 
