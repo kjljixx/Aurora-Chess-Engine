@@ -550,9 +550,9 @@ float playout(Tree& tree,chess::Board& board, evaluation::NNUE<numHiddenNeurons>
   return eval;
 }
 
-inline void backpropagate(Tree& tree, float result, std::vector<std::tuple<uint32_t, uint8_t, U64>>& path, uint8_t visits, bool forceResult, bool runFindBestMove, bool continueBackprop){
+inline uint8_t backpropagate(Tree& tree, float result, std::vector<std::tuple<uint32_t, uint8_t, U64>>& path, uint8_t visits, bool forceResult, bool runFindBestMove, bool continueBackprop){
   //Backpropagate results
-  if(path.size() == 0){return;}
+  if(path.size() == 0){return visits;}
 
   auto [parentIdx, edgeIndex, hash] = path.back();
   path.pop_back();
@@ -585,8 +585,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::tuple<uint3
       entry->hash = hash >> 32;
       entry->val = currEdge->value;
 
-      backpropagate(tree, result, path, visits, false, runFindBestMove, continueBackprop);
-      return;
+      return backpropagate(tree, result, path, 1, false, runFindBestMove, continueBackprop);
     }
 
     SEARCH_STAT(backpropValueChanged);
@@ -618,7 +617,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::tuple<uint3
   entry->hash = hash >> 32;
   entry->val = currEdge->value;
 
-  backpropagate(tree, result, path, visits, false, runFindBestMove, continueBackprop);
+  return backpropagate(tree, result, path, visits, false, runFindBestMove, continueBackprop);
 }
 
 #ifdef DEV
@@ -988,11 +987,10 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
         tree.depth += currDepth*visits;
 
         //Update root stats, since backpropagation doesn't reach the root
-        tree.root()->visits += visits;
         tree.root()->iters += 1;
 
-        //Backpropagate best value
-        backpropagate(tree, -currBestValue, traversePath, visits, true, false, true);
+        //Backpropagate best value; the root gets the visits its child received
+        tree.root()->visits += backpropagate(tree, -currBestValue, traversePath, visits, true, false, true);
 #ifdef DEV
         SEARCH_STAT_ADD(visitWindowVisitsSum, visits);
         SEARCH_STAT(visitWindowIters);
