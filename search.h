@@ -585,7 +585,7 @@ inline void backpropagate(Tree& tree, float result, std::vector<std::tuple<uint3
       entry->hash = hash >> 32;
       entry->val = currEdge->value;
 
-      backpropagate(tree, result, path, visits, false, runFindBestMove, continueBackprop);
+      backpropagate(tree, result, path, 1, false, runFindBestMove, continueBackprop);
       return;
     }
 
