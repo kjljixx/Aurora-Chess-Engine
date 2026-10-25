@@ -757,8 +757,8 @@ struct timeManagement{
 };
 
 //The main search function
-inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree){
-  auto start = std::chrono::steady_clock::now();
+inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree,
+                   std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now()){
 
 #ifdef DEV
   const uint64_t priorDestroyEvents = tree.stats.destroyTreeEvents;

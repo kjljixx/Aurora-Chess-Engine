@@ -3,6 +3,7 @@
 //After reading this file, go to files relating to search, starting with "search.h"
 #include "search.h"
 #include <chrono>
+#include <optional>
 //See https://backscattering.de/chess/uci/ for information on the Universal Chess Interface, which this file implements
 namespace uci{
 
@@ -184,7 +185,7 @@ inline uint64_t perftDiv(chess::Board &board, int depth){
   return nodes;
 }
 
-inline void go(std::istringstream& input, chess::Board board){
+inline void go(std::istringstream& input, chess::Board board, std::chrono::steady_clock::time_point start){
   std::string token;
 
   input >> token;
@@ -208,7 +209,7 @@ inline void go(std::istringstream& input, chess::Board board){
     input >> time;
     search::timeManagement limit = search::timeManagement(search::TIME, 1000000000.0);
     limit.limit = std::max(1, time - int(Aurora::moveOverhead.value))/1000.0;
-    search::search(board, limit, tree); 
+    search::search(board, limit, tree, start);
   }
   else{
     search::timeManagement tm;
@@ -261,7 +262,7 @@ inline void go(std::istringstream& input, chess::Board board){
       float(std::max(ourTime, 1))
     )));
     tm.hardLimit = useNodeTime ? 30000.0*allocatedTime/1000.0 : allocatedTime/1000.0;
-    search::search(board, tm, tree);
+    search::search(board, tm, tree, start);
   }
   rootBoard = board;
   rootIdx = tree.rootIdx;
@@ -330,16 +331,24 @@ inline void setOption(std::istringstream& input){
 //The main UCI loop which detects input and runs other functions based on it
 inline void loop(chess::Board board){
   std::string token;
+  //Tree reuse is sometimes slow, so defer until the next command to avoid time losses from Aurora not accounting for time spent on tree reuse.
+  std::optional<std::string> pendingPosition;
 
   while(true){
     std::cin >> token;
+    auto commandStart = std::chrono::steady_clock::now();
+    if(token != "position" && pendingPosition){
+      auto stream = std::istringstream(*pendingPosition);
+      board = position(stream);
+      pendingPosition.reset();
+    }
     if(token == "uci"){respondUci();}
     if(token == "build"){std::cout << GIT_HASH_STRING << std::endl;}
     if(token == "setoption"){std::getline(std::cin, token); auto stream = std::istringstream(token); setOption(stream);}
     if(token == "isready"){std::cout << "readyok" << std::endl;} //TODO: make sure we are actually ready before printing readyok
     if(token == "perft"){int depth = 0; std::cin >> depth; perftDiv(board, depth);}
-    if(token == "position"){std::getline(std::cin, token); auto stream = std::istringstream(token); board = position(stream);}
-    if(token == "go"){std::getline(std::cin, token); auto stream = std::istringstream(token); go(stream, board);}
+    if(token == "position"){std::getline(std::cin, token); pendingPosition = token;}
+    if(token == "go"){std::getline(std::cin, token); auto stream = std::istringstream(token); go(stream, board, commandStart);}
     if(token == "quit"){break;}
     if(token == "ucinewgame"){search::destroyTree(tree); rootIdx = UINT32_MAX; std::cout << "info string search tree destroyed" << std::endl;}
     //non-uci, custom commands
