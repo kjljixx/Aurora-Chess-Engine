@@ -767,6 +767,14 @@ inline Move* generateLegalMoves(Board &board, Move* legalMoves){
   return legalMovesPtr;
 }
 
+inline Move* queenPromotionPushes(Board &board, uint8_t piecePos, U64 legalSquares, Move* legalMovesPtr){
+  U64 promotionPushes = lookupTables::pawnPushTable[board.sideToMove][piecePos] & ~board.occupied & (bitboards::rank1 | bitboards::rank8) & legalSquares;
+  while(promotionPushes){
+    *legalMovesPtr++ = Move(piecePos, popLsb(promotionPushes), PROMOTION, QUEEN);
+  }
+  return legalMovesPtr;
+}
+
 inline Move* generateLegalCaptures(Board &board, Move* legalMoves){
   //Extremely useful source on how pointers/arrays work: https://cplusplus.com/doc/tutorial/pointers/
   Move* legalMovesPtr = legalMoves; //A pointer to the spot in memory where the next move will go
@@ -809,7 +817,9 @@ inline Move* generateLegalCaptures(Board &board, Move* legalMoves){
       //if pawn is pinned, you cannot push it unless it is a vertical rook pin. 
       //Also, it is not possible to have squares directly in front of the pawn be part of a pinmask if the pawn is pinned unless it is a vertical rook pin
       //So just using the rook mask suffices
-      //skip generating pawn pushes since they are not captures
+      if(!(1ULL << piecePos & _kingMasks.bishopPinnedPieces)){
+        legalMovesPtr = queenPromotionPushes(board, piecePos, _kingMasks.checkmask & _kingMasks.rookPinmask, legalMovesPtr);
+      }
 
       //Using similar logic, using just the bishop mask suffices
       if(!(1ULL << piecePos & _kingMasks.rookPinnedPieces)){
@@ -817,7 +827,7 @@ inline Move* generateLegalCaptures(Board &board, Move* legalMoves){
       }
     }
     else{
-      //skip generating pawn pushes since they are not captures
+      legalMovesPtr = queenPromotionPushes(board, piecePos, _kingMasks.checkmask, legalMovesPtr);
       legalMovesPtr = MoveListFromBitboard(lookupTables::pawnAttackTable[board.sideToMove][piecePos] & theirPieces & _kingMasks.checkmask, piecePos, true, legalMovesPtr);
     }
 
