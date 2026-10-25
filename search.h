@@ -441,6 +441,34 @@ inline uint32_t moveRootToChild(Tree& tree, uint32_t newRootIdx){
   return newRootNewIdx;
 }
 
+//Visits per unit of hardness H = sum(1/gap^2) of the best-arm identification problem at this node (as in UCB-E)
+inline float visitsPerHardness(Node* parent, Tree& tree, float parentVisits){
+  float bestValue = 2;
+  float secondBestValue = 2;
+  for(const Edge& edge : parent->children){
+    Node* child = tree.getNode(edge.childIdx);
+    float value = child ? child->avgValue : edge.value;
+    if(value < bestValue){
+      secondBestValue = bestValue;
+      bestValue = value;
+    }
+    else if(value < secondBestValue){
+      secondBestValue = value;
+    }
+  }
+
+  const float minGap = Aurora::gapAdaptMinGap.value;
+  float hardness = 1 / std::pow(std::max(secondBestValue - bestValue, minGap), 2);
+  for(const Edge& edge : parent->children){
+    Node* child = tree.getNode(edge.childIdx);
+    float gap = (child ? child->avgValue : edge.value) - bestValue;
+    if(gap > 0){
+      hardness += 1 / std::pow(std::max(gap, minGap), 2);
+    }
+  }
+  return parentVisits / hardness;
+}
+
 inline uint8_t selectEdge(Node* parent, Tree& tree, bool isRoot){
   float maxPriority = -2;
   uint8_t maxPriorityNodeIndex = 0;
@@ -449,7 +477,16 @@ inline uint8_t selectEdge(Node* parent, Tree& tree, bool isRoot){
   const float parentVisits = std::max(parent->visits, 1u);
   const float parentIters = std::max(parent->iters, 1);
   const float logParentVisits = std::log(parentVisits);
-  const float parentVisitsTerm = (isRoot ? Aurora::rootExplorationFactor.value : Aurora::explorationFactor.value)*logParentVisits*std::sqrt(logParentVisits);
+  float gapAdaptScale = 1;
+  if(isRoot && parent->children.size() > 1 && Aurora::gapAdaptExponent.value > 0){
+    const float visitsPerH = visitsPerHardness(parent, tree, parentVisits);
+    gapAdaptScale = std::clamp(
+      std::pow(visitsPerH / Aurora::gapAdaptReference.value, Aurora::gapAdaptExponent.value),
+      Aurora::gapAdaptScaleMin.value, Aurora::gapAdaptScaleMax.value);
+    SEARCH_STAT_ADD(rootGapAdaptScaleSumMilli, int(gapAdaptScale * 1000));
+    SEARCH_STAT(rootGapAdaptSelects);
+  }
+  const float parentVisitsTerm = (isRoot ? Aurora::rootExplorationFactor.value : Aurora::explorationFactor.value)*logParentVisits*std::sqrt(logParentVisits)*gapAdaptScale;
 
   float varianceScale = 
     ((1.0 / parentIters) * 1.0) +
@@ -778,6 +815,9 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree,
 
   tree.setHash();
   if(Aurora::outputLevel.value >= 1){
+    std::cout << "info string root exploration scaled by clamp((visits/H / " << Aurora::gapAdaptReference.value << ")^"
+              << Aurora::gapAdaptExponent.value << ", " << Aurora::gapAdaptScaleMin.value << ", "
+              << Aurora::gapAdaptScaleMax.value << "), H = sum(1/max(gap, " << Aurora::gapAdaptMinGap.value << ")^2)\n";
     std::cout << "info string starting search with max tree size " <<
               (tree.sizeLimit == 0 ? "unlimited" : std::to_string(tree.sizeLimit/1000000.0)) << " mb "
               << "and TT size " <<

@@ -49,6 +49,8 @@ struct SearchStats{
 
   uint64_t rootQADisagree = 0;
   uint64_t rootQADisagreeChecks = 0;
+  uint64_t rootGapAdaptSelects = 0;
+  uint64_t rootGapAdaptScaleSumMilli = 0;
 
   uint64_t visitWindowVisitsSum = 0;
   uint64_t visitWindowIters = 0;
@@ -170,6 +172,9 @@ struct SearchStats{
     std::cout << "info string searchstats root"
               << " qaDisagree=" << rootQADisagree
               << " qaChecks=" << rootQADisagreeChecks << "\n";
+    std::cout << "info string searchstats rootGapAdapt"
+              << " selects=" << rootGapAdaptSelects
+              << " meanScale=" << (rootGapAdaptSelects ? rootGapAdaptScaleSumMilli / 1000.0 / rootGapAdaptSelects : 0.0) << "\n";
     std::cout << "info string searchstats branching"
               << " expandMean=" << expandBranchingMean
               << " expandSamples=" << expandBranchingCount
