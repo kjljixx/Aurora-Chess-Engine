@@ -81,7 +81,6 @@ inline Option varianceScaleOffset("varianceScaleOffset", 0.007603, -1, 1, 0, tru
 inline Option varianceScaleMin("varianceScaleMin", 1.038742, 0, 1024, 0, true);
 inline Option varianceScaleMax("varianceScaleMax", 1.468699, 0, 1024, 0, true);
 
-inline Option gapAdaptExponent("gapAdaptExponent", 0.5, 0, 4, 0, true);
 inline Option gapAdaptReference("gapAdaptReference", 20, 0.001, 1e9, 0, true);
 inline Option gapAdaptMinGap("gapAdaptMinGap", 0.01, 0.0001, 1, 0, true);
 inline Option gapAdaptScaleMin("gapAdaptScaleMin", 0.5, 0, 1024, 0, true);

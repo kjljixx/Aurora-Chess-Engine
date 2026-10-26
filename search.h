@@ -458,12 +458,14 @@ inline float visitsPerHardness(Node* parent, Tree& tree, float parentVisits){
   }
 
   const float minGap = Aurora::gapAdaptMinGap.value;
-  float hardness = 1 / std::pow(std::max(secondBestValue - bestValue, minGap), 2);
+  const float topGap = std::max(secondBestValue - bestValue, minGap);
+  float hardness = 1 / (topGap * topGap);
   for(const Edge& edge : parent->children){
     Node* child = tree.getNode(edge.childIdx);
     float gap = (child ? child->avgValue : edge.value) - bestValue;
     if(gap > 0){
-      hardness += 1 / std::pow(std::max(gap, minGap), 2);
+      gap = std::max(gap, minGap);
+      hardness += 1 / (gap * gap);
     }
   }
   return parentVisits / hardness;
@@ -478,10 +480,10 @@ inline uint8_t selectEdge(Node* parent, Tree& tree, bool isRoot){
   const float parentIters = std::max(parent->iters, 1);
   const float logParentVisits = std::log(parentVisits);
   float gapAdaptScale = 1;
-  if(isRoot && parent->children.size() > 1 && Aurora::gapAdaptExponent.value > 0){
+  if(isRoot && parent->children.size() > 1){
     const float visitsPerH = visitsPerHardness(parent, tree, parentVisits);
     gapAdaptScale = std::clamp(
-      std::pow(visitsPerH / Aurora::gapAdaptReference.value, Aurora::gapAdaptExponent.value),
+      std::sqrt(visitsPerH / Aurora::gapAdaptReference.value),
       Aurora::gapAdaptScaleMin.value, Aurora::gapAdaptScaleMax.value);
     SEARCH_STAT_ADD(rootGapAdaptScaleSumMilli, int(gapAdaptScale * 1000));
     SEARCH_STAT(rootGapAdaptSelects);
@@ -815,8 +817,8 @@ inline void search(chess::Board& rootBoard, timeManagement tm, Tree& tree,
 
   tree.setHash();
   if(Aurora::outputLevel.value >= 1){
-    std::cout << "info string root exploration scaled by clamp((visits/H / " << Aurora::gapAdaptReference.value << ")^"
-              << Aurora::gapAdaptExponent.value << ", " << Aurora::gapAdaptScaleMin.value << ", "
+    std::cout << "info string root exploration scaled by clamp(sqrt(visits/H / " << Aurora::gapAdaptReference.value << "), "
+              << Aurora::gapAdaptScaleMin.value << ", "
               << Aurora::gapAdaptScaleMax.value << "), H = sum(1/max(gap, " << Aurora::gapAdaptMinGap.value << ")^2)\n";
     std::cout << "info string starting search with max tree size " <<
               (tree.sizeLimit == 0 ? "unlimited" : std::to_string(tree.sizeLimit/1000000.0)) << " mb "
